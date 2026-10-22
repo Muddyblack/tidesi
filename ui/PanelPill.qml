@@ -76,6 +76,8 @@ Rectangle {
     // narrower content) doesn't make the right-anchored pill jump sideways.
     implicitWidth: Math.max(96, row.implicitWidth + 20)
     implicitHeight: 30
+    width: implicitWidth
+    height: implicitHeight
     radius: 8
 
     Behavior on implicitWidth {
