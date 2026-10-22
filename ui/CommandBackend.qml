@@ -92,8 +92,8 @@ QtObject {
     // stay intact. An empty $PYTHON3 reads as unset in python-interp.sh.
     // Always braced: in sh, "$10" is "$1" followed by "0", not argument ten.
     function tool(name, args, env) {
-        var script = "PYTHON3=\"$1\"";
-        var argv = ["sh", "-c", "", "tidesi", root.pythonPath || ""];
+        var script = "PYTHON3=\"$1\" AI_USAGE_CONFIG=\"$2\"";
+        var argv = ["sh", "-c", "", "tidesi", root.pythonPath || "", root.configPath];
         var keys = Object.keys(env || {});
         for (var i = 0; i < keys.length; i++) {
             argv.push(String(env[keys[i]]));
