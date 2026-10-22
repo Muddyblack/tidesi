@@ -166,7 +166,13 @@ Item {
             showSettings = false;
     }
     readonly property int popupWidth: showSettings ? 760 : 460
-    onSettingsChanged: root.publishTray()
+    onSettingsChanged: {
+        if (root.settingsLoaded)
+            root.providers = root.providers.filter(function (provider) {
+                return root.providerEnabled(provider.id);
+            });
+        root.publishTray();
+    }
     readonly property string antigravityChartFilter: root.settings.antigravityChartFilter || "both"
 
     function normalizeSettings(d) {
@@ -203,6 +209,14 @@ Item {
         } catch (e) {}
         root.settings = root.normalizeSettings(d);
         root.settingsLoaded = true;
+        root.providers = root.providers.filter(function (provider) {
+            return root.providerEnabled(provider.id);
+        });
+        if (root.pendingLastSnapshot !== "") {
+            var pending = root.pendingLastSnapshot;
+            root.pendingLastSnapshot = "";
+            root.applyLastSnapshot(pending);
+        }
         backend.requestCatalog(root.language);
         // The first start (no settings file yet): write one now, so whatever
         // a host does only on a first start happens once.
@@ -723,10 +737,15 @@ Item {
     // arrives after a live answer is dropped.
     property bool replaying: false
     property bool liveSnapshotSeen: false
+    property string pendingLastSnapshot: ""
 
     function applyLastSnapshot(text) {
         if (root.liveSnapshotSeen)
             return;
+        if (!root.settingsLoaded) {
+            root.pendingLastSnapshot = text;
+            return;
+        }
         var data;
         try {
             data = JSON.parse((text || "").trim() || "{}");
@@ -747,13 +766,18 @@ Item {
         try {
             var data = JSON.parse((text || "").trim());
             root.providers = data.providers || [];
+            if (root.settingsLoaded)
+                root.providers = root.providers.filter(function (provider) {
+                    return root.providerEnabled(provider.id);
+                });
+            var fallback = root.providerById(data.active) ? data.active : (root.providers[0] || {}).id || "";
             root.localSpend = data.localSpend || ({});
             root.updatedAt = data.updatedAt || 0;
             // Seed (or heal, if the remembered one got disabled) the pill's
             // fallback provider — needed even before the user ever leaves a
             // feature tab, since Sessions is the default-enabled one.
             if (!root.providerById(root.lastProviderId))
-                root.lastProviderId = data.active || (root.providers[0] || {}).id || "";
+                root.lastProviderId = fallback;
             // Keep the active tab if it's still present; otherwise reopen the
             // tab used last time, else the backend's suggestion or the first
             // provider — never a feature tab by default, so the pill mirrors a
@@ -764,7 +788,7 @@ Item {
             };
             if (!isOpenable(root.activeId)) {
                 var last = (root.settings || {}).lastTab || "";
-                root.activeId = isOpenable(last) ? last : (data.active || (root.providers[0] || {}).id || "");
+                root.activeId = isOpenable(last) ? last : fallback;
             }
             root.nowTick = new Date().getTime();
             root.publishTray();
