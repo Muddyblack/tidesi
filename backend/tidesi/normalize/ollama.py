@@ -2,7 +2,7 @@
 
 import math
 
-from ..contract import chart_window, flat_window, jround, provider_base, provider_error
+from ..contract import chart_window, epoch_of, flat_window, jround, provider_base, provider_error
 from ..messages import lines, tr
 
 ACCENT = "#f0f0f0"
@@ -19,6 +19,29 @@ def normalize_ollama(raw):
     if body.get("error"):
         return provider_error("ollama", "Ollama Cloud", ACCENT, now, str(body["error"]), {})
     limits = body.get("limits")
+    included = body.get("included")
+    if isinstance(included, dict):
+        limits = {}
+        for key, _ in BUCKETS[:2]:
+            bucket = included.get(key)
+            if not isinstance(bucket, dict):
+                continue
+            remaining = bucket.get("remaining_percent")
+            if isinstance(remaining, bool) or not isinstance(remaining, (int, float)) or not math.isfinite(remaining) or not 0 <= remaining <= 100:
+                continue
+            limits[key] = {"usage": (100 - remaining) / 100, "resets_at": bucket.get("resets_at")}
+        balance, allowance = included.get("balance_usd"), included.get("allowance_usd")
+        if (
+            all(not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value) for value in (balance, allowance))
+            and allowance > 0
+        ):
+            period = included.get("period")
+            limits["monthly"] = {
+                "usage": max(0, (allowance - balance) / allowance),
+                "resets_at": period.get("until") if isinstance(period, dict) else None,
+                "balance_usd": balance,
+                "allowance_usd": allowance,
+            }
     if not isinstance(limits, dict):
         return provider_error("ollama", "Ollama Cloud", ACCENT, now, tr("Ollama Cloud: usage response has no limit data"), {})
 
@@ -32,7 +55,11 @@ def normalize_ollama(raw):
         if isinstance(fraction, bool) or not isinstance(fraction, (int, float)) or not math.isfinite(fraction) or fraction < 0:
             continue
         pct = max(0, min(100, fraction * 100))
-        windows.append(flat_window(f"ollama_{key}", label, pct, 0, tr("%1% used", jround(pct)), True))
+        detail = tr("%1% used", jround(pct))
+        if "allowance_usd" in bucket:
+            label = tr("Included credits")
+            detail = tr("%1 of %2 USD remaining", f"{bucket['balance_usd']:.2f}", f"{bucket['allowance_usd']:.2f}")
+        windows.append(flat_window(f"ollama_{key}", label, pct, epoch_of(bucket.get("resets_at")), detail, True))
         rows = bucket.get("models")
         if isinstance(rows, list):
             models[key] = [
@@ -81,5 +108,14 @@ def normalize_ollama(raw):
         chart_window("ollama_30d", long_window["key"], "30D", 2592000000, "30d"),
     ]
     r["historyValues"] = {w["key"]: w["pct"] for w in windows}
-    r["details"] = {"models": models, "activityCost": cost, "limitType": primary["key"], "resetUnavailable": True}
+    r["details"] = {
+        "models": models,
+        "activityCost": cost,
+        "limitType": primary["key"],
+        "resetUnavailable": not any(w["resetAt"] > 0 for w in windows),
+    }
+    purchased = body.get("purchased")
+    remaining = purchased.get("balance_usd") if isinstance(purchased, dict) else None
+    if not isinstance(remaining, bool) and isinstance(remaining, (int, float)) and math.isfinite(remaining) and remaining >= 0:
+        r["quotaWindows"].append(flat_window("ollama_purchased", tr("Purchased credits"), 0, 0, tr("%1 USD remaining", f"{remaining:.2f}"), False))
     return r

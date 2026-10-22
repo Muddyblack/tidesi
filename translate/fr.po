@@ -2602,12 +2602,28 @@ msgid "Ollama Cloud: usage response has no limit data"
 msgstr "Ollama Cloud : la réponse d'utilisation ne contient aucune limite"
 
 #: backend/tidesi/normalize/ollama.py
+msgid "Included credits"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
+msgid "%1 of %2 USD remaining"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
 msgid "Ollama Cloud: no recognized usage limits in response"
 msgstr "Ollama Cloud : aucune limite d'utilisation reconnue dans la réponse"
 
 #: backend/tidesi/normalize/ollama.py
 msgid "%1: %2%"
 msgstr "%1 : %2 %"
+
+#: backend/tidesi/normalize/ollama.py
+msgid "Purchased credits"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
+msgid "%1 USD remaining"
+msgstr ""
 
 #: backend/tidesi/normalize/openai.py
 msgid "Codex / ChatGPT User"

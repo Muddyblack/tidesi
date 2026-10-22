@@ -2454,11 +2454,27 @@ msgid "Ollama Cloud: usage response has no limit data"
 msgstr ""
 
 #: backend/tidesi/normalize/ollama.py
+msgid "Included credits"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
+msgid "%1 of %2 USD remaining"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
 msgid "Ollama Cloud: no recognized usage limits in response"
 msgstr ""
 
 #: backend/tidesi/normalize/ollama.py
 msgid "%1: %2%"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
+msgid "Purchased credits"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
+msgid "%1 USD remaining"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
