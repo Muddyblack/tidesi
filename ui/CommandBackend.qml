@@ -67,8 +67,20 @@ QtObject {
 
     property bool busy: false
     property bool pricingBusy: false
+    property bool refreshPending: false
+    property bool settingsSaveBlocked: false
+    property QtObject settingsQueue: ProcessQueue {
+        runner: root.runner
+        onIdle: if (root.refreshPending)
+            root.refresh()
+    }
+    property QtObject historyQueue: ProcessQueue {
+        runner: root.runner
+    }
 
     signal settingsLoaded(string text)
+    signal settingsSaved
+    signal settingsSaveFailed
     signal lastSnapshotLoaded(string text)
     signal catalogLoaded(string text)
     signal languagesLoaded(string text)
@@ -135,7 +147,13 @@ QtObject {
     function saveSettings(text) {
         // Written beside the target and renamed over it, so a reader never sees
         // a half-written file.
-        root.runner.run(["sh", "-c", "mkdir -p \"$(dirname \"$2\")\" && printf '%s' \"$1\" > \"$2.tmp.$$\" && mv -f \"$2.tmp.$$\" \"$2\"", "tidesi", text, root.configPath], function () {});
+        root.settingsQueue.run(["sh", "-c", "umask 077; tmp=\"$2.tmp.$$\"; trap 'rm -f \"$tmp\"' EXIT; mkdir -p \"$(dirname \"$2\")\" && printf '%s' \"$1\" > \"$tmp\" && mv -f \"$tmp\" \"$2\"", "tidesi", text, root.configPath], function (out, err, code) {
+            root.settingsSaveBlocked = code !== 0;
+            if (root.settingsSaveBlocked)
+                root.settingsSaveFailed();
+            else
+                root.settingsSaved();
+        });
     }
 
     function requestCatalog(language) {
@@ -168,8 +186,11 @@ QtObject {
 
     // ── Usage ────────────────────────────────────────────────────────────────
     function refresh() {
-        if (root.busy)
+        if (root.busy || root.settingsQueue.busy || root.settingsSaveBlocked) {
+            root.refreshPending = true;
             return;
+        }
+        root.refreshPending = false;
         root.busy = true;
         // --save-snapshot keeps the last good answer for the next start.
         root.runner.run(root.backendArgs(["--all", "--save-snapshot"]), function (out, err, code) {
@@ -178,6 +199,8 @@ QtObject {
             else
                 root.refreshFailed(root.firstLine(err) || "usage backend failed");
             root.busy = false;
+            if (root.refreshPending)
+                root.refresh();
         });
     }
 
@@ -255,7 +278,7 @@ QtObject {
         var env = payload !== "" ? {
             WIDGET_HISTORY_JSON: payload
         } : {};
-        root.runner.run(root.tool("history-io", [op], env), function (out) {
+        root.historyQueue.run(root.tool("history-io", [op], env), function (out) {
             root.historyFinished(op, out || "");
         });
     }
@@ -263,7 +286,10 @@ QtObject {
     // No synchronous process here: the write is started and left to finish,
     // which it does — the tool does not depend on this process staying alive.
     function flushHistory(op, payload) {
-        root.history(op, payload);
+        var env = payload !== "" ? {
+            WIDGET_HISTORY_JSON: payload
+        } : {};
+        root.runner.run(root.tool("history-io", [op], env), function () {});
         return "";
     }
 

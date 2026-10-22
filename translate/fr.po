@@ -53,6 +53,10 @@ msgstr[0] "%1 démarrage"
 msgstr[1] "%1 démarrages"
 
 #: ui/AppState.qml
+msgid "Check file permissions and free disk space."
+msgstr ""
+
+#: ui/AppState.qml
 msgid "Using %1"
 msgstr "Utilise %1"
 
@@ -335,6 +339,10 @@ msgstr "dernière valeur connue %1 · actualisation…"
 #: ui/PopupContent.qml
 msgid "updated %1"
 msgstr "mis à jour %1"
+
+#: ui/PopupHeader.qml
+msgid "Settings not saved"
+msgstr ""
 
 #: ui/PopupHeader.qml
 msgid "%1 Usage"

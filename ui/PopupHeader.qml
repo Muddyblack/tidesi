@@ -104,6 +104,8 @@ ColumnLayout {
             spacing: 0
             Text {
                 text: {
+                    if (shell.settingsSaveError)
+                        return shell.i18n("Settings not saved");
                     if (shell.showSettings)
                         return shell.i18n("Settings");
                     if (shell.activeIsFeature)
@@ -113,11 +115,13 @@ ColumnLayout {
                 }
                 font.bold: true
                 font.pixelSize: 15
-                color: Tone.c(Appearance.Palette, "#f8fafc")
+                color: shell.settingsSaveError ? shell.dangerColor : Tone.c(Appearance.Palette, "#f8fafc")
             }
             Text {
-                visible: shell.showSettings || shell.activeIsFeature
+                visible: shell.showSettings || shell.activeIsFeature || !!shell.settingsSaveError
                 text: {
+                    if (shell.settingsSaveError)
+                        return shell.settingsSaveError;
                     if (shell.showSettings) {
                         if (shell.settingsSection === "panel")
                             return shell.pillControls ? shell.i18n("Views, pill, position and chart") : shell.i18n("Views, language and usage chart");
@@ -156,8 +160,8 @@ ColumnLayout {
                     return "";
                 }
                 font.pixelSize: 10
-                opacity: 0.5
-                color: Tone.c(Appearance.Palette, "#f8fafc")
+                opacity: shell.settingsSaveError ? 1 : 0.5
+                color: shell.settingsSaveError ? shell.dangerColor : Tone.c(Appearance.Palette, "#f8fafc")
             }
         }
 

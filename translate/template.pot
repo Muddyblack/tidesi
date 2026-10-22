@@ -54,6 +54,10 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: ui/AppState.qml
+msgid "Check file permissions and free disk space."
+msgstr ""
+
+#: ui/AppState.qml
 msgid "Using %1"
 msgstr ""
 
@@ -322,6 +326,10 @@ msgstr ""
 
 #: ui/PopupContent.qml
 msgid "updated %1"
+msgstr ""
+
+#: ui/PopupHeader.qml
+msgid "Settings not saved"
 msgstr ""
 
 #: ui/PopupHeader.qml

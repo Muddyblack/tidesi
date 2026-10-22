@@ -141,6 +141,17 @@ Item {
             language: ""
         })
     property bool settingsLoaded: false
+    property string settingsSaveError: ""
+    Connections {
+        target: root.backend
+        ignoreUnknownSignals: true
+        function onSettingsSaveFailed() {
+            root.settingsSaveError = root.i18n("Check file permissions and free disk space.");
+        }
+        function onSettingsSaved() {
+            root.settingsSaveError = "";
+        }
+    }
     property bool showSettings: false
     // How wide the popup is: the settings studio brings a sidebar, which needs
     // the room. Each host binds its window to this.
@@ -771,6 +782,8 @@ Item {
     function refresh() {
         if (!root.providerDefaultsReady || root.providerDefaultsInitializing)
             return;
+        if (root.settingsSaveError)
+            root.saveSettings();
         backend.refresh();
     }
 
@@ -1133,6 +1146,7 @@ Item {
     readonly property int historyLimit: 10000
     property var historyStore: UsageHistory.newStore(root.historyLimit)
     property bool historySaving: false
+    property int historyChangesPending: 0
     property string historyMsg: ""
     // The prune in flight is the automatic one at startup: no message for it.
     property bool historyAutoPrune: false
@@ -1159,7 +1173,7 @@ Item {
     }
 
     function sendHistory() {
-        if (root.historySaving)
+        if (root.historySaving || root.historyChangesPending > 0)
             return;
         var batch = UsageHistory.take(root.historyStore);
         if (!batch)
@@ -1171,6 +1185,8 @@ Item {
 
     function flushHistory() {
         historyDebounceTimer.stop();
+        if (root.historyChangesPending > 0)
+            return;
         var batch = UsageHistory.takeForExit(root.historyStore);
         if (!batch)
             return;
@@ -1203,11 +1219,15 @@ Item {
 
     // Delete the whole recorded history.
     function clearHistory() {
+        root.historyChangesPending += 1;
+        historyDebounceTimer.stop();
         backend.history("clear", "");
     }
 
     // Keep the last `days` days of history and delete the rest.
     function pruneHistory(days) {
+        root.historyChangesPending += 1;
+        historyDebounceTimer.stop();
         backend.history("prune", String(days));
     }
 
@@ -1385,6 +1405,7 @@ Item {
                     root.pruneHistory(keepDays);
                 }
             } else if (op === "clear" || op === "prune") {
+                root.historyChangesPending = Math.max(0, root.historyChangesPending - 1);
                 try {
                     var c = JSON.parse(result);
                     if (c.error) {
