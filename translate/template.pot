@@ -1730,6 +1730,24 @@ msgid ""
 "OpenAI, Grok, Kiro, OpenRouter & Mistral)"
 msgstr ""
 
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage returned an invalid response."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage: network error."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid ""
+"OpenAI organization usage: access denied (HTTP 403); check organization "
+"usage permissions."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage request failed (HTTP %1)."
+msgstr ""
+
 #: backend/tidesi/contract.py
 msgid "unavailable"
 msgstr ""
@@ -2518,11 +2536,23 @@ msgid "%1 · weekly"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
+msgid "Organization usage unavailable"
+msgstr ""
+
+#: backend/tidesi/normalize/openai.py
 msgid "Codex 5h: %1% left"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
 msgid "Codex weekly: %1% left"
+msgstr ""
+
+#: backend/tidesi/normalize/openai.py
+msgid "Codex login expired. Run codex login to sign in again."
+msgstr ""
+
+#: backend/tidesi/normalize/openai.py
+msgid "OpenAI usage refresh failed: %1"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
@@ -2534,7 +2564,7 @@ msgid "API key configured"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
-msgid "API credentials"
+msgid "Codex signed in; no organization API key"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
@@ -2542,7 +2572,7 @@ msgid "Organization usage available"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
-msgid "Codex signed in; no organization API key"
+msgid "API credentials"
 msgstr ""
 
 #: backend/tidesi/normalize/opencode.py

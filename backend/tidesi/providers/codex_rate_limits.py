@@ -1,6 +1,6 @@
 """Drives `codex app-server --stdio` over JSON-RPC to read plan rate limits.
 
-Popen with line-buffered stdin/stdout; a 5s read deadline per phase, and the
+Popen with line-buffered stdin/stdout; 15s for startup and 5s for reading limits, and the
 child is always reaped.
 
 Replies are read on a helper thread rather than with `selectors`: Windows can
@@ -30,6 +30,8 @@ import time
 from .. import config, paths
 
 TTL_SECONDS = 120
+STARTUP_TIMEOUT_SECONDS = 15
+READ_TIMEOUT_SECONDS = 5
 _FIELDS = ("rateLimits", "rate_limit", "rateLimitsByLimitId", "additional_rate_limits", "_codexNoLimits")
 
 
@@ -50,11 +52,11 @@ def _read_until_id(lines, want_id, timeout):
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            return None
+            raise TimeoutError
         try:
             line = lines.get(timeout=remaining)
         except queue.Empty:
-            return None
+            raise TimeoutError from None
         if line is None:
             # Leave the end marker for the next phase, which would otherwise
             # sit out its whole deadline on a stream that has already ended.
@@ -155,7 +157,11 @@ def _live_codex_rate_limits():
         except (BrokenPipeError, OSError):
             return {}
 
-        if _read_until_id(lines, 1, 5) is not None:
+        try:
+            initialized = _read_until_id(lines, 1, STARTUP_TIMEOUT_SECONDS)
+        except TimeoutError:
+            return {"_codexError": "Codex app-server startup timed out"}
+        if initialized is not None:
             read_limits = json.dumps({"id": 2, "method": "account/rateLimits/read", "params": None})
             try:
                 stdin.write(read_limits + "\n")
@@ -163,11 +169,20 @@ def _live_codex_rate_limits():
             except (BrokenPipeError, OSError):
                 read_limits_reply = None
             else:
-                read_limits_reply = _read_until_id(lines, 2, 5)
+                try:
+                    read_limits_reply = _read_until_id(lines, 2, READ_TIMEOUT_SECONDS)
+                except TimeoutError:
+                    result = {"_codexError": "Codex app-server rate-limit request timed out"}
+                    read_limits_reply = None
             if read_limits_reply is not None and "result" in read_limits_reply:
                 result = read_limits_reply.get("result") or {}
                 if isinstance(result, dict) and not result:
                     result = {"_codexNoLimits": True}
+            elif read_limits_reply is not None:
+                error = read_limits_reply.get("error")
+                message = error.get("message") if isinstance(error, dict) else None
+                if isinstance(message, str) and ("token_expired" in message.lower() or "authentication token is expired" in message.lower()):
+                    result = {"_codexError": "token expired"}
     finally:
         try:
             if stdin is not None:

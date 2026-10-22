@@ -1852,6 +1852,24 @@ msgstr ""
 "Suivi multi-services de quotas IA avec ventilation des coûts (Claude, "
 "Antigravity, OpenAI, Grok, Kiro, OpenRouter & Mistral)"
 
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage returned an invalid response."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage: network error."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid ""
+"OpenAI organization usage: access denied (HTTP 403); check organization "
+"usage permissions."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage request failed (HTTP %1)."
+msgstr ""
+
 #: backend/tidesi/contract.py
 msgid "unavailable"
 msgstr "indisponible"
@@ -2666,12 +2684,24 @@ msgid "%1 · weekly"
 msgstr "%1 · hebdomadaire"
 
 #: backend/tidesi/normalize/openai.py
+msgid "Organization usage unavailable"
+msgstr ""
+
+#: backend/tidesi/normalize/openai.py
 msgid "Codex 5h: %1% left"
 msgstr "Codex 5h : %1% restant"
 
 #: backend/tidesi/normalize/openai.py
 msgid "Codex weekly: %1% left"
 msgstr "Codex hebdomadaire : %1% restant"
+
+#: backend/tidesi/normalize/openai.py
+msgid "Codex login expired. Run codex login to sign in again."
+msgstr ""
+
+#: backend/tidesi/normalize/openai.py
+msgid "OpenAI usage refresh failed: %1"
+msgstr ""
 
 #: backend/tidesi/normalize/openai.py
 msgid "API"
@@ -2682,16 +2712,16 @@ msgid "API key configured"
 msgstr "Clé API configurée"
 
 #: backend/tidesi/normalize/openai.py
-msgid "API credentials"
-msgstr "Identifiants API"
+msgid "Codex signed in; no organization API key"
+msgstr "Codex connecté ; aucune clé API d'organisation"
 
 #: backend/tidesi/normalize/openai.py
 msgid "Organization usage available"
 msgstr "Utilisation de l'organisation disponible"
 
 #: backend/tidesi/normalize/openai.py
-msgid "Codex signed in; no organization API key"
-msgstr "Codex connecté ; aucune clé API d'organisation"
+msgid "API credentials"
+msgstr "Identifiants API"
 
 #: backend/tidesi/normalize/opencode.py
 msgid "OpenCode Go: %1"

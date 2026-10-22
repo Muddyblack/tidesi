@@ -12,6 +12,7 @@ import time
 from . import config
 from .contract import STATUS_FEEDS, STATUS_PAGES
 from .http import as_json, fetch_json, http_error_text
+from .messages import tr
 from .pricing import get_pricing
 from .providers import claude_transcripts
 from .providers.antigravity import get_antigravity_usage
@@ -176,21 +177,24 @@ def collect_openai(now):
         codex = get_codex_rate_limits(token, codex_home())
         codex.pop("_codexSource", None)
         codex.pop("_codexAge", None)
+        codex_error = codex.pop("_codexError", "")
         # The app-server can answer "no limits on this plan" explicitly; that
         # is an answer, not a failure, so it must not trigger the HTTP fallback.
         no_limits = codex.pop("_codexNoLimits", False)
-        if not (codex.get("rateLimits") or codex.get("rate_limit") or no_limits) and token:
+        if not (codex.get("rateLimits") or codex.get("rate_limit") or no_limits) and token and codex_error != "token expired":
             headers = {"Authorization": f"Bearer {token}", "User-Agent": "codex-cli"}
             if account:
                 headers["chatgpt-account-id"] = account
             result = fetch_json("https://chatgpt.com/backend-api/codex/usage", headers=headers, timeout=12)
             if result.status == 200:
                 codex = as_json(result.body) or {}
+                codex_error = ""
                 remember_codex_rate_limits(token, codex_home(), codex if codex else {"_codexNoLimits": True})
             else:
-                codex_error = http_error_text(result.status)
+                codex_error = codex_error or http_error_text(result.status)
 
     org = None
+    org_error = ""
     if api_key:
         end = int(now)
         start = int(now) - 30 * 86400
@@ -201,7 +205,24 @@ def collect_openai(now):
             fixture_path=os.environ.get("OPENAI_ORG_USAGE_RESPONSE_FILE"),
         )
         if result.status == 200:
-            org = as_json(result.body)
+            parsed = as_json(result.body)
+            if (
+                isinstance(parsed, dict)
+                and isinstance(parsed.get("data"), list)
+                and all(
+                    isinstance(row, dict) and isinstance(row.get("results"), list) and all(isinstance(item, dict) for item in row["results"])
+                    for row in parsed["data"]
+                )
+            ):
+                org = parsed
+            else:
+                org_error = tr("OpenAI organization usage returned an invalid response.")
+        elif result.status == 0:
+            org_error = tr("OpenAI organization usage: network error.")
+        elif result.status == 403:
+            org_error = tr("OpenAI organization usage: access denied (HTTP 403); check organization usage permissions.")
+        else:
+            org_error = tr("OpenAI organization usage request failed (HTTP %1).", result.status)
 
     stats = get_codex_stats()
     status = provider_status("openai")
@@ -214,6 +235,7 @@ def collect_openai(now):
             "codex": codex or {},
             "codexError": codex_error,
             "orgUsage": org,
+            "orgUsageError": org_error,
             "pricing": get_pricing("openai") if isinstance(org, dict) and org.get("data") else {},
             "stats": stats or {},
             "status": status,
