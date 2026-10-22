@@ -138,19 +138,19 @@ not expose progressive usage before its limit is exhausted.
 
 ## Ollama Cloud *(experimental)*
 
-The Ollama Cloud tab reads `GET https://ollama.com/api/usage` with an Ollama
-Cloud API key. It accepts the session, weekly, and monthly limit buckets the
-service actually returns, plus the optional recent activity cost and per-model
-request counts. The endpoint is undocumented and has changed shape, so the
-widget reports an error if it stops returning recognizable limit data. It does
-not guess reset times or convert request counts to tokens. Reading the endpoint
-does not run a model.
+The Ollama Cloud tab reads the documented
+[`GET https://ollama.com/api/balance`](https://docs.ollama.com/api/balance)
+with an Ollama Cloud API key. Legacy plans report session and weekly
+`remaining_percent` values, which the widget converts to used percentages,
+with the reported UTC reset times. Current included-credit plans report a USD
+balance and allowance; the labeled included-credit meter uses that ratio.
+Purchased credits are shown as a balance without a quota meter.
 
-Older plans expose session and weekly limits; newer plans expose a monthly
-credit pool. Both response shapes are supported. On an older plan, Ollama may
-report a zero recent activity cost even while quota has been used, so the tab
-hides that zero. A positive reported cost and a monthly plan's zero remain
-visible. The widget does not change the account's billing plan.
+[`/api/usage`](https://docs.ollama.com/api/cloud-usage) now reports activity
+totals and buckets, not quota limits. The widget does not invent a quota from
+request counts or activity costs. Older saved response shapes remain readable,
+but fresh quota reads use `/api/balance`. Reading balances does not run a model
+or change the account's billing plan.
 
 Key order: widget settings → `$OLLAMA_API_KEY` → OpenCode's
 `ollama-cloud` API-key entry in `~/.local/share/opencode/auth.json` (or
@@ -192,6 +192,16 @@ running widget; direct links follow agy's inspected link builder.
 ## OpenAI
 
 The OpenAI tab has two independent sections. API usage is fetched from the official OpenAI organization usage endpoint with an API key and summarized over the last 30 days. Codex subscription limits are read through the local Codex app-server, with the authenticated web usage endpoint retained as a compatibility fallback. Windows are classified by their actual duration instead of assuming that `primary` means five hours. Codex plan limits are separate from API billing usage.
+
+Organization-usage HTTP failures and malformed responses are shown separately;
+the presence of an API key does not imply access to organization usage. A failed
+organization request does not hide healthy Codex limits or charts.
+
+The Codex app-server has a 15-second startup deadline and a five-second
+rate-limit read deadline. Timeout messages identify the failed phase; a
+successful web fallback can recover a non-authentication timeout. An explicit
+expired-login response is not obscured by another fallback failure: sign in
+again with `codex login`. The widget never rewrites Codex credentials itself.
 
 ## OpenCode
 
