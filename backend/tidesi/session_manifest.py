@@ -104,7 +104,7 @@ def _opencode_records() -> list[tuple[str, str, int, int, int]]:
     if explicit:
         resolved = opencode.explicit_database_path(explicit)
         if resolved:
-            records.append(_stat_record(resolved, "file"))
+            records.extend(_stat_record(resolved + suffix, "file") for suffix in ("", "-wal"))
     for base in paths.data_home_dirs():
         for directory in (base, os.path.join(base, "opencode")):
             records.append(_stat_record(directory, "directory"))
@@ -113,7 +113,10 @@ def _opencode_records() -> list[tuple[str, str, int, int, int]]:
             except OSError:
                 continue
             records.extend(
-                _stat_record(os.path.join(directory, name), "file") for name in entries if name.startswith("opencode") and name.endswith(".db")
+                _stat_record(os.path.join(directory, name) + suffix, "file")
+                for name in entries
+                if name.startswith("opencode") and name.endswith(".db")
+                for suffix in ("", "-wal")
             )
     return records
 
