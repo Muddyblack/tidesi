@@ -32,6 +32,7 @@ their own widgets — or columns — and nothing else.
 get-ai-usage --provider claude            # one provider
 get-ai-usage --provider claude,openai     # several (KDE: active tab + pins)
 get-ai-usage --all                        # every enabled provider (Hyprland)
+get-ai-usage --all --stream               # completed providers, then the full envelope
 get-ai-usage --normalize < envelope.json  # replay a raw envelope, no network
 get-ai-usage --list                       # known provider ids
 get-ai-usage --sessions --query <text>    # search local sessions through the backend
@@ -42,6 +43,20 @@ get-ai-usage --save-snapshot --provider claude  # fetch, and keep it as the last
 get-ai-usage --last-snapshot                # the last good envelope, {} when none
 WIDGET_SHARED_PATCH='{"claudeEnabled":true}' get-ai-usage --shared-settings  # Plasma: merge + print shared settings
 ```
+
+`--stream` is opt-in newline-delimited JSON. Each completed provider produces a
+flushed envelope with `partial: true` and one complete normalized provider in
+`providers`. Arrival order is completion order; the final envelope has no
+`partial` flag and retains the normal provider order and `localSpend` aggregate.
+Only the final envelope is saved by `--save-snapshot`. Without `--stream`, stdout
+remains one JSON envelope for existing CLI consumers.
+
+Quickshell (including the DMS plugin) and the desktop tray app publish partial
+results immediately. The shared UI merges them by provider ID, preserving cached
+peers and ignoring providers disabled during the refresh. Partial updates do not
+record history or mark the overall refresh complete. KDE's executable DataSource
+delivers stdout only at process exit, so its current adapter still applies the
+final snapshot rather than displaying intermediate results.
 
 The terminal frontend renders that same model, either fetching it itself or
 reading an envelope on stdin:
@@ -196,6 +211,20 @@ rollup. When no qualifying numeric rows exist, the aggregate contains only
 Session activity is locally observed data. The contract does not promise parsing
 formats that do not produce supported local records, and frontends must not
 infer missing costs or session details.
+
+Antigravity also reads `antigravity-cli/conversations/*.db` and
+`antigravity/conversations/*.db` below its configured Gemini home, using read-only
+SQLite connections. Generation metadata supplies machine model IDs and separate
+new-input, cached-input, output, and reasoning token counts. Response IDs dedupe
+repeated generation records within a database. Missing model IDs are recovered
+only from unambiguous model/label associations in that same database; unknown
+IDs are never assigned a default model or price. Exact cached model rates yield
+`costProvenance: "estimated"` and `costBilling: "subscription"`; mixed coverage
+is partial. The protobuf field layout follows the independently documented
+[tokscale Antigravity reader](https://github.com/junhoyeo/tokscale/blob/39ecb83ab045a300c6f502f9c9319acf5c80e764/crates/tokscale-core/src/sessions/antigravity_cli.rs).
+Private numeric caches are invalidated by parser and database/WAL changes and
+contain no prompts, paths, session IDs, or response IDs. Transcript/artifact
+metadata is joined by session identity without counting its tokens a second time.
 
 Cline's aggregate `totalCost` is provider-owned aggregate reporting. It is not a
 per-session local actual and is intentionally excluded from the local session
@@ -808,4 +837,3 @@ which sources to try. A new kind of source, such as a browser session, is one mo
 
 Settings also carry `proxy: {mode: "system" | "off" | "http", host, port}`,
 applied by `config.apply_proxy` (see providers.md).
-
