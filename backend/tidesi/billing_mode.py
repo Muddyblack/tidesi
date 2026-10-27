@@ -13,6 +13,9 @@ Only providers that expose a plan signal in credentials we already read are
 classified; everything else is bring-your-own-key and therefore ``API``.
 """
 
+import json
+import os
+
 from .providers.claude_credentials import get_claude_credentials
 from .providers.openai_credentials import get_openai_credentials
 
@@ -57,20 +60,34 @@ def reset_cache():
     _CACHE.clear()
 
 
-def mode_for(provider):
+def _opencode_mode(provider: str) -> str:
+    if provider not in ("openai", "anthropic"):
+        return API
+    data_home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    try:
+        with open(os.path.join(data_home, "opencode", "auth.json"), encoding="utf-8") as stream:
+            auth = json.load(stream)
+    except (OSError, ValueError):
+        return API
+    entry = auth.get(provider) if isinstance(auth, dict) else None
+    return SUBSCRIPTION if isinstance(entry, dict) and _text(entry.get("type")) == "oauth" else API
+
+
+def mode_for(provider, source=""):
     """``"subscription"`` or ``"api"`` for one session provider id.
 
     Memoized: credential lookup reads files and decodes a JWT, which must not
     happen once per session row.
     """
-    if provider in _CACHE:
-        return _CACHE[provider]
+    key = (provider, source)
+    if key in _CACHE:
+        return _CACHE[key]
     resolver = _RESOLVERS.get(provider)
     try:
-        mode = resolver() if resolver is not None else API
+        mode = _opencode_mode(provider) if source == "opencode" else resolver() if resolver is not None else API
     except Exception:
         # An unreadable credential store must not stop a listing; metered is
         # the honest default, since it never hides a cost the user does owe.
         mode = API
-    _CACHE[provider] = mode
+    _CACHE[key] = mode
     return mode

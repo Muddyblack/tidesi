@@ -136,7 +136,7 @@ def _with_usage_cost(entry, provider, buckets):
     costed["tokens"] = billing.total_tokens(buckets)
     # What the figure means: money owed on a metered key, or the API-equivalent
     # of work a plan already covers. See billing_mode for why they never mix.
-    costed["costBilling"] = billing_mode.mode_for(entry.get("provider") or provider)
+    costed["costBilling"] = billing_mode.mode_for(entry.get("provider") or provider, entry.get("source") or "")
     return costed
 
 
@@ -767,7 +767,7 @@ def _opencode_records(reader, *, include_all=False):
     return records if include_all else records[:_MAX_SESSIONS]
 
 
-def _provider_costs(buckets):
+def _provider_costs(buckets, source=""):
     """Per-provider cost rollups for a multi-provider OpenCode session."""
     catalog = pricing.cached_catalog()
     by_provider = {}
@@ -777,6 +777,9 @@ def _provider_costs(buckets):
     for provider, provider_buckets in by_provider.items():
         result = billing.aggregate_session_usage(provider_buckets, {provider: catalog.get(provider, {})})
         if result.get("costStatus") != "unavailable":
+            result["tokens"] = billing.total_tokens(provider_buckets)
+            if source == "opencode":
+                result["costBilling"] = billing_mode.mode_for(provider, source)
             costs[provider] = result
     return costs
 
