@@ -115,9 +115,12 @@ and token fields exist. OpenCode reads read-only structured assistant usage
 across every provider it routed, aggregated per provider and model, and rolls
 multi-provider sessions up per upstream provider; metadata-only sessions remain
 unavailable.
-Antigravity remains metadata-only and unavailable for cost because its verified
-local schema has no structured billing data. Other providers are not implied to
-have local session cost support.
+Antigravity reads model-attributed token usage from the CLI and IDE conversation
+SQLite databases. Exact cached model rates produce plan-covered API-equivalent
+estimates, not subscription charges. Unidentified models and missing rates stay
+unpriced; a mix of priced and unpriced usage is partial. Transcript-only and
+artifact-only sessions remain unavailable for cost. Other providers are not
+implied to have local session cost support.
 
 Usage & Spend keeps provider-reported spend separate from non-navigable local
 source rows. Local actual and estimated rollups are merged by source, so an
