@@ -132,6 +132,18 @@ def _mimo_records():
 
 def _antigravity_records(root: str) -> list[tuple[str, str, int, int, int]]:
     records: list[tuple[str, str, int, int, int]] = []
+    for client in ("antigravity-cli", "antigravity"):
+        directory = os.path.join(root, client, "conversations")
+        if not os.path.isdir(directory):
+            continue
+        records.append(_stat_record(directory, "directory"))
+        try:
+            names = sorted(os.listdir(directory))
+        except OSError:
+            continue
+        records.extend(
+            _stat_record(os.path.join(directory, name) + suffix, "file") for name in names if name.endswith(".db") for suffix in ("", "-wal")
+        )
     for tree, predicate in (
         (os.path.join(root, "antigravity-cli", "brain"), lambda path: path.endswith(os.path.join(".system_generated", "logs", "transcript.jsonl"))),
         (os.path.join(root, "antigravity", "brain"), lambda path: path.endswith(".md")),

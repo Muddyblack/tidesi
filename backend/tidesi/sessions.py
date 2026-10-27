@@ -808,7 +808,7 @@ def _opencode_entries(*, include_all=False):
         if len(upstream) == 1:
             entry["billingProvider"] = provider
         else:
-            provider_costs = _provider_costs(record.usage)
+            provider_costs = _provider_costs(record.usage, "opencode")
             if provider_costs:
                 entry["providerCosts"] = provider_costs
         out.append(entry)
@@ -904,6 +904,9 @@ def _antigravity_entries(*, include_all=False):
             session_id=record.session_id,
         )
         if entry:
+            if record.usage:
+                entry = _with_usage_cost(entry, "antigravity", record.usage)
+                entry["costBilling"] = "subscription"
             out.append(entry)
     return out
 

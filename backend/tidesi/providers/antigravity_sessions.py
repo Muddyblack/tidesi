@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
+from ..billing import UsageBucket
 from ..contract import epoch_of
+from . import antigravity_usage
 
 _MAX_SESSIONS = 60
 _MAX_TRANSCRIPT_LINES = 20_000
@@ -24,6 +26,7 @@ class AntigravitySession:
     title: str
     last_activity: int
     source_path: str
+    usage: tuple[UsageBucket, ...] = ()
 
 
 def _home() -> Path:
@@ -143,6 +146,12 @@ def _discover(*, include_all: bool = False) -> list[AntigravitySession]:
         previous = selected.get(session_id)
         if record is not None and (previous is None or record.last_activity > previous.last_activity):
             selected[session_id] = record
+    for native in antigravity_usage.read_usage(root):
+        previous = selected.get(native.session_id)
+        if previous is None:
+            selected[native.session_id] = AntigravitySession(native.session_id, "Antigravity", native.last_activity, native.source_path, native.usage)
+        else:
+            selected[native.session_id] = replace(previous, last_activity=max(previous.last_activity, native.last_activity), usage=native.usage)
     records = sorted(selected.values(), key=lambda record: (-record.last_activity, record.session_id))
     return records if include_all else records[:_MAX_SESSIONS]
 
