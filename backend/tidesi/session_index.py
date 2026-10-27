@@ -341,13 +341,13 @@ def _row_cost_groups(row, provenance=None):
         contributions.extend((prov, *item) for item in _local_contributions(row, prov))
     counts = {}
     token_values = {}
-    for prov, billing, rollup, cost, status, component_tokens in contributions:
+    for _, _, rollup, _, _, component_tokens in contributions:
         counts[rollup] = counts.get(rollup, 0) + 1
         token_values[rollup] = component_tokens
     has_component_tokens = all(value is not None for value in token_values.values())
     has_component_tokens = has_component_tokens and sum(token_values.values()) <= tokens
     groups = []
-    for prov, billing, rollup, cost, status, component_tokens in contributions:
+    for prov, billing, rollup, cost, status, _ in contributions:
         if provenance is not None and prov != provenance:
             continue
         share = token_values[rollup] / counts[rollup] if has_component_tokens else tokens / len(contributions)

@@ -38,10 +38,7 @@ def _signatures(connection: sqlite3.Connection, state: str, import_tables) -> di
     if not import_tables and journal and set(_SUMMARY_FIELDS) <= opencode._table_columns(connection, "session"):
         sequences = dict(connection.execute("SELECT aggregate_id, seq FROM event_sequence"))
         fields = ", ".join((*_SUMMARY_FIELDS, "time_created", "time_updated"))
-        return {
-            row[0]: _hash(json.dumps((row[1:], sequences.get(row[0]))))
-            for row in connection.execute("SELECT id, " + fields + " FROM session")
-        }
+        return {row[0]: _hash(json.dumps((row[1:], sequences.get(row[0])))) for row in connection.execute("SELECT id, " + fields + " FROM session")}
     return {row[0]: state for row in connection.execute("SELECT id FROM session")}
 
 
@@ -102,9 +99,7 @@ def read_usage(connection: sqlite3.Connection, database: str, session_ids: list[
             failures = entry.get("failures", 0)
             timeout = min(120, opencode._QUERY_TIMEOUT_SECONDS * 2 ** min(failures, 6))
             try:
-                buckets = opencode._read_usage(
-                    connection, session_id, import_tables=import_tables, require_complete=True, timeout_seconds=timeout
-                )
+                buckets = opencode._read_usage(connection, session_id, import_tables=import_tables, require_complete=True, timeout_seconds=timeout)
             except SkipSource:
                 entries[session_key] = {"signature": signature, "failures": failures + 1, "retryAt": time.time() + 60}
                 incomplete = True

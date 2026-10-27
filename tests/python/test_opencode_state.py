@@ -13,9 +13,10 @@ from tidesi.session_index import SkipSource
 class OpenCodeStateTest(IsolatedHomeTest):
     def setUp(self):
         super().setUp()
-        self.database = _create_database(str(self.home), messages=[_assistant_message(
-            cost=0.42, tokens={"input": 800, "output": 100, "reasoning": 10, "cache": {"read": 200, "write": 20}}
-        )])
+        self.database = _create_database(
+            str(self.home),
+            messages=[_assistant_message(cost=0.42, tokens={"input": 800, "output": 100, "reasoning": 10, "cache": {"read": 200, "write": 20}})],
+        )
         self.env = mock.patch.dict("os.environ", {"OPENCODE_DB": self.database})
         self.env.start()
         self.addCleanup(self.env.stop)
@@ -116,19 +117,31 @@ class OpenCodeStateTest(IsolatedHomeTest):
         try:
             with connection:
                 connection.execute("DELETE FROM message")
-                connection.executemany("INSERT INTO message VALUES (?, ?, ?)", [
-                    _assistant_message("zen", provider_id="opencode", model="zen-model", tokens={"output": 100}, cost=0.1),
-                    _assistant_message("go", provider_id="opencode-go", model="go-model", tokens={"output": 200}, cost=0.2),
-                    _assistant_message("openai", provider_id="openai", model="openai-model", tokens={"output": 900}, cost=0.9),
-                ])
+                connection.executemany(
+                    "INSERT INTO message VALUES (?, ?, ?)",
+                    [
+                        _assistant_message("zen", provider_id="opencode", model="zen-model", tokens={"output": 100}, cost=0.1),
+                        _assistant_message("go", provider_id="opencode-go", model="go-model", tokens={"output": 200}, cost=0.2),
+                        _assistant_message("openai", provider_id="openai", model="openai-model", tokens={"output": 900}, cost=0.9),
+                    ],
+                )
         finally:
             connection.close()
         usage = opencode.usage_snapshot()
         provider = normalize_opencode({"now": 2_000, "inputs": {"usage": usage, "account": {"mode": "zen"}}})
         self.assertEqual(provider["details"]["stats"]["totalTokens"], 300)
-        go = normalize_opencode({"now": 2_000, "inputs": {"usage": usage, "account": {
-            "mode": "go", "goUsage": {"usage": {"weekly": {"status": "ok", "percent": 50, "resetsAt": "2026-10-30T00:00:00Z"}}},
-        }}})
+        go = normalize_opencode(
+            {
+                "now": 2_000,
+                "inputs": {
+                    "usage": usage,
+                    "account": {
+                        "mode": "go",
+                        "goUsage": {"usage": {"weekly": {"status": "ok", "percent": 50, "resetsAt": "2026-10-30T00:00:00Z"}}},
+                    },
+                },
+            }
+        )
         self.assertEqual(go["details"]["stats"]["totalTokens"], 300)
         self.assertEqual(go["summary"]["text"], "50%")
         entry = sessions._opencode_entries(include_all=True)[0]

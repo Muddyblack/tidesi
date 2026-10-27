@@ -60,8 +60,10 @@ class OpenCodeCompleteScanTest(IsolatedHomeTest):
                 mock.patch.object(session_cache, "build_manifests", return_value=[SessionManifest("opencode", 1, 1)]) as manifests,
             ):
                 cache = session_cache.SessionCache()
+
                 def collect(_source):
                     return sessions._opencode_entries(include_all=True)
+
                 cache.refresh(lambda: ([], True), collect)
                 before = cache.spend_groups()
                 manifests.return_value = [SessionManifest("opencode", 2, 2)]

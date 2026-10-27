@@ -52,15 +52,22 @@ class MixedProviderBillingTest(IsolatedHomeTest):
 
     def test_legacy_child_without_mode_inherits_parent_instead_of_reclassifying_history(self) -> None:
         row = {
-            "provider": "opencode", "source": "opencode", "costBilling": "subscription",
+            "provider": "opencode",
+            "source": "opencode",
+            "costBilling": "subscription",
             "providerCosts": {"openai": {"costUSD": 2, "costStatus": "exact", "costProvenance": "estimated"}},
         }
         self.assertEqual(_row_cost_groups(row)[0][0], "subscription")
 
     def test_mixed_provenance_does_not_double_count_session_tokens(self) -> None:
         row = {
-            "provider": "openai", "costBilling": "api", "tokens": 100,
-            "lastActivityAt": 1_800_000_000, "costUSD": 1, "costStatus": "exact", "costProvenance": "mixed",
+            "provider": "openai",
+            "costBilling": "api",
+            "tokens": 100,
+            "lastActivityAt": 1_800_000_000,
+            "costUSD": 1,
+            "costStatus": "exact",
+            "costProvenance": "mixed",
             "costBreakdown": {"actualUSD": 0.4, "estimatedUSD": 0.6},
         }
         self.assertEqual(sum(group[6] for group in _row_cost_groups(row)), 100)
