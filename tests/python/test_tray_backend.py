@@ -190,6 +190,7 @@ class BackendThreadTest(unittest.TestCase):
         for name in (
             "busyChanged",
             "snapshotReady",
+            "providerReady",
             "refreshFailed",
             "historyFinished",
             "pricingBusyChanged",
@@ -221,6 +222,35 @@ class BackendThreadTest(unittest.TestCase):
 
     def test_refresh_failure_is_published_on_the_gui_thread(self):
         self.check_refresh(RuntimeError("offline"))
+
+    def test_provider_update_reaches_the_gui_before_refresh_completion(self):
+        ready = threading.Event()
+        release = threading.Event()
+
+        def collect(*, on_provider):
+            on_provider({"id": "cursor", "ok": True})
+            ready.set()
+            if not release.wait(5):
+                raise TimeoutError("test did not release the final snapshot")
+            return '{"providers":[{"id":"cursor","ok":true}]}'
+
+        with mock.patch("app.collect_snapshot", side_effect=collect):
+            self.backend.refresh()
+            try:
+                self.assertTrue(ready.wait(2))
+                self.qt_app.processEvents()
+                self.assertTrue(self.backend.busy)
+                updates = [event for event in self.events if event[0] == "providerReady"]
+                self.assertEqual(len(updates), 1)
+                self.assertEqual(updates[0][2], self.gui_thread)
+                self.assertEqual(json.loads(updates[0][1][0])["providers"], [{"id": "cursor", "ok": True}])
+                self.assertFalse(any(event[0] == "snapshotReady" for event in self.events))
+            finally:
+                release.set()
+            self.backend._pool.shutdown(wait=True)
+            self.qt_app.processEvents()
+        self.assertFalse(self.backend.busy)
+        self.assertEqual(sum(event[0] == "snapshotReady" for event in self.events), 1)
 
     def check_pricing_refresh(self, result=None, error=None):
         with mock.patch("app.refresh_pricing_json", return_value=result, side_effect=error) as refresh:
