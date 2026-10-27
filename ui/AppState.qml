@@ -737,10 +737,11 @@ Item {
     // arrives after a live answer is dropped.
     property bool replaying: false
     property bool liveSnapshotSeen: false
+    property bool incrementalSnapshot: false
     property string pendingLastSnapshot: ""
 
     function applyLastSnapshot(text) {
-        if (root.liveSnapshotSeen)
+        if (root.liveSnapshotSeen && !root.incrementalSnapshot)
             return;
         if (!root.settingsLoaded) {
             root.pendingLastSnapshot = text;
@@ -754,6 +755,14 @@ Item {
         }
         if (!data || !Array.isArray(data.providers) || data.providers.length === 0)
             return;
+        if (root.liveSnapshotSeen) {
+            data.providers = data.providers.filter(function (provider) {
+                return !root.providerById(provider.id);
+            });
+            data.partial = true;
+            root.applySnapshot(JSON.stringify(data));
+            return;
+        }
         root.replaying = true;
         root.applySnapshot(text, true);
     }
@@ -765,14 +774,36 @@ Item {
         }
         try {
             var data = JSON.parse((text || "").trim());
-            root.providers = data.providers || [];
+            if (replayed !== true)
+                root.incrementalSnapshot = data.partial === true;
+            var incoming = data.providers || [];
+            if (data.partial === true) {
+                var merged = root.providers.slice();
+                incoming.forEach(function (provider) {
+                    var index = merged.findIndex(function (previous) {
+                        return previous.id === provider.id;
+                    });
+                    if (index === -1)
+                        merged.push(provider);
+                    else
+                        merged[index] = provider;
+                });
+                var order = root.allProviders.map(function (provider) {
+                    return provider.id;
+                });
+                root.providers = merged.sort(function (left, right) {
+                    return order.indexOf(left.id) - order.indexOf(right.id);
+                });
+            } else {
+                root.providers = incoming;
+                root.localSpend = data.localSpend || ({});
+                root.updatedAt = data.updatedAt || 0;
+            }
             if (root.settingsLoaded)
                 root.providers = root.providers.filter(function (provider) {
                     return root.providerEnabled(provider.id);
                 });
             var fallback = root.providerById(data.active) ? data.active : (root.providers[0] || {}).id || "";
-            root.localSpend = data.localSpend || ({});
-            root.updatedAt = data.updatedAt || 0;
             // Seed (or heal, if the remembered one got disabled) the pill's
             // fallback provider — needed even before the user ever leaves a
             // feature tab, since Sessions is the default-enabled one.
@@ -793,7 +824,7 @@ Item {
             root.nowTick = new Date().getTime();
             root.publishTray();
             // A replay is not a reading: no history point, no freshness.
-            if (replayed === true)
+            if (replayed === true || data.partial === true)
                 return;
             root.errorText = "";
             root.lastFetched = root.nowTick;
@@ -803,11 +834,13 @@ Item {
         }
     }
 
-    function refresh() {
+    function refresh(forceScan) {
         if (!root.providerDefaultsReady || root.providerDefaultsInitializing)
             return;
         if (root.settingsSaveError)
             root.saveSettings();
+        if (forceScan === true && root.spendViewVisible && !root.sessionsLoading)
+            root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
         backend.refresh();
     }
 
@@ -1011,6 +1044,12 @@ Item {
     property int sessionsActiveOffset: 0
     property double previousSessionClockMs: Date.now()
     readonly property bool sessionsViewVisible: root.popupVisible && !root.showSettings && root.activeId === "sessions"
+    readonly property bool spendViewVisible: root.popupVisible && !root.showSettings && root.activeId === "spend"
+
+    onSpendViewVisibleChanged: {
+        if (root.spendViewVisible && !root.sessionsLoading)
+            root.querySessions(root.sessionsQuery, root.sessionsOffset, false, root.sessionsSourceIds);
+    }
 
     // Load as soon as the view is shown, rather than at the next poll tick.
     onSessionsViewVisibleChanged: {
@@ -1140,10 +1179,14 @@ Item {
                 // An expired cache starts one scan, but a scan that just failed
                 // waits for the reconcile timer instead of retrying in a loop.
                 var lastScanFailed = root.sessionsRefreshStatus === "failed" || root.sessionsRefreshStatus === "incomplete";
-                if (root.sessionsActiveRefresh)
+                if (root.sessionsActiveRefresh) {
                     root.sessionsLastReconcile = Date.now();
-                else if (root.sessionsViewVisible && !lastScanFailed && SessionRefreshPolicy.cacheExpired(root.sessionsCacheAgeSeconds))
+                    if (root.spendViewVisible)
+                        backend.refresh();
+                } else if ((root.sessionsViewVisible || root.spendViewVisible) && ((!lastScanFailed && (root.sessionsCacheStatus === "no-cache" || SessionRefreshPolicy.cacheExpired(root.sessionsCacheAgeSeconds))) || (root.sessionsRefreshStatus === "incomplete" && SessionRefreshPolicy.incompleteRetryDue(root.sessionsLastReconcile, Date.now()))))
                     root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
+                else if (root.spendViewVisible)
+                    backend.refresh();
             }
         } catch (e) {
             root.sessionsError = root.i18n("Could not load sessions.");
@@ -1299,7 +1342,7 @@ Item {
     Timer {
         id: sessionsReconcileTimer
         interval: SessionRefreshPolicy.refreshDelayMs(root.sessionsCacheAgeSeconds, root.sessionsRefreshStatus)
-        running: root.sessionsViewVisible
+        running: root.sessionsViewVisible || root.spendViewVisible
         onTriggered: {
             if (!root.sessionsLoading)
                 root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
@@ -1313,7 +1356,7 @@ Item {
         repeat: true
         onTriggered: {
             var now = Date.now();
-            if (root.sessionsViewVisible && SessionRefreshPolicy.resumed(root.previousSessionClockMs, now) && !root.sessionsLoading)
+            if ((root.sessionsViewVisible || root.spendViewVisible) && SessionRefreshPolicy.resumed(root.previousSessionClockMs, now) && !root.sessionsLoading)
                 root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
             root.previousSessionClockMs = now;
             root.nowTick = now;
@@ -1361,6 +1404,10 @@ Item {
         }
 
         function onSnapshotReady(text) {
+            root.applySnapshot(text);
+        }
+
+        function onProviderReady(text) {
             root.applySnapshot(text);
         }
 

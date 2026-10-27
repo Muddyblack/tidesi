@@ -18,7 +18,7 @@ import QtQuick
 //               defaultTrayStyle, autostartAvailable, autostart
 //   signals     settingsLoaded(text), catalogLoaded(text), languagesLoaded(json),
 //               providerDefaultsLoaded(text), providersDetected(text),
-//               snapshotReady(text), refreshFailed(message),
+//               snapshotReady(text), providerReady(text), refreshFailed(message),
 //               sessionsReady(text, query, requestId), openSessionFinished(text),
 //               pricingRefreshFinished(text), pricingRefreshFailed(message),
 //               ratesReady(text), historyFinished(op, result),
@@ -87,6 +87,7 @@ QtObject {
     signal providerDefaultsLoaded(string text)
     signal providersDetected(string text)
     signal snapshotReady(string text)
+    signal providerReady(string text)
     signal refreshFailed(string message)
     signal sessionsReady(string text, string query, int requestId)
     signal openSessionFinished(string text)
@@ -192,15 +193,37 @@ QtObject {
         }
         root.refreshPending = false;
         root.busy = true;
+        var finalText = "";
+        function consume(line, progressive) {
+            var data;
+            try {
+                data = JSON.parse(line);
+            } catch (e) {
+                return;
+            }
+            if (!data || !Array.isArray(data.providers))
+                return;
+            if (data.partial === true) {
+                if (progressive)
+                    root.providerReady(line);
+            } else {
+                finalText = line;
+            }
+        }
         // --save-snapshot keeps the last good answer for the next start.
-        root.runner.run(root.backendArgs(["--all", "--save-snapshot"]), function (out, err, code) {
-            if ((out || "").trim() !== "")
-                root.snapshotReady(out);
+        root.runner.run(root.backendArgs(["--all", "--stream", "--save-snapshot"]), function (out, err, code) {
+            (out || "").split("\n").forEach(function (line) {
+                consume(line, false);
+            });
+            if (code === 0 && finalText !== "")
+                root.snapshotReady(finalText);
             else
                 root.refreshFailed(root.firstLine(err) || "usage backend failed");
             root.busy = false;
             if (root.refreshPending)
                 root.refresh();
+        }, function (line) {
+            consume(line, true);
         });
     }
 
