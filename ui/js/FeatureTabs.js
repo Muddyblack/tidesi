@@ -124,6 +124,7 @@ function upstreamProviderLabel(provider) {
         google: "Google",
         zenmux: "ZenMux",
         opencode: "OpenCode Zen",
+        "opencode-go": "OpenCode Go",
     };
     return labels[localSourceKey(provider)] || localSourceLabel(provider);
 }
@@ -165,14 +166,14 @@ function providerAccent(provider) {
 function localSpendNote(provenance, costStatus, source) {
     var prefix = source === "mimo" ? "via MiMo Code" : source === "opencode" ? "via OpenCode" : "local CLI logs";
     var notes = {
-        "legacy:exact": prefix + " · exact",
+        "legacy:exact": prefix + " · local value · complete",
         "legacy:partial": prefix + " · partial",
-        "actual:exact": prefix + " · actual · exact",
-        "actual:partial": prefix + " · actual · partial",
-        "estimated:exact": prefix + " · estimated · exact",
-        "estimated:partial": prefix + " · estimated · partial",
-        "mixed:exact": prefix + " · mixed · exact",
-        "mixed:partial": prefix + " · mixed · partial"
+        "actual:exact": prefix + " · recorded · complete",
+        "actual:partial": prefix + " · recorded · partial",
+        "estimated:exact": prefix + " · estimate · complete",
+        "estimated:partial": prefix + " · estimate · partial",
+        "mixed:exact": prefix + " · recorded + estimated · complete",
+        "mixed:partial": prefix + " · recorded + estimated · partial"
     };
     return notes[provenance + ":" + costStatus] || prefix;
 }
@@ -321,6 +322,16 @@ function dailyCostByProvider(localSpend) {
 // Session rows carry cost but no token counts, so the two halves of a row's
 // chart come from different places: cost from the sessions (which is what
 // the totals are summed from), tokens from the provider's dailySeries.
+function providerTokenSeries(stats) {
+    if (!stats)
+        return [];
+    var series = stats.dailyTokens && stats.dailyTokens.length ? stats.dailyTokens
+        : (!stats.dailyUnit || stats.dailyUnit === "tokens") ? (stats.dailySeries || []) : [];
+    return series.filter(function (point) {
+        return point && point.date && typeof point.total === "number" && isFinite(point.total) && point.total >= 0;
+    });
+}
+
 function dailyTokensByProvider(rawProviders) {
     var out = {};
     var list = rawProviders || [];
@@ -329,7 +340,7 @@ function dailyTokensByProvider(rawProviders) {
         if (!p || !p.id)
             continue;
         var stats = (p.details && p.details.stats) || {};
-        var series = stats.dailySeries || stats.dailyTokens;
+        var series = providerTokenSeries(stats);
         if (series && series.length)
             out[p.id] = series;
     }
@@ -345,9 +356,9 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
     }
     var rows = [];
     var hasOpenCodeProvider = false;
-    var hasMimoProvider = (providerRows || []).some(function (row) { return row.id === "mimo"; });
+    var hasMimoProvider = (providerRows || []).some(function (row) { return row.id === "mimo" && row.costAvailable !== false; });
     for (var providerIndex = 0; providerIndex < (providerRows || []).length; providerIndex++) {
-        if ((providerRows[providerIndex] || {}).id === "opencode") {
+        if ((providerRows[providerIndex] || {}).id === "opencode" && providerRows[providerIndex].costAvailable !== false) {
             hasOpenCodeProvider = true;
             break;
         }
@@ -384,9 +395,8 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
         // Sessions tab, but show that total once in Usage & Spend.
         if (providerKey === "mistral" && source !== "opencode" && source !== "mimo")
             continue;
-        // OpenCode's aggregate card already includes the upstream provider
-        // buckets from its local ledger. Do not count those rows a second time.
-        if ((hasOpenCodeProvider && source === "opencode") || (hasMimoProvider && source === "mimo"))
+        // OpenCode's provider card covers Zen/Go, not the other routed providers.
+        if ((hasOpenCodeProvider && source === "opencode" && (providerKey === "opencode" || providerKey === "opencode-go")) || (hasMimoProvider && source === "mimo"))
             continue;
         var hasActual = actualUSD > 0;
         var hasEstimated = estimatedUSD > 0;
@@ -540,11 +550,26 @@ function spendProviderRows(providers, localSpend) {
             note = "local sessions";
         }
 
-        if (typeof cost !== "number" || !isFinite(cost) || !(cost > 0))
+        if (typeof cost !== "number" || !isFinite(cost) || !(cost > 0)) {
+            var stats = d.stats || {};
+            var tokenSeries = providerTokenSeries(stats);
+            var tokens = typeof stats.totalTokens === "number" && isFinite(stats.totalTokens) && stats.totalTokens > 0
+                ? stats.totalTokens : tokenSeries.reduce(function (sum, point) { return sum + point.total; }, 0);
+            var hasLocalCost = ["actual", "estimated", "subscription", "subscriptionActual"].some(function (group) {
+                return !!localProviderCost(localSpend && localSpend[group], id);
+            });
+            if (tokens > 0 && !hasLocalCost) {
+                rows.push({
+                    id: id, label: p.label || id, accent: p.accent || providerAccent(id), icon: p.icon || "",
+                    cost: null, costAvailable: false, usageOnly: true, currency: "USD",
+                    note: "Cost unavailable", tokens: tokens, dailyCost: [], dailyTokens: tokenSeries
+                });
+            }
             continue;
+        }
         rows.push({
             id: id,
-            label: p.label || id,
+            label: id === "opencode" ? "OpenCode Zen/Go" : p.label || id,
             accent: p.accent || providerAccent(id),
             icon: p.icon || "",
             cost: cost,
@@ -552,10 +577,10 @@ function spendProviderRows(providers, localSpend) {
             note: note,
             // For the per-row expandable timeline chart: cost by day from the
             // session rows, tokens by day from the provider's own stats.
-            dailyCost: dailyByProvider[id] || [],
-            dailyTokens: (sessionTokens[id] && sessionTokens[id].length)
+            dailyCost: id === "opencode" ? mergeDailySeries(dailyByProvider.opencode, dailyByProvider["opencode-go"]) : (dailyByProvider[id] || []),
+            dailyTokens: id === "opencode" ? providerTokenSeries(d.stats) : (sessionTokens[id] && sessionTokens[id].length)
                 ? sessionTokens[id]
-                : ((d.stats && (d.stats.dailySeries || d.stats.dailyTokens)) || [])
+                : providerTokenSeries(d.stats)
         });
     }
     rows.sort(function (a, b) {
@@ -629,6 +654,23 @@ function spendRowsForWindow(rows, windowDays) {
         var row = source[i];
         if (!row)
             continue;
+        var hasDailyCost = (row.dailyCost || []).some(function (point) {
+            return point && point.date && typeof point.usd === "number" && isFinite(point.usd);
+        });
+        if (!hasDailyCost) {
+            var unavailable = Object.assign({}, row);
+            unavailable.cost = null;
+            unavailable.costAvailable = false;
+            unavailable.note = row.usageOnly ? "Cost unavailable" : "Cost unavailable for this timeframe";
+            unavailable.dailyTokens = spendTimeline([], row.dailyTokens, days).map(function (point) {
+                return { date: point.date, total: point.total };
+            });
+            if (row.usageOnly)
+                unavailable.tokens = unavailable.dailyTokens.length || (row.dailyTokens || []).length
+                    ? unavailable.dailyTokens.reduce(function (sum, point) { return sum + point.total; }, 0) : null;
+            out.push(unavailable);
+            continue;
+        }
         var points = spendTimeline(row.dailyCost, row.dailyTokens, days);
 
         var dailyCost = [];
@@ -728,14 +770,13 @@ function spendSummaryText(rows, currency, i18nFn) {
     };
 
     var meteredStr = formatMoney(metered, cur);
-    var allStr = formatMoney(metered + plan, cur);
     var planStr = formatMoney(plan, cur);
 
     if (plan > 0 && metered > 0)
-        return t("Metered: %1 · Incl. plan: %2", meteredStr, allStr);
+        return t("API/local: %1 · Plan equiv.: %2", meteredStr, planStr);
     if (plan > 0)
-        return t("Incl. plan: %1", planStr);
-    return t("Metered: %1", meteredStr);
+        return t("Plan equiv.: %1", planStr);
+    return t("API/local: %1", meteredStr);
 }
 
 function spendSummaryTooltip(rows, currency, i18nFn) {
@@ -752,11 +793,11 @@ function spendSummaryTooltip(rows, currency, i18nFn) {
 
     var lines = [];
     if (metered > 0)
-        lines.push(t("Metered (out-of-pocket): %1", formatMoney(metered, cur)));
+        lines.push(t("API/local recorded and estimated value (not a bill): %1", formatMoney(metered, cur)));
     if (plan > 0)
-        lines.push(t("Covered by plan (subscription): %1", formatMoney(plan, cur)));
+        lines.push(t("Plan-covered API-equivalent estimate: %1", formatMoney(plan, cur)));
     if (metered > 0 && plan > 0)
-        lines.push(t("Total including plan: %1", formatMoney(metered + plan, cur)));
+        lines.push(t("Combined work value (not a bill): %1", formatMoney(metered + plan, cur)));
     return lines.join("\n");
 }
 
