@@ -83,7 +83,7 @@ class SessionCache:
             return self._empty_result(offset, page_limit, "failed")
         age = self._cache_age()
         result["cacheAgeSeconds"] = age
-        source_count = self._source_count()
+        source_count, incomplete = self._source_state()
         if source_count == 0:
             result["cacheStatus"] = "no-cache"
             # Other cache readers can create the schema before any collector
@@ -94,7 +94,7 @@ class SessionCache:
             result["cacheStatus"] = "empty"
         else:
             result["cacheStatus"] = "stale" if age >= 600 else "ready"
-        result["refreshStatus"] = self.refresh_status
+        result["refreshStatus"] = "incomplete" if incomplete else self.refresh_status
         result["removedSourceCount"] = self.removed_sources
         return result
 
@@ -202,16 +202,16 @@ class SessionCache:
                 continue
         return max(0, int(time.time() - max(mtimes))) if mtimes else 0
 
-    def _source_count(self) -> int:
+    def _source_state(self) -> tuple[int, bool]:
         try:
             connection = sqlite3.connect(f"{self._cache_path.resolve().as_uri()}?mode=ro", uri=True)
         except sqlite3.Error:
-            return 0
+            return 0, False
         try:
-            row = connection.execute("SELECT COUNT(*) FROM source_meta").fetchone()
-            return int(row[0]) if row is not None else 0
+            row = connection.execute("SELECT SUM(size >= 0), MAX(size < 0) FROM source_meta").fetchone()
+            return (int(row[0] or 0), bool(row[1])) if row is not None else (0, False)
         except sqlite3.Error:
-            return 0
+            return 0, False
         finally:
             connection.close()
 

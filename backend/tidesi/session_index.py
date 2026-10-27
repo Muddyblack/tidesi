@@ -528,6 +528,13 @@ class SessionIndex:
 
             for (key, source_order, source), rows in _parse_sources(parser, to_parse):
                 if rows is None:
+                    with connection:
+                        connection.execute(
+                            "INSERT INTO source_meta (source_key, mtime_ns, size, source_order) "
+                            "VALUES (?, -1, -1, ?) ON CONFLICT(source_key) DO UPDATE SET mtime_ns = -1, size = -1",
+                            (key, source_order),
+                        )
+                    mutated = True
                     continue
 
                 with connection:

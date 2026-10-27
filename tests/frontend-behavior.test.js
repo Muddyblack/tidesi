@@ -271,7 +271,7 @@ test("session response metadata exposes safe freshness and source-removal status
 
     assert.match(cache, /"cacheStatus"/);
     assert.match(cache, /"cacheAgeSeconds"/);
-    assert.match(cache, /\["refreshStatus"\] = self\.refresh_status/);
+    assert.match(cache, /\["refreshStatus"\] = "incomplete" if incomplete else self\.refresh_status/);
     assert.match(cache, /\["removedSourceCount"\] = self\.removed_sources/);
     assert.match(state, /cacheStatus/);
     assert.match(state, /cacheAgeSeconds/);
