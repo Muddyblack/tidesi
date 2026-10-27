@@ -54,7 +54,7 @@ msgstr[1] "%1 démarrages"
 
 #: ui/AppState.qml
 msgid "Check file permissions and free disk space."
-msgstr ""
+msgstr "Vérifiez les permissions du fichier et l'espace disque disponible."
 
 #: ui/AppState.qml
 msgid "Using %1"
@@ -223,7 +223,7 @@ msgid_plural "%1 sessions"
 msgstr[0] "%1 session"
 msgstr[1] "%1 sessions"
 
-#: ui/MistralUsage.qml ui/StatsSection.qml ui/UsageChart.qml
+#: ui/MistralUsage.qml ui/SpendPage.qml ui/StatsSection.qml ui/UsageChart.qml
 msgid "%1 tokens"
 msgstr "%1 jetons"
 
@@ -281,6 +281,26 @@ msgstr "Statistiques"
 #: ui/PopupContent.qml
 msgid "Remote"
 msgstr "À distance"
+
+#: ui/PopupContent.qml
+msgid ""
+"OpenCode Go account limits. Local statistics cover Zen/Go only; other routed "
+"providers appear in Usage & Spend. Local costs are recorded or catalog "
+"estimates, not invoices."
+msgstr ""
+"Limites du compte OpenCode Go. Les statistiques locales couvrent uniquement "
+"Zen/Go ; les autres fournisseurs utilisés figurent dans Utilisation et "
+"dépenses. Les coûts locaux sont des valeurs enregistrées ou des estimations "
+"du catalogue, pas des factures."
+
+#: ui/PopupContent.qml
+msgid ""
+"OpenCode Zen/Go local usage only. Other routed providers appear in Usage & "
+"Spend. Local costs are recorded or catalog estimates, not invoices."
+msgstr ""
+"Utilisation locale d'OpenCode Zen/Go uniquement. Les autres fournisseurs "
+"utilisés figurent dans Utilisation et dépenses. Les coûts locaux sont des "
+"valeurs enregistrées ou des estimations du catalogue, pas des factures."
 
 #: ui/PopupContent.qml
 #, no-javascript-format
@@ -342,7 +362,7 @@ msgstr "mis à jour %1"
 
 #: ui/PopupHeader.qml
 msgid "Settings not saved"
-msgstr ""
+msgstr "Paramètres non enregistrés"
 
 #: ui/PopupHeader.qml
 msgid "%1 Usage"
@@ -622,7 +642,7 @@ msgid_plural "%1 d ago"
 msgstr[0] "il y a %1 j"
 msgstr[1] "il y a %1 j"
 
-#: ui/SessionsPage.qml
+#: ui/SessionsPage.qml ui/SpendPage.qml
 msgid "Cost unavailable"
 msgstr "Coût indisponible"
 
@@ -1327,6 +1347,28 @@ msgid "The first source below that works"
 msgstr "La première source ci-dessous qui fonctionne"
 
 #: ui/SpendPage.qml
+msgid ""
+"Local costs are recorded values or catalog estimates, not invoices. Billing "
+"categories use current authentication. Day filters group whole-session "
+"values by last activity."
+msgstr ""
+"Les coûts locaux sont des valeurs enregistrées ou des estimations du "
+"catalogue, pas des factures. Les catégories de facturation utilisent "
+"l'authentification actuelle. Les filtres par jour regroupent les valeurs de "
+"chaque session entière selon sa dernière activité."
+
+#: ui/SpendPage.qml
+msgid "Refreshing local usage and cost…"
+msgstr "Actualisation de l'utilisation et des coûts locaux…"
+
+#: ui/SpendPage.qml
+msgid ""
+"Local usage scan is incomplete. Totals may omit providers or show older data."
+msgstr ""
+"L'analyse de l'utilisation locale est incomplète. Les totaux peuvent omettre "
+"des fournisseurs ou afficher des données anciennes."
+
+#: ui/SpendPage.qml
 msgid "Could not read model pricing."
 msgstr "Impossible de lire la tarification des modèles."
 
@@ -1362,6 +1404,17 @@ msgstr ""
 "Aucun coût disponible pour le moment. Activez des fournisseurs qui indiquent "
 "les dépenses, ou utilisez-les jusqu’à ce que des journaux locaux "
 "apparaissent."
+
+#: ui/SpendPage.qml
+msgid ""
+"Some costs are unavailable for this timeframe and are excluded from totals."
+msgstr ""
+"Certains coûts sont indisponibles pour cette période et sont exclus des "
+"totaux."
+
+#: ui/SpendPage.qml
+msgid "Unavailable"
+msgstr "Indisponible"
 
 #: ui/SpendPage.qml
 msgid "Filter by provider or model…"
@@ -1854,21 +1907,23 @@ msgstr ""
 
 #: backend/tidesi/collect.py
 msgid "OpenAI organization usage returned an invalid response."
-msgstr ""
+msgstr "L'utilisation de l'organisation OpenAI a renvoyé une réponse invalide."
 
 #: backend/tidesi/collect.py
 msgid "OpenAI organization usage: network error."
-msgstr ""
+msgstr "Utilisation de l'organisation OpenAI : erreur réseau."
 
 #: backend/tidesi/collect.py
 msgid ""
 "OpenAI organization usage: access denied (HTTP 403); check organization "
 "usage permissions."
 msgstr ""
+"Utilisation de l'organisation OpenAI : accès refusé (HTTP 403) ; vérifiez "
+"les permissions d'accès à l'utilisation de l'organisation."
 
 #: backend/tidesi/collect.py
 msgid "OpenAI organization usage request failed (HTTP %1)."
-msgstr ""
+msgstr "La demande d'utilisation de l'organisation OpenAI a échoué (HTTP %1)."
 
 #: backend/tidesi/contract.py
 msgid "unavailable"
@@ -2621,11 +2676,11 @@ msgstr "Ollama Cloud : la réponse d'utilisation ne contient aucune limite"
 
 #: backend/tidesi/normalize/ollama.py
 msgid "Included credits"
-msgstr ""
+msgstr "Crédits inclus"
 
 #: backend/tidesi/normalize/ollama.py
 msgid "%1 of %2 USD remaining"
-msgstr ""
+msgstr "%1 sur %2 USD restants"
 
 #: backend/tidesi/normalize/ollama.py
 msgid "Ollama Cloud: no recognized usage limits in response"
@@ -2637,11 +2692,11 @@ msgstr "%1 : %2 %"
 
 #: backend/tidesi/normalize/ollama.py
 msgid "Purchased credits"
-msgstr ""
+msgstr "Crédits achetés"
 
 #: backend/tidesi/normalize/ollama.py
 msgid "%1 USD remaining"
-msgstr ""
+msgstr "%1 USD restants"
 
 #: backend/tidesi/normalize/openai.py
 msgid "Codex / ChatGPT User"
@@ -2685,7 +2740,7 @@ msgstr "%1 · hebdomadaire"
 
 #: backend/tidesi/normalize/openai.py
 msgid "Organization usage unavailable"
-msgstr ""
+msgstr "Utilisation de l'organisation indisponible"
 
 #: backend/tidesi/normalize/openai.py
 msgid "Codex 5h: %1% left"
@@ -2698,10 +2753,11 @@ msgstr "Codex hebdomadaire : %1% restant"
 #: backend/tidesi/normalize/openai.py
 msgid "Codex login expired. Run codex login to sign in again."
 msgstr ""
+"La connexion Codex a expiré. Exécutez codex login pour vous reconnecter."
 
 #: backend/tidesi/normalize/openai.py
 msgid "OpenAI usage refresh failed: %1"
-msgstr ""
+msgstr "Échec de l'actualisation de l'utilisation OpenAI : %1"
 
 #: backend/tidesi/normalize/openai.py
 msgid "API"

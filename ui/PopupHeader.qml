@@ -353,7 +353,7 @@ ColumnLayout {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    shell.refresh();
+                    shell.refresh(true);
                     if (shell.sessionsViewVisible && typeof shell.reconcileSessions === "function")
                         shell.reconcileSessions(shell.sessionsQuery || "");
                 }
