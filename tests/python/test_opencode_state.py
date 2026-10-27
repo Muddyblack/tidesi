@@ -9,6 +9,10 @@ from tidesi.normalize.opencode import normalize_opencode
 from tidesi.providers import opencode, opencode_usage_cache
 from tidesi.session_index import SkipSource
 
+# A fixed, realistic clock. Windows localtime rejects timestamps that fall
+# before 1970 in the runner's timezone, so 2_000 (1970-01-01 UTC) is unsafe.
+NOW = 1_800_000_000
+
 
 class OpenCodeStateTest(IsolatedHomeTest):
     def setUp(self):
@@ -40,7 +44,7 @@ class OpenCodeStateTest(IsolatedHomeTest):
     def test_modern_summary_counters_never_replace_original_provider_and_model(self):
         self.modern_summary()
         usage = opencode.usage_snapshot()
-        normalized = normalize_opencode({"now": 2_000, "inputs": {"usage": usage, "account": {"mode": "zen"}}})
+        normalized = normalize_opencode({"now": NOW, "inputs": {"usage": usage, "account": {"mode": "zen"}}})
         self.assertFalse(normalized["details"]["stats"]["available"])
         self.assertEqual(normalized["details"]["accountMode"], "zen")
         self.assertEqual(usage["sessions"][0]["costUSD"], 0.42)
@@ -128,11 +132,11 @@ class OpenCodeStateTest(IsolatedHomeTest):
         finally:
             connection.close()
         usage = opencode.usage_snapshot()
-        provider = normalize_opencode({"now": 2_000, "inputs": {"usage": usage, "account": {"mode": "zen"}}})
+        provider = normalize_opencode({"now": NOW, "inputs": {"usage": usage, "account": {"mode": "zen"}}})
         self.assertEqual(provider["details"]["stats"]["totalTokens"], 300)
         go = normalize_opencode(
             {
-                "now": 2_000,
+                "now": NOW,
                 "inputs": {
                     "usage": usage,
                     "account": {

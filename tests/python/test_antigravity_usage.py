@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -133,7 +134,8 @@ class AntigravityUsageTest(unittest.TestCase):
         self.assertNotIn(str(self.database), payload)
         self.assertNotIn("private-response", payload)
         self.assertNotIn("private display", payload)
-        self.assertTrue(all(path.stat().st_mode & 0o077 == 0 for path in cache.glob("*.json")))
+        if os.name != "nt":
+            self.assertTrue(all(path.stat().st_mode & 0o077 == 0 for path in cache.glob("*.json")))
 
     def test_wal_signature_change_forces_database_rescan(self):
         turn = _turn("gemini-exact", "label", "response", {2: 7})
