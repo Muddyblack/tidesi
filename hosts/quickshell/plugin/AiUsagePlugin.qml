@@ -29,10 +29,24 @@ PluginComponent {
                 id: proc
 
                 property var callback: null
+                property var lineCallback: null
+                property int stdoutOffset: 0
                 property string out: ""
                 property string err: ""
                 property int outDone: 0
                 property int code: -1
+
+                function deliverLines(text): void {
+                    if (typeof proc.lineCallback !== "function")
+                        return;
+                    let end = text.indexOf("\n", proc.stdoutOffset);
+                    while (end !== -1) {
+                        const line = text.slice(proc.stdoutOffset, end);
+                        proc.stdoutOffset = end + 1;
+                        proc.lineCallback(line);
+                        end = text.indexOf("\n", proc.stdoutOffset);
+                    }
+                }
 
                 function finish(): void {
                     if (proc.outDone < 2 || proc.code < 0)
@@ -45,7 +59,10 @@ PluginComponent {
                 }
 
                 stdout: StdioCollector {
+                    waitForEnd: typeof proc.lineCallback !== "function"
+                    onTextChanged: proc.deliverLines(this.text)
                     onStreamFinished: {
+                        proc.deliverLines(this.text);
                         proc.out = this.text;
                         proc.outDone += 1;
                         proc.finish();
@@ -65,9 +82,10 @@ PluginComponent {
             }
         }
 
-        function run(argv, callback): void {
+        function run(argv, callback, onLine): void {
             const process = processRunner.job.createObject(processRunner, {
-                callback: callback
+                callback: callback,
+                lineCallback: onLine || null
             });
             process.exec({
                 command: argv
