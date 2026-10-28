@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic as QC
 import Quickshell
-import Quickshell.Io
 import Quickshell.Wayland
 import qs.Common
 import qs.Widgets
@@ -21,76 +20,8 @@ PluginComponent {
         return configHome + "/tidesi/quickshell-settings.json";
     }
 
-    QtObject {
+    ProcessRunner {
         id: processRunner
-
-        property Component job: Component {
-            Process {
-                id: proc
-
-                property var callback: null
-                property var lineCallback: null
-                property int stdoutOffset: 0
-                property string out: ""
-                property string err: ""
-                property int outDone: 0
-                property int code: -1
-
-                function deliverLines(text): void {
-                    if (typeof proc.lineCallback !== "function")
-                        return;
-                    let end = text.indexOf("\n", proc.stdoutOffset);
-                    while (end !== -1) {
-                        const line = text.slice(proc.stdoutOffset, end);
-                        proc.stdoutOffset = end + 1;
-                        proc.lineCallback(line);
-                        end = text.indexOf("\n", proc.stdoutOffset);
-                    }
-                }
-
-                function finish(): void {
-                    if (proc.outDone < 2 || proc.code < 0)
-                        return;
-                    const finishedCallback = proc.callback;
-                    proc.callback = null;
-                    if (typeof finishedCallback === "function")
-                        finishedCallback(proc.out, proc.err, proc.code);
-                    proc.destroy();
-                }
-
-                stdout: StdioCollector {
-                    waitForEnd: typeof proc.lineCallback !== "function"
-                    onTextChanged: proc.deliverLines(this.text)
-                    onStreamFinished: {
-                        proc.deliverLines(this.text);
-                        proc.out = this.text;
-                        proc.outDone += 1;
-                        proc.finish();
-                    }
-                }
-                stderr: StdioCollector {
-                    onStreamFinished: {
-                        proc.err = this.text;
-                        proc.outDone += 1;
-                        proc.finish();
-                    }
-                }
-                onExited: function (exitCode) {
-                    proc.code = exitCode;
-                    proc.finish();
-                }
-            }
-        }
-
-        function run(argv, callback, onLine): void {
-            const process = processRunner.job.createObject(processRunner, {
-                callback: callback,
-                lineCallback: onLine || null
-            });
-            process.exec({
-                command: argv
-            });
-        }
     }
 
     Upstream.CommandBackend {

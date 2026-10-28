@@ -16,7 +16,8 @@ test ! -e "$plugin" && test ! -L "$plugin" || exit 1
 mkdir -p "$plugin"
 cp hosts/quickshell/plugin/AiUsagePlugin.qml \
    hosts/quickshell/plugin/PluginAppState.qml \
-   hosts/quickshell/plugin/plugin.json "$plugin/"
+   hosts/quickshell/plugin/plugin.json \
+   hosts/quickshell/ProcessRunner.qml "$plugin/"
 cp -R ui assets translate backend "$plugin/"
 cp LICENSE "$plugin/"
 ```
