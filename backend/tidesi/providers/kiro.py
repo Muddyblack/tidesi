@@ -36,32 +36,35 @@ _AGENT_KEY = "kiro.kiroAgent"
 _PLAN_BY_LIMIT = {50: "free", 1000: "pro", 2000: "pro+", 10000: "power"}
 
 
-def _query_sqlite(db_path):
-    try:
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=2)
-    except sqlite3.Error:
-        return None
-    try:
-        row = conn.execute("SELECT value FROM ItemTable WHERE key = ?", (_MARKER_KEY,)).fetchone()
-        nested = not row or row[0] is None
-        if nested:
-            row = conn.execute("SELECT value FROM ItemTable WHERE key = ?", (_AGENT_KEY,)).fetchone()
-    except sqlite3.Error:
-        return None
-    finally:
-        conn.close()
+def _read_item(conn, key):
+    row = conn.execute("SELECT value FROM ItemTable WHERE key = ?", (key,)).fetchone()
     if not row or row[0] is None:
         return None
     value = row[0]
     if isinstance(value, bytes):
         value = value.decode("utf-8", "replace")
     try:
-        state = json.loads(value)
-        if nested:
-            return state.get(_MARKER_KEY) if isinstance(state, dict) else None
-        return state
+        return json.loads(value)
     except ValueError:
         return None
+
+
+def _query_sqlite(db_path):
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=2)
+    except sqlite3.Error:
+        return None
+    try:
+        state = _read_item(conn, _MARKER_KEY)
+        if state is None:
+            # Newer IDE versions keep it as a field of the agent's record.
+            agent = _read_item(conn, _AGENT_KEY)
+            state = agent.get(_MARKER_KEY) if isinstance(agent, dict) else None
+        return state
+    except sqlite3.Error:
+        return None
+    finally:
+        conn.close()
 
 
 def _brace_match_scan(db_path):
