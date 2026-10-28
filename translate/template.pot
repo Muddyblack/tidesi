@@ -6,7 +6,7 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Tidesi 4.0.0\n"
+"Project-Id-Version: Tidesi 4.0.1\n"
 "Report-Msgid-Bugs-To: https://github.com/Muddyblack/tidesi/issues\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"

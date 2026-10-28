@@ -1,5 +1,6 @@
 """Days after stats-cache.json's lastComputedDate come from Claude's transcripts."""
 
+import datetime
 import json
 import os
 import shutil
@@ -51,7 +52,10 @@ class ClaudeTranscriptsTest(unittest.TestCase):
         self.assertEqual(out["modelUsage"]["claude-sonnet-5-5"]["outputTokens"], 10)
 
     def test_days_already_in_the_cache_are_not_counted_twice(self):
-        stats = {"lastComputedDate": "2026-10-12", "dailyActivity": []}
+        # Days are bucketed locally, so the transcript's day depends on the host timezone.
+        stamp = datetime.datetime(2026, 10, 12, 12, 0, tzinfo=datetime.timezone.utc).timestamp()
+        local_day = datetime.datetime.fromtimestamp(stamp).strftime("%Y-%m-%d")
+        stats = {"lastComputedDate": local_day, "dailyActivity": []}
         self.assertEqual(claude_transcripts.supplement(stats, home=self.home)["dailyActivity"], [])
 
     def test_no_transcripts_leaves_stats_alone(self):
