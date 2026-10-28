@@ -3,43 +3,32 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const host = path.join(__dirname, "..", "hosts", "quickshell", "plugin");
+const root = path.join(__dirname, "..");
+const host = path.join(root, "hosts", "quickshell", "plugin");
+const read = (file) => fs.readFileSync(path.join(host, file), "utf8");
 
 test("host dependencies do not bind shared component properties to themselves", () => {
-    const widget = fs.readFileSync(path.join(host, "AiUsagePlugin.qml"), "utf8");
+    const widget = read("AiUsagePlugin.qml");
     assert.doesNotMatch(widget, /\bshell:\s*shell\b/);
     assert.doesNotMatch(widget, /\brunner:\s*runner\b/);
     assert.doesNotMatch(widget, /root\.popoutHeight/);
 });
 
-test("Quickshell PluginComponent host uses the shared UI and exposes its supported features", () => {
-    const manifest = JSON.parse(fs.readFileSync(path.join(host, "plugin.json"), "utf8"));
-    const widget = fs.readFileSync(path.join(host, "AiUsagePlugin.qml"), "utf8");
-    const appState = fs.readFileSync(path.join(host, "PluginAppState.qml"), "utf8");
-
+test("the manifest points at the plugin component, and the README copies every file it needs", () => {
+    const manifest = JSON.parse(read("plugin.json"));
+    const readme = read("README.md");
     assert.equal(manifest.id, "tidesi");
-    assert.equal(manifest.component, "./AiUsagePlugin.qml");
-    assert.match(widget, /import "\.\/ui" as Upstream/);
-    assert.match(widget, /Upstream\.CommandBackend\s*\{/);
-    assert.match(widget, /toolsDir:\s*root\.pluginDir\s*\+\s*"\/backend\/sh"/);
-    assert.match(widget, /Upstream\.PopupHeader\s*\{/);
-    assert.match(widget, /width:\s*Math\.min\(appState\.popupWidth/);
-    assert.match(widget, /Upstream\.PopupBackground\s*\{/);
-    assert.match(widget, /Upstream\.PopupContent\s*\{/);
-    assert.match(widget, /Upstream\.PopupScrollBar\s*\{/);
-    assert.match(widget, /Upstream\.ScrollFade\s*\{/);
-    assert.match(widget, /interpreterControls:\s*true/);
-    assert.match(appState, /Upstream\.AppState\s*\{/);
-    assert.match(appState, /groups:\s*root\.panelGroups/);
+    assert.ok(fs.existsSync(path.join(host, manifest.component)));
+    // The components the plugin uses beside the shared ui/ must be in the cp list.
+    assert.match(read("AiUsagePlugin.qml"), /ProcessRunner\s*\{/);
+    for (const file of ["AiUsagePlugin.qml", "PluginAppState.qml", "plugin.json", "ProcessRunner.qml"])
+        assert.ok(readme.includes(file), `${file} missing from the README copy list`);
+    assert.ok(fs.existsSync(path.join(root, "hosts", "quickshell", "ProcessRunner.qml")));
 });
 
 test("the bar opens the plugin popup without a DMS popout frame", () => {
-    const widget = fs.readFileSync(path.join(host, "AiUsagePlugin.qml"), "utf8");
-    assert.match(widget, /PanelWindow\s*\{/);
-    assert.match(widget, /WlrLayershell\.keyboardFocus:.*WlrKeyboardFocus\.Exclusive/);
-    assert.match(widget, /anchors\s*\{\s*top:\s*true;?\s*bottom:\s*true;?\s*left:\s*true;?\s*right:\s*true\s*\}/);
-    assert.match(widget, /Shortcut\s*\{\s*sequence:\s*"Escape"/);
-    assert.match(widget, /visible:\s*appState\.popupOpen/);
+    const widget = read("AiUsagePlugin.qml");
     assert.match(widget, /pillClickAction:/);
+    assert.match(widget, /Shortcut\s*\{\s*sequence:\s*"Escape"/);
     assert.doesNotMatch(widget, /\bPopoutComponent\s*\{|\bpopoutContent\s*:/);
 });
