@@ -64,8 +64,6 @@ def _save(path: Path, payload: dict) -> None:
 
 def read_usage(connection: sqlite3.Connection, database: str, session_ids: list[str], import_tables=()):
     deadline = time.monotonic() + opencode._ENRICH_TIMEOUT_SECONDS
-    if time.monotonic() >= deadline:
-        raise SkipSource("OpenCode usage scan incomplete: scan deadline exceeded")
     key = _hash(str(Path(database).resolve()) + json.dumps(import_tables))
     cache = Path(config.cache_dir()) / f"opencode-usage-{key}.json"
     state = _state(database, import_tables)

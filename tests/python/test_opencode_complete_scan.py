@@ -66,6 +66,11 @@ class OpenCodeCompleteScanTest(IsolatedHomeTest):
 
                 cache.refresh(lambda: ([], True), collect)
                 before = cache.spend_groups()
+                # A new message changes the database, so the session must be read again
+                # and the expired deadline is hit for real instead of served from cache.
+                with sqlite3.connect(path) as connection:
+                    connection.execute("INSERT INTO message VALUES (?, ?, ?)", _assistant_message("message-2", cost=0.10))
+                connection.close()
                 manifests.return_value = [SessionManifest("opencode", 2, 2)]
                 with mock.patch.object(opencode, "_ENRICH_TIMEOUT_SECONDS", -1):
                     cache.refresh(lambda: ([], True), collect)
