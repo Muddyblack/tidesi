@@ -93,3 +93,18 @@ def save(database: Path, fingerprint: str, state: str, activity: int, usage: tup
                 pass
             except OSError:
                 pass
+
+
+def prune(databases: list[Path]) -> None:
+    """Delete summaries whose conversation database is gone, so one file per
+    database does not pile up in the cache directory."""
+    keep = {_cache_path(database).name for database in databases}
+    try:
+        stale = [path for path in Path(config.cache_dir()).glob("antigravity-usage-*.json") if path.name not in keep]
+    except OSError:
+        return
+    for path in stale:
+        try:
+            path.unlink()
+        except OSError:
+            pass

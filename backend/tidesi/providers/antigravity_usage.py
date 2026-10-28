@@ -267,10 +267,12 @@ def read_usage(root: Path) -> list[AntigravityUsage]:
     so it is retried; a corrupt one is skipped, since it would never recover."""
     fingerprint = antigravity_usage_cache.parser_fingerprint((Path(__file__), Path(antigravity_usage_cache.__file__)))
     records = []
-    for path in discover_paths(root):
+    paths = discover_paths(root)
+    for path in paths:
         try:
             records.extend(read_database(path, fingerprint))
         except SkipSource as error:
             if isinstance(error.__cause__, sqlite3.OperationalError):
                 raise
+    antigravity_usage_cache.prune(paths)
     return records

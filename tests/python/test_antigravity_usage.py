@@ -125,6 +125,17 @@ class AntigravityUsageTest(unittest.TestCase):
             with mock.patch.object(reader, "read_database", side_effect=locked), self.assertRaises(SkipSource):
                 read_usage(self.root)
 
+    def test_cache_of_a_deleted_database_is_pruned(self):
+        kept = _turn("gemini-exact", "label", "a", {2: 7})
+        self._database([(0, kept, len(kept))])
+        cache = self.root / "cache"
+        with mock.patch.object(config, "cache_dir", return_value=str(cache)):
+            read_usage(self.root)
+            self.assertEqual(len(list(cache.glob("antigravity-usage-*.json"))), 1)
+            self.database.unlink()
+            read_usage(self.root)
+        self.assertEqual(list(cache.glob("antigravity-usage-*.json")), [])
+
     def test_missing_root_is_empty(self):
         self.assertEqual(read_usage(self.root / "absent"), [])
 
