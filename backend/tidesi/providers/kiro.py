@@ -32,6 +32,7 @@ from ..http import as_json, clean_credential, fetch_json, http_error_text
 from ..messages import tr
 
 _MARKER_KEY = "kiro.resourceNotifications.usageState"
+_AGENT_KEY = "kiro.kiroAgent"
 _PLAN_BY_LIMIT = {50: "free", 1000: "pro", 2000: "pro+", 10000: "power"}
 
 
@@ -42,6 +43,9 @@ def _query_sqlite(db_path):
         return None
     try:
         row = conn.execute("SELECT value FROM ItemTable WHERE key = ?", (_MARKER_KEY,)).fetchone()
+        nested = not row or row[0] is None
+        if nested:
+            row = conn.execute("SELECT value FROM ItemTable WHERE key = ?", (_AGENT_KEY,)).fetchone()
     except sqlite3.Error:
         return None
     finally:
@@ -52,7 +56,10 @@ def _query_sqlite(db_path):
     if isinstance(value, bytes):
         value = value.decode("utf-8", "replace")
     try:
-        return json.loads(value)
+        state = json.loads(value)
+        if nested:
+            return state.get(_MARKER_KEY) if isinstance(state, dict) else None
+        return state
     except ValueError:
         return None
 
