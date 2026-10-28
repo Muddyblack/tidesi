@@ -5,6 +5,7 @@ produces, and prove the envelope never materializes every row when the
 contribution table is available.
 """
 
+import datetime
 import tempfile
 import unittest
 from unittest import mock
@@ -75,15 +76,17 @@ class LocalSpendAggregatesTest(unittest.TestCase):
                 },
             }
         ]
+        # The index buckets by local day, so derive the expected date the same way.
+        day = datetime.datetime.fromtimestamp(1_789_046_340).strftime("%Y-%m-%d")
         spend = self._spend(sessions)
         self.assertEqual(spend["actual"]["totalUSD"], 0.55)
         self.assertEqual(
             spend["actual"]["providers"]["ollama-cloud::opencode"]["dailyTokens"],
-            [{"date": "2026-09-10", "total": 150}],
+            [{"date": day, "total": 150}],
         )
         self.assertEqual(
             spend["actual"]["providers"]["openai::opencode"]["dailyTokens"],
-            [{"date": "2026-09-10", "total": 150}],
+            [{"date": day, "total": 150}],
         )
 
     def test_stale_cache_falls_back_to_full_rows(self):
