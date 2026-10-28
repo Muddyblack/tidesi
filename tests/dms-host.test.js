@@ -17,7 +17,7 @@ test("Quickshell PluginComponent host uses the shared UI and exposes its support
     const widget = fs.readFileSync(path.join(host, "AiUsagePlugin.qml"), "utf8");
     const appState = fs.readFileSync(path.join(host, "PluginAppState.qml"), "utf8");
 
-    assert.equal(manifest.id, "aiUsagebar");
+    assert.equal(manifest.id, "tidesi");
     assert.equal(manifest.component, "./AiUsagePlugin.qml");
     assert.match(widget, /import "\.\/ui" as Upstream/);
     assert.match(widget, /Upstream\.CommandBackend\s*\{/);

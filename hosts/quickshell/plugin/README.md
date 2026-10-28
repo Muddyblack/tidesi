@@ -11,7 +11,7 @@ Run from the repository root. The destination below must be a **new** directory;
 the commands refuse to overwrite an installed plugin or settings.
 
 ```sh
-plugin="${XDG_CONFIG_HOME:-$HOME/.config}/DankMaterialShell/plugins/aiUsagebar"
+plugin="${XDG_CONFIG_HOME:-$HOME/.config}/DankMaterialShell/plugins/tidesi"
 test ! -e "$plugin" && test ! -L "$plugin" || exit 1
 mkdir -p "$plugin"
 cp hosts/quickshell/plugin/AiUsagePlugin.qml \
@@ -21,8 +21,8 @@ cp -R ui assets translate backend "$plugin/"
 cp LICENSE "$plugin/"
 ```
 
-Enable **tideSI** in DMS's plugin settings and add `aiUsagebar` to a bar.
-The plugin ID is retained for existing bar configurations. Bash, Python 3 and
+Enable **tideSI** in DMS's plugin settings and add `tidesi` to a bar.
+Bash, Python 3 and
 coreutils must be on DMS's process PATH. Provider CLI tools are optional and
 needed only for the providers or session-resume actions that use them.
 
