@@ -7,7 +7,7 @@
   "license": "MIT",
   "type": "widget",
   "capabilities": ["bar-widget"],
-  "component": "./AiUsagePlugin.qml",
+  "component": "./TidesiPlugin.qml",
   "permissions": ["process", "network"],
   "requires": ["bash", "coreutils", "python3"],
   "requires_dms": ">=1.5.0"

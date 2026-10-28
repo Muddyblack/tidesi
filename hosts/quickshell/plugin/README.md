@@ -14,7 +14,7 @@ the commands refuse to overwrite an installed plugin or settings.
 plugin="${XDG_CONFIG_HOME:-$HOME/.config}/DankMaterialShell/plugins/tidesi"
 test ! -e "$plugin" && test ! -L "$plugin" || exit 1
 mkdir -p "$plugin"
-cp hosts/quickshell/plugin/AiUsagePlugin.qml \
+cp hosts/quickshell/plugin/TidesiPlugin.qml \
    hosts/quickshell/plugin/PluginAppState.qml \
    hosts/quickshell/plugin/plugin.json \
    hosts/quickshell/ProcessRunner.qml "$plugin/"
