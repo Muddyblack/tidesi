@@ -22,6 +22,7 @@ function state() {
         spendViewVisible: true, sessionsViewVisible: false,
         normalizeSessionSources: (rows) => rows || [], sessionSourceSelectionHasStaleIds: () => false,
         reconcileSessions() { calls.push("scan"); this.sessionsLoading = true; }, i18n: (text) => text,
+        refresh: () => calls.push("usage"),
         sessionsLastReconcile: 0,
     };
     const source = fs.readFileSync(path.join(__dirname, "../ui/AppState.qml"), "utf8");

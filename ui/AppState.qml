@@ -1182,11 +1182,11 @@ Item {
                 if (root.sessionsActiveRefresh) {
                     root.sessionsLastReconcile = Date.now();
                     if (root.spendViewVisible)
-                        backend.refresh();
+                        root.refresh();
                 } else if ((root.sessionsViewVisible || root.spendViewVisible) && ((!lastScanFailed && (root.sessionsCacheStatus === "no-cache" || SessionRefreshPolicy.cacheExpired(root.sessionsCacheAgeSeconds))) || (root.sessionsRefreshStatus === "incomplete" && SessionRefreshPolicy.incompleteRetryDue(root.sessionsLastReconcile, Date.now()))))
                     root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
                 else if (root.spendViewVisible)
-                    backend.refresh();
+                    root.refresh();
             }
         } catch (e) {
             root.sessionsError = root.i18n("Could not load sessions.");
