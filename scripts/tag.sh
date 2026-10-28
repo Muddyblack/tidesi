@@ -7,9 +7,12 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 METADATA_PATH="hosts/kde/metadata.json"
-# Rewrite the version in metadata.json, the one file that carries it: bump_files OLD NEW
+# The DMS plugin manifest repeats the version; metadata.json stays the source.
+DMS_MANIFEST_PATH="hosts/quickshell/plugin/plugin.json"
+# Rewrite the version in both files: bump_files OLD NEW
 bump_files() {
     sed -i "s/\"Version\": \"$1\"/\"Version\": \"$2\"/" "$METADATA_PATH"
+    sed -i "s/\"version\": \"$1\"/\"version\": \"$2\"/" "$DMS_MANIFEST_PATH"
 }
 
 BETA_FLAG=false
@@ -30,7 +33,7 @@ START_BRANCH="$(git branch --show-current)"
 echo "Fetching origin..."
 git fetch --quiet --tags origin "$DEFAULT_BRANCH"
 
-VERSION_FILES=("$METADATA_PATH")
+VERSION_FILES=("$METADATA_PATH" "$DMS_MANIFEST_PATH")
 
 # ── version bump (relative to what is on the default branch) ─────────────────
 CURRENT_VERSION="$(git show "origin/${DEFAULT_BRANCH}:${METADATA_PATH}" \

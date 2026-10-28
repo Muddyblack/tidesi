@@ -32,3 +32,8 @@ test("the bar opens the plugin popup without a DMS popout frame", () => {
     assert.match(widget, /Shortcut\s*\{\s*sequence:\s*"Escape"/);
     assert.doesNotMatch(widget, /\bPopoutComponent\s*\{|\bpopoutContent\s*:/);
 });
+
+test("the plugin manifest carries the same version as the release metadata", () => {
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, "hosts", "kde", "metadata.json"), "utf8"));
+    assert.equal(JSON.parse(read("plugin.json")).version, metadata.KPlugin?.Version ?? metadata.Version);
+});
