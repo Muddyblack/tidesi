@@ -141,9 +141,15 @@ def _extract(path: Path, connection: sqlite3.Connection) -> AntigravityUsage:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if "gen_metadata" not in tables:
             raise SkipSource("generation table missing")
-        rows = connection.execute("SELECT idx, CASE WHEN length(data) <= ? THEN data END FROM gen_metadata ORDER BY idx", (_MAX_BLOB,)).fetchall()
-        if any(not isinstance(blob, bytes) or len(blob) > _MAX_BLOB for _, blob in rows):
-            raise SkipSource("generation blob outside bounds")
+        # An oversized generation (seen at 49 MB) is skipped on its own: it never
+        # shrinks, so failing the database would hide all Antigravity usage for good.
+        rows = [
+            (index, blob)
+            for index, blob in connection.execute(
+                "SELECT idx, CASE WHEN length(data) <= ? THEN data END FROM gen_metadata ORDER BY idx", (_MAX_BLOB,)
+            )
+            if isinstance(blob, bytes)
+        ]
         blobs = tuple(blob for _, blob in rows)
         by_label, sole = _model_assignments(blobs)
         session_time = 0

@@ -103,11 +103,13 @@ class AntigravityUsageTest(unittest.TestCase):
         with self.assertRaises(SkipSource):
             read_database(self.database)
 
-    def test_oversized_blob_rejects_database_without_empty_success(self):
-        self._database([(0, b"x" * (4 * 1024 * 1024 + 1), 0)])
+    def test_oversized_generation_is_skipped_and_the_rest_still_counts(self):
+        kept = _turn("gemini-exact", "label", "a", {2: 7})
+        self._database([(0, b"x" * (4 * 1024 * 1024 + 1), 0), (1, kept, len(kept))])
 
-        with self.assertRaises(SkipSource):
-            read_database(self.database)
+        records = read_database(self.database)
+
+        self.assertEqual([bucket.input_tokens for bucket in records[0].usage], [7])
 
     def test_missing_root_is_empty(self):
         self.assertEqual(read_usage(self.root / "absent"), [])
