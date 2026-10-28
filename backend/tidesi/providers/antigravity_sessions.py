@@ -135,11 +135,12 @@ def _read_editor(session_id: str, conversation: Path) -> AntigravitySession | No
 def _discover(*, include_all: bool = False) -> list[AntigravitySession]:
     root = _home()
     selected: dict[str, AntigravitySession] = {}
-    cli_root = root / "antigravity-cli" / "brain"
-    for session_id, conversation in _session_dirs(cli_root):
-        record = _read_cli(session_id, conversation / ".system_generated" / "logs" / "transcript.jsonl")
-        if record is not None:
-            selected[session_id] = record
+    # The IDE's newer store (antigravity-ide) keeps the same transcript layout as the CLI.
+    for client in ("antigravity-cli", "antigravity-ide"):
+        for session_id, conversation in _session_dirs(root / client / "brain"):
+            record = _read_cli(session_id, conversation / ".system_generated" / "logs" / "transcript.jsonl")
+            if record is not None:
+                selected[session_id] = record
     editor_root = root / "antigravity" / "brain"
     for session_id, conversation in _session_dirs(editor_root):
         record = _read_editor(session_id, conversation)

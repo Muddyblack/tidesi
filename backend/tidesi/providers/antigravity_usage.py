@@ -254,7 +254,7 @@ def read_database(path: Path, fingerprint: str | None = None) -> list[Antigravit
 def discover_paths(root: Path) -> list[Path]:
     """Return conversation databases in both Antigravity stores."""
     paths = []
-    for client in ("antigravity-cli", "antigravity"):
+    for client in ("antigravity-cli", "antigravity-ide", "antigravity"):
         try:
             paths.extend((root / client / "conversations").glob("*.db"))
         except OSError:

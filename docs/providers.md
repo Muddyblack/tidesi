@@ -342,7 +342,8 @@ ships no CLI binary here and documents no resume/continue flag, so its rows are
 display-only.
 
 Antigravity CLI transcripts are read from
-`~/.gemini/antigravity-cli/brain/<id>/.system_generated/logs/transcript.jsonl`;
+`~/.gemini/antigravity-cli/brain/<id>/.system_generated/logs/transcript.jsonl`,
+and the IDE's newer store from the same layout under `~/.gemini/antigravity-ide/`;
 editor artifact sessions are read from `~/.gemini/antigravity/brain/<id>/*.md`.
 The reader examines at most 20,000 lines and 4 MiB per CLI transcript, stopping
 at a record larger than 256 KiB. Editor title reads are limited to 2,000 characters.

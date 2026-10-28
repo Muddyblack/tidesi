@@ -132,7 +132,7 @@ def _mimo_records():
 
 def _antigravity_records(root: str) -> list[tuple[str, str, int, int, int]]:
     records: list[tuple[str, str, int, int, int]] = []
-    for client in ("antigravity-cli", "antigravity"):
+    for client in ("antigravity-cli", "antigravity-ide", "antigravity"):
         directory = os.path.join(root, client, "conversations")
         if not os.path.isdir(directory):
             continue
@@ -146,6 +146,7 @@ def _antigravity_records(root: str) -> list[tuple[str, str, int, int, int]]:
         )
     for tree, predicate in (
         (os.path.join(root, "antigravity-cli", "brain"), lambda path: path.endswith(os.path.join(".system_generated", "logs", "transcript.jsonl"))),
+        (os.path.join(root, "antigravity-ide", "brain"), lambda path: path.endswith(os.path.join(".system_generated", "logs", "transcript.jsonl"))),
         (os.path.join(root, "antigravity", "brain"), lambda path: path.endswith(".md")),
     ):
         directories_by_parent: dict[str, list[tuple[str, str, int, int, int]]] = {}
