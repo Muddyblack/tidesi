@@ -166,14 +166,14 @@ function providerAccent(provider) {
 function localSpendNote(provenance, costStatus, source) {
     var prefix = source === "mimo" ? "via MiMo Code" : source === "opencode" ? "via OpenCode" : "local CLI logs";
     var notes = {
-        "legacy:exact": prefix + " · local value · complete",
+        "legacy:exact": prefix + " · complete",
         "legacy:partial": prefix + " · partial",
         "actual:exact": prefix + " · recorded · complete",
         "actual:partial": prefix + " · recorded · partial",
         "estimated:exact": prefix + " · estimate · complete",
         "estimated:partial": prefix + " · estimate · partial",
-        "mixed:exact": prefix + " · recorded + estimated · complete",
-        "mixed:partial": prefix + " · recorded + estimated · partial"
+        "mixed:exact": prefix + " · mixed · complete",
+        "mixed:partial": prefix + " · mixed · partial"
     };
     return notes[provenance + ":" + costStatus] || prefix;
 }
@@ -773,10 +773,10 @@ function spendSummaryText(rows, currency, i18nFn) {
     var planStr = formatMoney(plan, cur);
 
     if (plan > 0 && metered > 0)
-        return t("API/local: %1 · Plan equiv.: %2", meteredStr, planStr);
+        return t("API %1 · Plan ≈ %2", meteredStr, planStr);
     if (plan > 0)
-        return t("Plan equiv.: %1", planStr);
-    return t("API/local: %1", meteredStr);
+        return t("Plan ≈ %1", planStr);
+    return t("API %1", meteredStr);
 }
 
 function spendSummaryTooltip(rows, currency, i18nFn) {
@@ -793,11 +793,11 @@ function spendSummaryTooltip(rows, currency, i18nFn) {
 
     var lines = [];
     if (metered > 0)
-        lines.push(t("API/local recorded and estimated value (not a bill): %1", formatMoney(metered, cur)));
+        lines.push(t("API and local logs, not a bill: %1", formatMoney(metered, cur)));
     if (plan > 0)
-        lines.push(t("Plan-covered API-equivalent estimate: %1", formatMoney(plan, cur)));
+        lines.push(t("Covered by plan, at API prices: %1", formatMoney(plan, cur)));
     if (metered > 0 && plan > 0)
-        lines.push(t("Combined work value (not a bill): %1", formatMoney(metered + plan, cur)));
+        lines.push(t("Together: %1", formatMoney(metered + plan, cur)));
     return lines.join("\n");
 }
 

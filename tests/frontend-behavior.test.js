@@ -427,7 +427,7 @@ test("local spend rows merge actual and estimated costs by source", () => {
             provenance: "mixed",
             costStatus: "partial",
             costBreakdown: { actualUSD: 12.34, estimatedUSD: 1.5 },
-            note: "local CLI logs · recorded + estimated · partial",
+            note: "local CLI logs · mixed · partial",
         },
         {
             id: "local-cline",
@@ -985,22 +985,22 @@ test("spend summary computes metered, plan-covered and all-inclusive totals", ()
     assert.equal(Math.round(FeatureTabs.spendMeteredTotal(rows, "USD") * 100) / 100, 4.47);
     assert.equal(Math.round(FeatureTabs.spendPlanTotal(rows, "USD") * 100) / 100, 5423.99);
     assert.equal(Math.round(FeatureTabs.spendAllTotal(rows, "USD") * 100) / 100, 5428.46);
-    assert.equal(FeatureTabs.spendSummaryText(rows, "USD"), "API/local: $4.47 · Plan equiv.: $5423.99");
+    assert.equal(FeatureTabs.spendSummaryText(rows, "USD"), "API $4.47 · Plan ≈ $5423.99");
 
     // Only plan-covered
-    assert.equal(FeatureTabs.spendSummaryText([rows[2]], "USD"), "Plan equiv.: $3966.35");
+    assert.equal(FeatureTabs.spendSummaryText([rows[2]], "USD"), "Plan ≈ $3966.35");
 
     // Only metered
-    assert.equal(FeatureTabs.spendSummaryText([rows[0], rows[1]], "USD"), "API/local: $4.47");
+    assert.equal(FeatureTabs.spendSummaryText([rows[0], rows[1]], "USD"), "API $4.47");
 
     // Empty
     assert.equal(FeatureTabs.spendSummaryText([], "USD"), "");
 
     // Tooltip breakdown
     const tooltip = FeatureTabs.spendSummaryTooltip(rows, "USD");
-    assert.match(tooltip, /API\/local recorded and estimated value \(not a bill\): \$4\.47/);
-    assert.match(tooltip, /Plan-covered API-equivalent estimate: \$5423\.99/);
-    assert.match(tooltip, /Combined work value \(not a bill\): \$5428\.46/);
+    assert.match(tooltip, /API and local logs, not a bill: \$4\.47/);
+    assert.match(tooltip, /Covered by plan, at API prices: \$5423\.99/);
+    assert.match(tooltip, /Together: \$5428\.46/);
 });
 
 test("a plan-covered row's daily cost adds up to the total shown on it", () => {
