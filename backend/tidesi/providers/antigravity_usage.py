@@ -263,6 +263,14 @@ def discover_paths(root: Path) -> list[Path]:
 
 
 def read_usage(root: Path) -> list[AntigravityUsage]:
-    """Read every discovered database, propagating incomplete-source errors."""
+    """Read every discovered database. A locked or interrupted one fails the scan
+    so it is retried; a corrupt one is skipped, since it would never recover."""
     fingerprint = antigravity_usage_cache.parser_fingerprint((Path(__file__), Path(antigravity_usage_cache.__file__)))
-    return [record for path in discover_paths(root) for record in read_database(path, fingerprint)]
+    records = []
+    for path in discover_paths(root):
+        try:
+            records.extend(read_database(path, fingerprint))
+        except SkipSource as error:
+            if isinstance(error.__cause__, sqlite3.OperationalError):
+                raise
+    return records

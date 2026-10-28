@@ -213,8 +213,10 @@ formats that do not produce supported local records, and frontends must not
 infer missing costs or session details.
 
 Antigravity also reads `antigravity-cli/conversations/*.db`,
-`antigravity-ide/conversations/*.db` and `antigravity/conversations/*.db` below its configured Gemini home, using read-only
-SQLite connections. Generation metadata supplies machine model IDs and separate
+`antigravity-ide/conversations/*.db` and `antigravity/conversations/*.db` below
+its configured Gemini home, using read-only SQLite connections. A locked or
+interrupted database marks the scan incomplete so it is retried; a corrupt
+database, or a generation record over 4 MiB, is skipped on its own. Generation metadata supplies machine model IDs and separate
 new-input, cached-input, output, and reasoning token counts. Response IDs dedupe
 repeated generation records within a database. Missing model IDs are recovered
 only from unambiguous model/label associations in that same database; unknown

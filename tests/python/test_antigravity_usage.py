@@ -111,6 +111,20 @@ class AntigravityUsageTest(unittest.TestCase):
 
         self.assertEqual([bucket.input_tokens for bucket in records[0].usage], [7])
 
+    def test_a_corrupt_database_is_skipped_but_a_locked_one_fails_the_scan(self):
+        kept = _turn("gemini-exact", "label", "a", {2: 7})
+        self._database([(0, kept, len(kept))])
+        (self.database.parent / "corrupt.db").write_bytes(b"not a database")
+        cache = self.root / "cache"
+        with mock.patch.object(config, "cache_dir", return_value=str(cache)):
+            records = read_usage(self.root)
+            self.assertEqual([record.session_id for record in records], ["session"])
+
+            locked = SkipSource("generation database unavailable")
+            locked.__cause__ = sqlite3.OperationalError("database is locked")
+            with mock.patch.object(reader, "read_database", side_effect=locked), self.assertRaises(SkipSource):
+                read_usage(self.root)
+
     def test_missing_root_is_empty(self):
         self.assertEqual(read_usage(self.root / "absent"), [])
 
