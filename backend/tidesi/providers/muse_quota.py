@@ -31,7 +31,7 @@ import os
 from .. import config as _config
 from .. import keychain
 from ..contract import num
-from ..http import as_json, clean_credential, resolve_key
+from ..http import as_json, clean_credential, resolve_key, route_e2e_url
 from .muse import auth_meta, configured_model, model_catalog
 
 _QUOTA_URL = "https://api.meta.ai/v1/responses"
@@ -218,7 +218,7 @@ def _fetch(api_key, model, fixture_path=None):
 
     body = json.dumps({"model": model, "input": "ping", "stream": True, "max_output_tokens": 16, "store": False}).encode()
     req = urllib.request.Request(
-        _QUOTA_URL,
+        route_e2e_url(_QUOTA_URL),
         data=body,
         method="POST",
         headers={
