@@ -24,3 +24,12 @@ repos:
         language: system
         pass_filenames: false
         files: \.(qml|js|py|sh)$
+
+      # Regeneration adds empty entries; enforce CI's completeness requirement
+      # afterwards, including on commits that only change catalogs or config.
+      - id: i18n-complete
+        name: i18n catalogs complete
+        entry: nix develop --command ./translate/check.sh
+        language: system
+        pass_filenames: false
+        always_run: true

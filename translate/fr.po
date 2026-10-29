@@ -1923,7 +1923,7 @@ msgstr "La demande d'utilisation de l'organisation OpenAI a échoué (HTTP %1)."
 
 #: backend/tidesi/contract.py
 msgid "minimal"
-msgstr ""
+msgstr "minimal"
 
 #: backend/tidesi/contract.py
 msgid "low"
