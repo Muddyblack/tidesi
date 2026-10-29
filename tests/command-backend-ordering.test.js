@@ -99,6 +99,7 @@ test("failed saves notify without leaking stderr, hold refresh, and recover on a
     drain();
     assert.equal(failures.length, 1);
     assert.equal(JSON.stringify(failures).includes("fixture-secret"), false);
+    assert.deepEqual(failures[0], [""]);
     assert.equal(root.settingsSaveBlocked, true);
     assert.equal(refreshed, 0);
     assert.equal(fs.readFileSync(root.configPath, "utf8"), "{}");
@@ -110,6 +111,19 @@ test("failed saves notify without leaking stderr, hold refresh, and recover on a
     assert.equal(root.settingsSaveBlocked, false);
     assert.equal(refreshed, 1);
     assert.equal(jobs.length, 0);
+});
+
+test("a known OS reason is passed on, the rest of stderr is not", (t) => {
+    const { root, home, drain, env } = fixture(t);
+    const bin = path.join(home, "bin");
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(bin, "mv"), "#!/bin/sh\nprintf 'mv: cannot move fixture-secret: Permission denied' >&2\nexit 1\n", { mode: 0o700 });
+    env.PATH = bin + path.delimiter + env.PATH;
+    const failures = [];
+    root.settingsSaveFailed = (...args) => failures.push(args);
+    root.saveSettings('{"keys":{"fixture":"fixture-secret"}}');
+    drain();
+    assert.deepEqual(failures, [["Permission denied"]]);
 });
 
 test("save failure status is separate from refresh status and clears only after save success", () => {

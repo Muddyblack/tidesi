@@ -80,7 +80,7 @@ QtObject {
 
     signal settingsLoaded(string text)
     signal settingsSaved
-    signal settingsSaveFailed
+    signal settingsSaveFailed(string reason)
     signal lastSnapshotLoaded(string text)
     signal catalogLoaded(string text)
     signal languagesLoaded(string text)
@@ -150,8 +150,12 @@ QtObject {
         // a half-written file.
         root.settingsQueue.run(["sh", "-c", "umask 077; tmp=\"$2.tmp.$$\"; trap 'rm -f \"$tmp\"' EXIT; mkdir -p \"$(dirname \"$2\")\" && printf '%s' \"$1\" > \"$tmp\" && mv -f \"$tmp\" \"$2\"", "tidesi", text, root.configPath], function (out, err, code) {
             root.settingsSaveBlocked = code !== 0;
+            // Only a known OS reason is passed on: stderr itself is never shown,
+            // since a failing command could echo the settings text and its keys.
             if (root.settingsSaveBlocked)
-                root.settingsSaveFailed();
+                root.settingsSaveFailed(["Permission denied", "No space left on device", "Read-only file system", "Disk quota exceeded"].find(function (reason) {
+                    return (err || "").indexOf(reason) !== -1;
+                }) || "");
             else
                 root.settingsSaved();
         });

@@ -145,8 +145,8 @@ Item {
     Connections {
         target: root.backend
         ignoreUnknownSignals: true
-        function onSettingsSaveFailed() {
-            root.settingsSaveError = root.i18n("Check file permissions and free disk space.");
+        function onSettingsSaveFailed(reason) {
+            root.settingsSaveError = reason || root.i18n("Check file permissions and free disk space.");
         }
         function onSettingsSaved() {
             root.settingsSaveError = "";
