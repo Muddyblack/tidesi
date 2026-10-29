@@ -1,4 +1,16 @@
-from ..contract import account, chip, flat_window, jround, monthly_window, note_section, num, pct_clamp, provider_base, provider_error, sections
+from ..contract import (
+    account,
+    flat_window,
+    jround,
+    monthly_window,
+    note_section,
+    num,
+    pct_clamp,
+    plan_chip,
+    provider_base,
+    provider_error,
+    sections,
+)
 from ..messages import lines, tr
 
 ACCENT = "#e6e6e6"
@@ -21,7 +33,7 @@ def normalize_zed(raw):
     reset_at = num(res.get("resetAt"))
     unlimited = res.get("unlimited") is True
     r = provider_base("zed", "Zed", ACCENT, now)
-    r["account"] = account("Zed", [chip(plan, "plan")] if plan else [])
+    r["account"] = account("Zed", [plan_chip(plan)])
     rows = []
     if not unlimited and isinstance(used, (int, float)) and isinstance(limit, (int, float)) and limit > 0:
         pct = pct_clamp(used / limit * 100)

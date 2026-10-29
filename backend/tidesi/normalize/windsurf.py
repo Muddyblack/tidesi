@@ -1,12 +1,12 @@
 from ..contract import (
     account,
-    chip,
     flat_window,
     jround,
     monthly_window,
     note_section,
     num,
     pct_clamp,
+    plan_chip,
     provider_base,
     provider_error,
     reset_text,
@@ -71,7 +71,7 @@ def normalize_windsurf(raw):
 
     top = max(rows, key=lambda row: row[2])
     r = provider_base("windsurf", "Windsurf", ACCENT, now)
-    r["account"] = account("Windsurf", [chip(plan, "plan")] if plan else [])
+    r["account"] = account("Windsurf", [plan_chip(plan)])
     r["summary"] = {"pct": top[2], "text": f"{jround(top[2])}%", "detail": plan or top[1], "hasChart": True}
     r["quotaWindows"] = [flat_window(key, label, pct, reset, detail, True) for key, label, pct, reset, detail in rows]
     r["slots"] = [

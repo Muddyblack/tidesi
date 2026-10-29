@@ -2,8 +2,10 @@ from ..billing import empty_org_usage, price_models
 from ..contract import (
     account,
     chip,
+    effort_chip,
     jround,
     num,
+    plan_chip,
     provider_base,
     provider_error,
     quota_window,
@@ -49,10 +51,6 @@ def tier_label(raw):
     return " ".join(str(w) for w in words)
 
 
-def effort_word(level):
-    return {"high": tr("high"), "low": tr("low"), "medium": tr("medium")}.get(level, level)
-
-
 def claude_account(base_details, plan):
     """The line under the tabs: tier (or organisation), effort, dream, plan."""
     if plan == "":
@@ -60,13 +58,11 @@ def claude_account(base_details, plan):
     name = tier_label(base_details.get("rateLimitTier")) or (
         tr("%1…", base_details["organizationUuid"][:8]) if base_details.get("organizationUuid") else tr("Claude Code User")
     )
-    effort = base_details.get("effortLevel") or ""
-    effort_tone = {"high": "accent", "low": "good"}.get(effort, "muted")
     dream = base_details.get("autoDream") is True
     return account(
         name,
         [
-            chip(tr("effort: %1", effort_word(effort)), effort_tone, tr("Thinking budget: %1", effort)) if effort else None,
+            effort_chip(base_details.get("effortLevel")),
             chip(
                 tr("dream: on") if dream else tr("dream: off"),
                 "accent" if dream else "off",
@@ -74,7 +70,7 @@ def claude_account(base_details, plan):
                 if dream
                 else tr("Extended thinking (dream mode): OFF"),
             ),
-            chip(plan.upper(), "muted" if plan == "free" else "plan"),
+            plan_chip(plan),
         ],
     )
 

@@ -209,7 +209,7 @@ class KiloTest(IsolatedHomeTest):
         self.assertTrue(result["ok"])
         self.assertEqual([(w["key"], w["pct"]) for w in result["quotaWindows"]], [("kilo_credits", 40), ("kilo_pass", 25)])
         self.assertEqual(result["quotaWindows"][1]["resetAt"], 1793491200)
-        self.assertEqual(result["account"]["chips"][0]["text"], "Pro")
+        self.assertEqual(result["account"]["chips"][0]["text"], "PRO")
 
     def test_account_without_a_pass_and_an_empty_balance(self):
         result = normalized("kilo", self.collect(trpc({"totalBalance_mUsd": 0}, {"subscription": None})))
@@ -314,7 +314,7 @@ class ZedTest(IsolatedHomeTest):
         )
         result = normalized("zed", limited)
         self.assertEqual(
-            (result["quotaWindows"][0]["pct"], result["quotaWindows"][0]["resetAt"], result["account"]["chips"][0]["text"]), (6, 1793491200, "Pro")
+            (result["quotaWindows"][0]["pct"], result["quotaWindows"][0]["resetAt"], result["account"]["chips"][0]["text"]), (6, 1793491200, "PRO")
         )
         self.assertTrue(result["details"]["untested"])
         unlimited = self.collect({"plan": {"plan_v3": "zed_pro", "usage": {"edit_predictions": {"used": 5, "limit": "unlimited"}}}})

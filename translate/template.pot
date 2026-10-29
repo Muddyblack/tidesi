@@ -1783,6 +1783,30 @@ msgid "OpenAI organization usage request failed (HTTP %1)."
 msgstr ""
 
 #: backend/tidesi/contract.py
+msgid "minimal"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "low"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "medium"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "high"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "effort: %1"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "Reasoning effort: %1"
+msgstr ""
+
+#: backend/tidesi/contract.py
 msgid "unavailable"
 msgstr ""
 
@@ -1952,31 +1976,11 @@ msgid "free"
 msgstr ""
 
 #: backend/tidesi/normalize/claude.py
-msgid "high"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py
-msgid "low"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py
-msgid "medium"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py
 msgid "%1…"
 msgstr ""
 
 #: backend/tidesi/normalize/claude.py
 msgid "Claude Code User"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py backend/tidesi/normalize/openai.py
-msgid "effort: %1"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py
-msgid "Thinking budget: %1"
 msgstr ""
 
 #: backend/tidesi/normalize/claude.py
@@ -2531,10 +2535,6 @@ msgstr ""
 
 #: backend/tidesi/normalize/openai.py
 msgid "Codex / ChatGPT User"
-msgstr ""
-
-#: backend/tidesi/normalize/openai.py
-msgid "Reasoning effort: %1"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py

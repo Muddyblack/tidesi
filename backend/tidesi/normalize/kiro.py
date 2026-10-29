@@ -1,6 +1,5 @@
 from ..contract import (
     account,
-    chip,
     epoch_of,
     fact,
     facts_section,
@@ -10,6 +9,7 @@ from ..contract import (
     note_section,
     num,
     pct_clamp,
+    plan_chip,
     provider_base,
     provider_error,
     sections,
@@ -57,7 +57,7 @@ def normalize_kiro(raw):
     r = provider_base("kiro", "Kiro", "#8b5cf6", now)
     r["ok"] = available
     r["error"] = "" if available else tr("Kiro: usage snapshot is empty")
-    r["account"] = account("Kiro", [chip(plan.upper(), "muted" if plan == "free" else "plan")] if plan else [])
+    r["account"] = account("Kiro", [plan_chip(plan)])
     unit = str(res.get("displayNamePlural") or "Credits")
     symbol = res.get("currencySymbol") or "$"
     remaining, overages = num(res.get("remaining")), num(res.get("currentOverages"))

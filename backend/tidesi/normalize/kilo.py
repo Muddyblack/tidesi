@@ -1,6 +1,5 @@
 from ..contract import (
     account,
-    chip,
     fact,
     facts_section,
     flat_window,
@@ -10,6 +9,7 @@ from ..contract import (
     note_section,
     num,
     pct_clamp,
+    plan_chip,
     provider_base,
     provider_error,
     sections,
@@ -50,7 +50,7 @@ def normalize_kilo(raw):
 
     top = max(rows, key=lambda row: row[2])
     r = provider_base("kilo", "Kilo", ACCENT, now)
-    r["account"] = account("Kilo", [chip(sub["tier"], "plan")] if sub else [])
+    r["account"] = account("Kilo", [plan_chip(sub["tier"])] if sub else [])
     r["summary"] = {"pct": top[2], "text": f"{jround(top[2])}%", "detail": top[1], "hasChart": True}
     r["quotaWindows"] = [flat_window(key, label, pct, reset, detail, meter) for key, label, pct, reset, detail, meter in rows]
     r["slots"] = [{"pct": top[2], "color": ACCENT, "text": None, "tooltip": lines("Kilo", *(tr("%1: %2", row[1], row[4]) for row in rows))}]

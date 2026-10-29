@@ -2,7 +2,6 @@ from ..contract import (
     account,
     bar_row,
     bars_section,
-    chip,
     compact_tokens,
     epoch_of,
     flat_window,
@@ -11,6 +10,7 @@ from ..contract import (
     note_section,
     num,
     pct_clamp,
+    plan_chip,
     provider_base,
     provider_error,
     remote_info,
@@ -158,7 +158,7 @@ def normalize_antigravity(raw):
     remote = res.get("remote") if isinstance(res.get("remote"), dict) else None
     r["account"] = account(
         res.get("email") or tr("Gemini Code Assist"),
-        [chip(plan, "muted" if str(plan).lower() == "free" else "good", color="" if str(plan).lower() == "free" else "#34a853")] if plan else [],
+        [plan_chip(plan)],
     )
     # A family holding several models gets a header over per-model bars (the
     # IDE's "Gemini Models" / "Claude & GPT Models" grouping); a family of one

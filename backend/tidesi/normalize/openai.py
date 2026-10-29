@@ -2,9 +2,11 @@ from ..billing import empty_org_usage, price_models
 from ..contract import (
     account,
     chip,
+    effort_chip,
     flat_window,
     jround,
     money,
+    plan_chip,
     provider_base,
     provider_error,
     quota_window,
@@ -94,15 +96,13 @@ def codex_normalize(p):
 def openai_account(creds, plan, stats):
     """Codex / ChatGPT identity: the account, the live model and reasoning
     effort of the newest rollout, the plan."""
-    effort = (stats or {}).get("effortLevel") or ""
     model = (stats or {}).get("model") or ""
-    effort_tone = "danger" if effort in ("xhigh", "high") else "good" if effort in ("low", "minimal") else "warn"
     return account(
         creds.get("email") or creds.get("accountId") or tr("Codex / ChatGPT User"),
         [
             chip(short_model_name(model), "accent") if model else None,
-            chip(tr("effort: %1", effort), effort_tone, tr("Reasoning effort: %1", effort)) if effort else None,
-            chip(plan.upper(), "muted" if plan == "free" else "plan") if plan else None,
+            effort_chip((stats or {}).get("effortLevel")),
+            plan_chip(plan),
         ],
     )
 

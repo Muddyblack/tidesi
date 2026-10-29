@@ -1922,6 +1922,30 @@ msgid "OpenAI organization usage request failed (HTTP %1)."
 msgstr "La demande d'utilisation de l'organisation OpenAI a échoué (HTTP %1)."
 
 #: backend/tidesi/contract.py
+msgid "minimal"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "low"
+msgstr "faible"
+
+#: backend/tidesi/contract.py
+msgid "medium"
+msgstr "moyen"
+
+#: backend/tidesi/contract.py
+msgid "high"
+msgstr "élevé"
+
+#: backend/tidesi/contract.py
+msgid "effort: %1"
+msgstr "effort : %1"
+
+#: backend/tidesi/contract.py
+msgid "Reasoning effort: %1"
+msgstr "Effort de raisonnement : %1"
+
+#: backend/tidesi/contract.py
 msgid "unavailable"
 msgstr "indisponible"
 
@@ -2097,32 +2121,12 @@ msgid "free"
 msgstr "gratuit"
 
 #: backend/tidesi/normalize/claude.py
-msgid "high"
-msgstr "élevé"
-
-#: backend/tidesi/normalize/claude.py
-msgid "low"
-msgstr "faible"
-
-#: backend/tidesi/normalize/claude.py
-msgid "medium"
-msgstr "moyen"
-
-#: backend/tidesi/normalize/claude.py
 msgid "%1…"
 msgstr "%1…"
 
 #: backend/tidesi/normalize/claude.py
 msgid "Claude Code User"
 msgstr "Utilisateur Claude Code"
-
-#: backend/tidesi/normalize/claude.py backend/tidesi/normalize/openai.py
-msgid "effort: %1"
-msgstr "effort : %1"
-
-#: backend/tidesi/normalize/claude.py
-msgid "Thinking budget: %1"
-msgstr "Budget de réflexion : %1"
 
 #: backend/tidesi/normalize/claude.py
 msgid "dream: on"
@@ -2697,10 +2701,6 @@ msgstr "%1 USD restants"
 #: backend/tidesi/normalize/openai.py
 msgid "Codex / ChatGPT User"
 msgstr "Utilisateur Codex / ChatGPT"
-
-#: backend/tidesi/normalize/openai.py
-msgid "Reasoning effort: %1"
-msgstr "Effort de raisonnement : %1"
 
 #: backend/tidesi/normalize/openai.py
 msgid "OpenAI: no API key or Codex login"

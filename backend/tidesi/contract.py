@@ -431,6 +431,30 @@ def chip(text, tone="muted", tooltip="", color=""):
     return {"text": text, "tone": tone if tone in CHIP_TONES else "muted", "tooltip": tooltip or "", "color": color or ""}
 
 
+# One scale for every provider: cheap efforts read green, the default neutral,
+# the costly ones in the accent and then amber. High effort is a choice, not an
+# error, so nothing here is red.
+EFFORT_TONES = {"minimal": "good", "low": "good", "medium": "muted", "high": "accent", "xhigh": "warn", "max": "warn"}
+
+
+def effort_chip(level):
+    """The reasoning-effort chip, worded and coloured alike on every provider.
+    Nothing for an unknown (empty) level."""
+    level = str(level or "").strip().lower()
+    if not level:
+        return None
+    words = {"minimal": tr("minimal"), "low": tr("low"), "medium": tr("medium"), "high": tr("high")}
+    return chip(tr("effort: %1", words.get(level, level)), EFFORT_TONES.get(level, "muted"), tr("Reasoning effort: %1", level))
+
+
+def plan_chip(plan):
+    """The subscription chip: upper case in the provider's colour, grey when free."""
+    plan = str(plan or "").strip()
+    if not plan:
+        return None
+    return chip(plan.upper(), "muted" if plan.lower() == "free" else "plan")
+
+
 def account(name="", chips=()):
     """The account line: who is signed in (``name``: an email, an organisation,
     a tier) and a few chips (plan, model, effort …)."""
