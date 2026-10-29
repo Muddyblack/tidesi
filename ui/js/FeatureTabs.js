@@ -665,9 +665,13 @@ function spendRowsForWindow(rows, windowDays) {
             unavailable.dailyTokens = spendTimeline([], row.dailyTokens, days).map(function (point) {
                 return { date: point.date, total: point.total };
             });
-            if (row.usageOnly)
+            if (row.usageOnly) {
                 unavailable.tokens = unavailable.dailyTokens.length || (row.dailyTokens || []).length
                     ? unavailable.dailyTokens.reduce(function (sum, point) { return sum + point.total; }, 0) : null;
+                // A tokens-only row with no tokens in this timeframe has nothing to show.
+                if (!(unavailable.tokens > 0))
+                    continue;
+            }
             out.push(unavailable);
             continue;
         }

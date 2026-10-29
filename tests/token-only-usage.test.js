@@ -112,3 +112,12 @@ test("the OpenCode provider price explicitly identifies its Zen/Go-only scope", 
     assert.equal(rows[0].label, "OpenCode Zen/Go");
     assert.equal(rows[0].cost, 0.1);
 });
+
+test("a tokens-only row with no tokens in the selected timeframe is hidden", () => {
+    const row = { id: "cline", label: "Cline", cost: null, costAvailable: false, usageOnly: true,
+        tokens: 500, dailyCost: [], dailyTokens: [{ date: dateDaysAgo(90), total: 500 }] };
+    assert.equal(FeatureTabs.spendRowsForWindow([row], 30).length, 0);
+    assert.equal(FeatureTabs.spendRowsForWindow([row], "all").length, 1);
+    row.dailyTokens.push({ date: dateDaysAgo(2), total: 40 });
+    assert.equal(FeatureTabs.spendRowsForWindow([row], 30)[0].tokens, 40);
+});
