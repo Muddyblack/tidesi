@@ -727,7 +727,15 @@ class Backend(QObject):
     @Slot(str, str)
     def history(self, op, payload):
         """Run one history-io command; the answer arrives as historyFinished."""
-        self._pool.submit(lambda: self._historyCompleted.emit(op, historyio.run(op, payload)))
+        self._pool.submit(self._run_history, op, payload)
+
+    def _run_history(self, op, payload):
+        # Always answer: the popup holds autosaves until a clear or prune reports back.
+        try:
+            result = historyio.run(op, payload)
+        except Exception as exc:
+            result = json.dumps({"error": f"history {op} failed: {exc}"}, ensure_ascii=False)
+        self._historyCompleted.emit(op, result)
 
     @Slot(str, str, result=str)
     def flushHistory(self, op, payload):

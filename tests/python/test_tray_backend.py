@@ -301,6 +301,16 @@ class BackendThreadTest(unittest.TestCase):
         self.qt_app.processEvents()
         self.assertEqual(self.events, [("historyFinished", ("autoload", '{"data":[]}'), self.gui_thread)])
 
+    def test_a_failing_history_command_still_answers(self):
+        with mock.patch("app.historyio.run", side_effect=OSError("disk gone")):
+            self.backend.history("clear", "")
+            self.backend._pool.shutdown(wait=True)
+        self.qt_app.processEvents()
+        self.assertEqual(len(self.events), 1)
+        name, (op, result), _thread = self.events[0]
+        self.assertEqual((name, op), ("historyFinished", "clear"))
+        self.assertIn("disk gone", json.loads(result)["error"])
+
     def test_session_refresh_uses_query_only_collection(self):
         with mock.patch("app.collect_sessions", return_value={}) as collect:
             self.backend.refreshSessions("query", 1, 3)
