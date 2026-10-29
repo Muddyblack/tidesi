@@ -168,9 +168,7 @@ Item {
     readonly property int popupWidth: showSettings ? 760 : 460
     onSettingsChanged: {
         if (root.settingsLoaded)
-            root.providers = root.providers.filter(function (provider) {
-                return root.providerEnabled(provider.id);
-            });
+            root.dropDisabledProviders();
         root.publishTray();
     }
     readonly property string antigravityChartFilter: root.settings.antigravityChartFilter || "both"
@@ -209,9 +207,7 @@ Item {
         } catch (e) {}
         root.settings = root.normalizeSettings(d);
         root.settingsLoaded = true;
-        root.providers = root.providers.filter(function (provider) {
-            return root.providerEnabled(provider.id);
-        });
+        root.dropDisabledProviders();
         if (root.pendingLastSnapshot !== "") {
             var pending = root.pendingLastSnapshot;
             root.pendingLastSnapshot = "";
@@ -272,6 +268,14 @@ Item {
 
     function providerEnabled(id) {
         return ProviderRegistry.enabled(root.settings, id);
+    }
+
+    // Snapshots (cached or live) can still carry a provider the user has since
+    // turned off; keep only the configured ones.
+    function dropDisabledProviders() {
+        root.providers = root.providers.filter(function (provider) {
+            return root.providerEnabled(provider.id);
+        });
     }
 
     // ── Provider sources ─────────────────────────────────────────────────────
@@ -800,9 +804,7 @@ Item {
                 root.updatedAt = data.updatedAt || 0;
             }
             if (root.settingsLoaded)
-                root.providers = root.providers.filter(function (provider) {
-                    return root.providerEnabled(provider.id);
-                });
+                root.dropDisabledProviders();
             var fallback = root.providerById(data.active) ? data.active : (root.providers[0] || {}).id || "";
             // Seed (or heal, if the remembered one got disabled) the pill's
             // fallback provider — needed even before the user ever leaves a

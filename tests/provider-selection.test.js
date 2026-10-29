@@ -16,7 +16,7 @@ function state() {
     };
     const backend = { firstRun: false, requestCatalog() {} };
     const FeatureTabs = { enabledFeatureTabs: () => [] };
-    for (const name of ["applyLoadedSettings", "applySnapshot", "applyLastSnapshot"]) {
+    for (const name of ["applyLoadedSettings", "applySnapshot", "applyLastSnapshot", "dropDisabledProviders"]) {
         const start = source.indexOf(`    function ${name}(`);
         const end = source.indexOf("\n    }", start);
         root[name] = vm.runInNewContext(`(${source.slice(start, end + 6)})`, { root, backend, FeatureTabs });
