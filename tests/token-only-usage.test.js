@@ -107,6 +107,41 @@ test("an unpriced OpenCode card cannot suppress its separately priced local ledg
     assert.equal(localRows.length, 1);
 });
 
+test("zero-cost local OpenCode rollups stay priced without a duplicate token-only row", () => {
+    const localSpend = { estimated: { costStatus: "exact", providers: {
+        "opencode::opencode": { source: "opencode", costStatus: "exact", costUSD: 0,
+            dailyUSD: [{ date: dateDaysAgo(0), usd: 0 }], dailyTokens: [{ date: dateDaysAgo(0), total: 1000 }] },
+    } } };
+    const providers = [provider("opencode", { totalTokens: 1000, dailyTokens: [{ date: dateDaysAgo(0), total: 1000 }] })];
+    const providerRows = FeatureTabs.spendProviderRows(providers, localSpend);
+    assert.equal(providerRows.length, 0);
+    const localRows = FeatureTabs.localSpendRows(localSpend, providerRows, providers);
+    assert.equal(localRows.length, 1);
+    assert.equal(localRows[0].id, "local-opencode-opencode");
+    assert.equal(localRows[0].cost, 0);
+    assert.equal(localRows[0].costAvailable, true);
+    assert.deepEqual(Array.from(localRows[0].dailyCost, (point) => point.usd), [0]);
+    assert.deepEqual(Array.from(localRows[0].dailyTokens, (point) => point.total), [1000]);
+    const filtered = FeatureTabs.spendRowsForWindow(localRows, 1);
+    assert.equal(filtered.length, 1);
+    assert.equal(filtered[0].cost, 0);
+    assert.equal(filtered[0].costAvailable, true);
+    assert.deepEqual(Array.from(filtered[0].dailyTokens, (point) => point.total), [1000]);
+});
+
+test("zero-cost partial subscription rollups remain priced plan rows", () => {
+    const localSpend = { subscription: { costStatus: "partial", providers: {
+        "opencode::opencode": { source: "opencode", costStatus: "partial", costUSD: 0,
+            dailyUSD: [{ date: dateDaysAgo(0), usd: 0 }], dailyTokens: [{ date: dateDaysAgo(0), total: 250 }] },
+    } } };
+    const rows = FeatureTabs.localSpendRows(localSpend, [], []);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].billing, "subscription");
+    assert.equal(rows[0].cost, 0);
+    assert.equal(rows[0].costStatus, "partial");
+    assert.deepEqual(Array.from(rows[0].dailyTokens, (point) => point.total), [250]);
+});
+
 test("the OpenCode provider price explicitly identifies its Zen/Go-only scope", () => {
     const rows = FeatureTabs.spendProviderRows([{ id: "opencode", label: "OpenCode", details: { stats: { totalCostUSD: 0.1 } } }], {});
     assert.equal(rows[0].label, "OpenCode Zen/Go");

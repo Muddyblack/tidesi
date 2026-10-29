@@ -198,7 +198,7 @@ function localProviderCost(group, source) {
         }
     }
     if (!entry || (entry.costStatus !== "exact" && entry.costStatus !== "partial") ||
-            typeof entry.costUSD !== "number" || !isFinite(entry.costUSD) || !(entry.costUSD > 0))
+            typeof entry.costUSD !== "number" || !isFinite(entry.costUSD) || entry.costUSD < 0)
         return null;
     return {
         cost: entry.costUSD,
@@ -398,8 +398,8 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
         // OpenCode's provider card covers Zen/Go, not the other routed providers.
         if ((hasOpenCodeProvider && source === "opencode" && (providerKey === "opencode" || providerKey === "opencode-go")) || (hasMimoProvider && source === "mimo"))
             continue;
-        var hasActual = actualUSD > 0;
-        var hasEstimated = estimatedUSD > 0;
+        var hasActual = !!actual;
+        var hasEstimated = !!estimated;
         var provenance = hasActual && hasEstimated ? "mixed" : hasActual ? "actual" : "estimated";
         var costStatus = (actual && actual.status === "partial") ||
                 (estimated && estimated.status === "partial") ? "partial" : "exact";
@@ -407,6 +407,7 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
             id: "local-" + (source ? source + "-" : "") + providerKey,
             label: (source === "opencode" || source === "mimo") ? upstreamProviderLabel(providerKey) : localSourceLabel(providerKey),
             cost: actualUSD + estimatedUSD,
+            costAvailable: true,
             currency: "USD",
             note: localSpendNote(provenance, costStatus, source),
             local: true,
@@ -443,7 +444,7 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
         var planEstimated = localProviderCost(localSpend && localSpend.subscription, planSourceKey);
         var planActual = localProviderCost(localSpend && localSpend.subscriptionActual, planSourceKey);
         var planCost = (planEstimated ? planEstimated.cost : 0) + (planActual ? planActual.cost : 0);
-        if (!(planCost > 0))
+        if (!planEstimated && !planActual)
             continue;
         var planSource = (planEstimated && planEstimated.source) || (planActual && planActual.source) || "";
         var planProviderKey = localProviderKey(planSourceKey);
@@ -453,6 +454,7 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
             id: "plan-" + (planSource ? planSource + "-" : "") + planProviderKey,
             label: (planSource === "opencode" || planSource === "mimo") ? upstreamProviderLabel(planProviderKey) : localSourceLabel(planProviderKey),
             cost: planCost,
+            costAvailable: true,
             currency: "USD",
             note: planSpendNote(planStatus, planSource),
             local: true,
@@ -469,7 +471,7 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
     if (rows.length === 0 && localSpend && !localSpend.actual && !localSpend.estimated &&
             (localSpend.costStatus === "exact" || localSpend.costStatus === "partial") &&
             typeof localSpend.totalUSD === "number" && isFinite(localSpend.totalUSD) &&
-            localSpend.totalUSD > 0) {
+            localSpend.totalUSD >= 0) {
         rows.push({
             id: "local",
             label: "Local sessions",
@@ -556,7 +558,13 @@ function spendProviderRows(providers, localSpend) {
             var tokens = typeof stats.totalTokens === "number" && isFinite(stats.totalTokens) && stats.totalTokens > 0
                 ? stats.totalTokens : tokenSeries.reduce(function (sum, point) { return sum + point.total; }, 0);
             var hasLocalCost = ["actual", "estimated", "subscription", "subscriptionActual"].some(function (group) {
-                return !!localProviderCost(localSpend && localSpend[group], id);
+                var localGroup = localSpend && localSpend[group];
+                if (localProviderCost(localGroup, id))
+                    return true;
+                var localProviders = localGroup && localGroup.providers || {};
+                return Object.keys(localProviders).some(function (key) {
+                    return localProviderKey(key) === id && !!localProviderCost(localGroup, key);
+                });
             });
             if (tokens > 0 && !hasLocalCost) {
                 rows.push({
