@@ -23,6 +23,13 @@ Item {
     // symlink. Empty when the session has none, which turns streaming off.
     readonly property string streamDir: StandardPaths.writableLocation(StandardPaths.RuntimeLocation).toString().replace("file://", "").replace(/\/$/, "")
 
+    // A widget closed mid-refresh kills the shell before it removes its stream
+    // file, so leftovers older than an hour are cleared once at start.
+    Component.onCompleted: {
+        if (root.streamDir !== "")
+            root.run(["find", root.streamDir, "-maxdepth", "1", "-name", "tidesi-stream-*", "-mmin", "+60", "-delete"], function () {});
+    }
+
     // One argument, safe for /bin/sh: single-quoted, with any single quote
     // closed, escaped and reopened.
     function quote(arg) {
