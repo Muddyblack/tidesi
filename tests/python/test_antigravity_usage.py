@@ -201,6 +201,15 @@ class AntigravityUsageTest(unittest.TestCase):
             warm = read_usage(self.root)
         self.assertEqual(warm, cold)
 
+    def test_databases_without_any_readable_counts_report_an_unrecognized_format(self):
+        unknown = _field(1, 2, _string(19, "gemini-exact") + _field(30, 2, _field(1, 0, 5)))
+        for name in ("a", "b", "c"):
+            self.database = self.database.parent / f"{name}.db"
+            self._database([(0, unknown, len(unknown))])
+        with mock.patch.object(config, "cache_dir", return_value=str(self.root / "cache")):
+            with self.assertRaisesRegex(SkipSource, "format not recognized"):
+                read_usage(self.root)
+
 
 if __name__ == "__main__":
     unittest.main()

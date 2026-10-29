@@ -17,6 +17,7 @@ from . import antigravity_usage_cache
 _MAX_BLOB = 4 * 1024 * 1024
 _QUERY_SECONDS = 10.0
 _MAX_FIELD = (1 << 29) - 1
+_FORMAT_CHECK_DATABASES = 3
 
 
 @dataclass(frozen=True)
@@ -307,5 +308,9 @@ def read_usage(root: Path) -> list[AntigravityUsage]:
         except SkipSource as error:
             if isinstance(error.__cause__, sqlite3.OperationalError):
                 raise
+    # The field numbers are undocumented. If Antigravity renumbers them, every
+    # database still parses but yields no counts: report that instead of zero usage.
+    if len(records) >= _FORMAT_CHECK_DATABASES and not any(record.usage for record in records):
+        raise SkipSource("Antigravity usage format not recognized")
     antigravity_usage_cache.prune(paths)
     return records
