@@ -908,6 +908,8 @@ def _antigravity_entries(*, include_all=False):
         if entry:
             if record.usage:
                 entry = _with_usage_cost(entry, "antigravity", record.usage)
+                if not record.usage_complete and entry["costStatus"] == "exact":
+                    entry["costStatus"] = "partial"
                 entry["costBilling"] = "subscription"
             out.append(entry)
     return out

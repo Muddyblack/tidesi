@@ -210,6 +210,15 @@ class AntigravityUsageTest(unittest.TestCase):
             with self.assertRaisesRegex(SkipSource, "format not recognized"):
                 read_usage(self.root)
 
+    def test_databases_with_only_skipped_generations_keep_incomplete_records(self):
+        for name in ("a", "b", "c"):
+            self.database = self.database.parent / f"{name}.db"
+            self._database([(0, b"x" * (4 * 1024 * 1024 + 1), 0)])
+        with mock.patch.object(config, "cache_dir", return_value=str(self.root / "cache")):
+            records = read_usage(self.root)
+        self.assertEqual(len(records), 3)
+        self.assertTrue(all(not record.usage_complete and not record.usage for record in records))
+
 
 if __name__ == "__main__":
     unittest.main()

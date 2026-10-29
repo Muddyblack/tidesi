@@ -29,7 +29,7 @@ def signature(database: Path, parser: str) -> str | None:
     return hashlib.sha256(json.dumps((parser, states)).encode()).hexdigest()
 
 
-def load(database: Path, fingerprint: str, state: str) -> tuple[int, tuple[tuple[str, str, int, int, int, int], ...]] | None:
+def load(database: Path, fingerprint: str, state: str) -> tuple[int, tuple[tuple[str, str, int, int, int, int], ...], bool] | None:
     """Load numeric summaries only when source and parser signatures match."""
     try:
         payload = json.loads(_cache_path(database).read_text(encoding="utf-8"))
@@ -39,7 +39,8 @@ def load(database: Path, fingerprint: str, state: str) -> tuple[int, tuple[tuple
             return None
         activity = payload["last_activity"]
         usage = payload["usage"]
-        if type(activity) is not int or not isinstance(usage, list):
+        usage_complete = payload["usage_complete"]
+        if type(activity) is not int or not isinstance(usage, list) or type(usage_complete) is not bool:
             return None
         rows = []
         for row in usage:
@@ -52,14 +53,19 @@ def load(database: Path, fingerprint: str, state: str) -> tuple[int, tuple[tuple
             ):
                 return None
             rows.append((row[0], row[1], *row[2:]))
-        return activity, tuple(rows)
+        return activity, tuple(rows), usage_complete
     except (OSError, ValueError, KeyError, TypeError):
         return None
 
 
-def save(database: Path, fingerprint: str, state: str, activity: int, usage: tuple[tuple[str, str, int, int, int, int], ...]) -> None:
+def save(
+    database: Path, fingerprint: str, state: str, activity: int, usage: tuple[tuple[str, str, int, int, int, int], ...], usage_complete: bool
+) -> None:
     """Atomically save aggregate counters without source or session identity."""
-    usage_cache.write_private_json(_cache_path(database), {"fingerprint": fingerprint, "state": state, "last_activity": activity, "usage": usage})
+    usage_cache.write_private_json(
+        _cache_path(database),
+        {"fingerprint": fingerprint, "state": state, "last_activity": activity, "usage": usage, "usage_complete": usage_complete},
+    )
 
 
 def prune(databases: list[Path]) -> None:

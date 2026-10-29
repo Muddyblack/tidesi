@@ -27,6 +27,7 @@ class AntigravitySession:
     last_activity: int
     source_path: str
     usage: tuple[UsageBucket, ...] = ()
+    usage_complete: bool = True
 
 
 def _home() -> Path:
@@ -150,9 +151,13 @@ def _discover(*, include_all: bool = False) -> list[AntigravitySession]:
     for native in antigravity_usage.read_usage(root):
         previous = selected.get(native.session_id)
         if previous is None:
-            selected[native.session_id] = AntigravitySession(native.session_id, "Antigravity", native.last_activity, native.source_path, native.usage)
+            selected[native.session_id] = AntigravitySession(
+                native.session_id, "Antigravity", native.last_activity, native.source_path, native.usage, native.usage_complete
+            )
         else:
-            selected[native.session_id] = replace(previous, last_activity=max(previous.last_activity, native.last_activity), usage=native.usage)
+            selected[native.session_id] = replace(
+                previous, last_activity=max(previous.last_activity, native.last_activity), usage=native.usage, usage_complete=native.usage_complete
+            )
     records = sorted(selected.values(), key=lambda record: (-record.last_activity, record.session_id))
     return records if include_all else records[:_MAX_SESSIONS]
 

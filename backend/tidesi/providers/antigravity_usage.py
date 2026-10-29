@@ -26,6 +26,7 @@ class AntigravityUsage:
     last_activity: int
     usage: tuple[UsageBucket, ...]
     source_path: str
+    usage_complete: bool = True
 
 
 @dataclass(frozen=True)
@@ -177,13 +178,9 @@ def _extract(path: Path, connection: sqlite3.Connection) -> AntigravityUsage:
             raise SkipSource("generation table missing")
         # An oversized generation (seen at 49 MB) is skipped on its own: it never
         # shrinks, so failing the database would hide all Antigravity usage for good.
-        rows = [
-            (index, blob)
-            for index, blob in connection.execute(
-                "SELECT idx, CASE WHEN length(data) <= ? THEN data END FROM gen_metadata ORDER BY idx", (_MAX_BLOB,)
-            )
-            if isinstance(blob, bytes)
-        ]
+        rows = list(connection.execute("SELECT idx, CASE WHEN length(data) <= ? THEN data END FROM gen_metadata ORDER BY idx", (_MAX_BLOB,)))
+        usage_complete = all(isinstance(blob, bytes) for _, blob in rows)
+        rows = [(index, blob) for index, blob in rows if isinstance(blob, bytes)]
         blobs = tuple(blob for _, blob in rows)
         by_label, sole = _model_assignments(blobs)
         session_time = 0
@@ -239,18 +236,18 @@ def _extract(path: Path, connection: sqlite3.Connection) -> AntigravityUsage:
             buckets.append(UsageBucket(_provider(model), model, path.stem, tokens[0], tokens[1], tokens[2], 0, tokens[3], None, "antigravity"))
         if not last_activity:
             last_activity = session_time or int(path.stat().st_mtime)
-        return AntigravityUsage(path.stem, last_activity, tuple(buckets), str(path))
+        return AntigravityUsage(path.stem, last_activity, tuple(buckets), str(path), usage_complete)
     except (sqlite3.Error, OSError, ValueError, OverflowError) as error:
         raise SkipSource("generation database unreadable") from error
 
 
-def _cached_record(path: Path, cached: tuple[int, tuple[tuple[str, str, int, int, int, int], ...]]) -> AntigravityUsage:
-    activity, rows = cached
+def _cached_record(path: Path, cached: tuple[int, tuple[tuple[str, str, int, int, int, int], ...], bool]) -> AntigravityUsage:
+    activity, rows, usage_complete = cached
     buckets = tuple(
         UsageBucket(provider, model, path.stem, counts[0], counts[1], counts[2], 0, counts[3], None, "antigravity")
         for provider, model, *counts in rows
     )
-    return AntigravityUsage(path.stem, activity, buckets, str(path))
+    return AntigravityUsage(path.stem, activity, buckets, str(path), usage_complete)
 
 
 def _cache_rows(record: AntigravityUsage) -> tuple[tuple[str, str, int, int, int, int], ...]:
@@ -279,8 +276,8 @@ def read_database(path: Path, fingerprint: str | None = None) -> list[Antigravit
             record = _extract(path, connection)
         rows = _cache_rows(record)
         if state is not None and antigravity_usage_cache.signature(path, fingerprint) == state:
-            antigravity_usage_cache.save(path, fingerprint, state, record.last_activity, rows)
-        return [_cached_record(path, (record.last_activity, rows))]
+            antigravity_usage_cache.save(path, fingerprint, state, record.last_activity, rows, record.usage_complete)
+        return [_cached_record(path, (record.last_activity, rows, record.usage_complete))]
     except (sqlite3.Error, OSError) as error:
         raise SkipSource("generation database unavailable") from error
 
@@ -310,7 +307,7 @@ def read_usage(root: Path) -> list[AntigravityUsage]:
                 raise
     # The field numbers are undocumented. If Antigravity renumbers them, every
     # database still parses but yields no counts: report that instead of zero usage.
-    if len(records) >= _FORMAT_CHECK_DATABASES and not any(record.usage for record in records):
+    if sum(record.usage_complete for record in records) >= _FORMAT_CHECK_DATABASES and not any(record.usage for record in records):
         raise SkipSource("Antigravity usage format not recognized")
     antigravity_usage_cache.prune(paths)
     return records

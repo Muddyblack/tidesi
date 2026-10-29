@@ -88,6 +88,37 @@ class AntigravityPricingTest(IsolatedHomeTest):
         self.assertEqual(entry["costStatus"], "partial")
         self.assertEqual(entry["tokens"], 3900)
 
+    def test_skipped_generation_keeps_partial_coverage_in_cold_and_cached_spend(self):
+        path = self.database()
+        oversized = _turn("gemini-test", "Exact model", "response-2", {2: 100}) + _field(100, 2, b"x" * (4 * 1024 * 1024))
+        with closing(sqlite3.connect(path)) as connection, connection:
+            connection.execute("INSERT INTO gen_metadata VALUES (1, ?)", (oversized,))
+        catalog = {"google": {"gemini-test": {"input": 2, "output": 10, "cached": 0.5}}}
+        with mock.patch("tidesi.pricing.cached_catalog", return_value=catalog):
+            cold = sessions._antigravity_entries(include_all=True)[0]
+            with mock.patch.object(antigravity_usage, "_extract", side_effect=AssertionError("cache miss")):
+                warm = sessions._antigravity_entries(include_all=True)[0]
+        self.assertEqual(cold["costStatus"], "partial")
+        self.assertEqual(warm, cold)
+        self.assertAlmostEqual(cold["costUSD"], 0.007)
+        self.assertEqual(cold["tokens"], 3400)
+        spend = envelope._local_spend_group([warm], "estimated", billing="subscription")
+        self.assertEqual(spend["costStatus"], "partial")
+        self.assertAlmostEqual(spend["totalUSD"], 0.007)
+
+    def test_skipped_generation_coverage_attaches_to_transcript_session(self):
+        path = self.database()
+        with closing(sqlite3.connect(path)) as connection, connection:
+            connection.execute("INSERT INTO gen_metadata VALUES (1, ?)", (b"x" * (4 * 1024 * 1024 + 1),))
+        transcript = self.home / ".gemini/antigravity-cli/brain" / SESSION / ".system_generated/logs/transcript.jsonl"
+        transcript.parent.mkdir(parents=True)
+        transcript.write_text('{"step_index":0,"type":"USER_INPUT","content":"Fixture title"}\n', encoding="utf-8")
+        catalog = {"google": {"gemini-test": {"input": 2, "output": 10, "cached": 0.5}}}
+        with mock.patch("tidesi.pricing.cached_catalog", return_value=catalog):
+            entry = sessions._antigravity_entries(include_all=True)[0]
+        self.assertEqual(entry["title"], "Fixture title")
+        self.assertEqual(entry["costStatus"], "partial")
+
     def test_rollout_and_effort_variants_take_the_public_model_rate(self):
         rates = {"claude-opus-4-6": {}, "gemini-3.7-flash": {}, "gemini-3-flash-preview": {}, "gemini-3.1-pro-preview": {}}
         cases = {
