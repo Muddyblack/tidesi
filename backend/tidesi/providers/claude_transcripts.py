@@ -18,6 +18,7 @@ import tempfile
 import time
 
 from .. import paths
+from .claude_credentials import claude_config_dir
 
 _CACHE_VERSION = 1
 _BUDGET_SECONDS = 8.0
@@ -155,7 +156,7 @@ def _build(stats, now, home, budget, through):
     """supplement(), limited to days up to ``through`` (YYYY-MM-DD) when given,
     and whether every transcript was read: the budget may cut it short."""
     stats = dict(stats) if isinstance(stats, dict) else {}
-    root = os.path.join(home or os.path.expanduser("~/.claude"), "projects")
+    root = os.path.join(home or claude_config_dir(), "projects")
     if not os.path.isdir(root):
         return stats, True
     now = now if now is not None else time.time()

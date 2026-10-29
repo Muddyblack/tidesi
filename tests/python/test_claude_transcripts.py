@@ -62,6 +62,24 @@ class ClaudeTranscriptsTest(unittest.TestCase):
         stats = {"lastComputedDate": "2026-09-20"}
         self.assertEqual(claude_transcripts.supplement(stats, home=os.path.join(self.home, "none")), stats)
 
+    def test_transcripts_follow_the_config_dir(self):
+        stats = {"lastComputedDate": "2026-09-20"}
+        with mock.patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": self.home}):
+            out = claude_transcripts.supplement(stats)
+        self.assertEqual(out["dailyActivity"][-1]["messageCount"], 2)
+
+    def test_transcripts_follow_a_config_dir_outside_home(self):
+        # The transcripts live only in the relocated dir; ~/.claude does not exist.
+        user = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, user, True)
+        config_dir = os.path.join(user, ".config", "claude-code")
+        shutil.copytree(self.home, config_dir)
+        stats = {"lastComputedDate": "2026-09-20"}
+        # expanduser reads HOME on POSIX and USERPROFILE on Windows.
+        with mock.patch.dict(os.environ, {"HOME": user, "USERPROFILE": user, "CLAUDE_CONFIG_DIR": config_dir}):
+            out = claude_transcripts.supplement(stats)
+        self.assertEqual(out["dailyActivity"][-1]["messageCount"], 2)
+
     def test_load_keeps_finished_days_in_the_widgets_own_file(self):
         legacy = {"lastComputedDate": "2026-09-20", "totalSessions": 5}
         now = 1792000000 + 3 * 86400  # a few days after the transcript's day
