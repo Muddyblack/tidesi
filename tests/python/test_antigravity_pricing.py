@@ -5,7 +5,7 @@ from unittest import mock
 from _support import IsolatedHomeTest
 from test_antigravity_usage import _field, _turn
 from tidesi import billing, envelope, session_cache, sessions
-from tidesi.providers import antigravity_sessions
+from tidesi.providers import antigravity_sessions, antigravity_usage
 from tidesi.session_manifest import SessionManifest, _antigravity_records
 
 SESSION = "11111111-1111-4111-8111-111111111111"
@@ -87,3 +87,28 @@ class AntigravityPricingTest(IsolatedHomeTest):
         self.assertAlmostEqual(entry["costUSD"], 0.007)
         self.assertEqual(entry["costStatus"], "partial")
         self.assertEqual(entry["tokens"], 3900)
+
+    def test_rollout_and_effort_variants_take_the_public_model_rate(self):
+        rates = {"claude-opus-4-6": {}, "gemini-3.7-flash": {}, "gemini-3-flash-preview": {}, "gemini-3.1-pro-preview": {}}
+        cases = {
+            "claude-opus-4-6-thinking": "claude-opus-4-6",
+            "gemini-3.7-flash-tiered": "gemini-3.7-flash",
+            "gemini-3p7-flash-exp-c": "gemini-3.7-flash",
+            "gemini-3-flash-a": "gemini-3-flash-preview",
+            "gemini-3.1-pro-low": "gemini-3.1-pro-preview",
+            "gemini-default": None,
+            "gemini-unpriced": None,
+        }
+        for model, public in cases.items():
+            with self.subTest(model=model):
+                self.assertEqual(antigravity_usage.price_model(model, rates), public)
+
+    def test_a_variant_id_is_priced_and_keeps_its_raw_name(self):
+        self.database("gemini-test-tiered")
+        catalog = {"google": {"gemini-test": {"input": 2, "output": 10, "cached": 0.5}}}
+        with mock.patch("tidesi.pricing.cached_catalog", return_value=catalog):
+            entry = sessions._antigravity_entries(include_all=True)[0]
+        self.assertAlmostEqual(entry["costUSD"], 0.007)
+        self.assertEqual(entry["costStatus"], "exact")
+        records = antigravity_sessions.read_recent_sessions(include_all=True)
+        self.assertEqual(records[0].usage[0].model, "gemini-test-tiered")

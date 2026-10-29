@@ -220,7 +220,11 @@ database, or a generation record over 4 MiB, is skipped on its own. Generation m
 new-input, cached-input, output, and reasoning token counts. Response IDs dedupe
 repeated generation records within a database. Missing model IDs are recovered
 only from unambiguous model/label associations in that same database; unknown
-IDs are never assigned a default model or price. Exact cached model rates yield
+IDs are never assigned a default model or price. Rollout and effort variants
+(`-thinking`, `-tiered`, `-low`/`-medium`/`-high`, `-exp-x`, a one-letter suffix,
+`3p7` for `3.7`) take the public model's rate only when stripping them lands on an
+exact catalog ID, with or without `-preview`; the raw ID is kept for display and
+`gemini-default` stays unpriced. Exact cached model rates yield
 `costProvenance: "estimated"` and `costBilling: "subscription"`; mixed coverage
 is partial. The protobuf field layout follows the independently documented
 [tokscale Antigravity reader](https://github.com/junhoyeo/tokscale/blob/39ecb83ab045a300c6f502f9c9319acf5c80e764/crates/tokscale-core/src/sessions/antigravity_cli.rs).

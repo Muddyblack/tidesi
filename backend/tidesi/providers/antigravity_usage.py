@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 import time
 from contextlib import closing
@@ -109,6 +110,38 @@ def _timestamp(message: _Message | None) -> int:
     if not isinstance(seconds, int) or not isinstance(nanos, int) or nanos >= 1_000_000_000 or seconds > 253402300799:
         return 0
     return seconds if seconds > 0 else 0
+
+
+# Antigravity reports rollout and effort variants of public models
+# ("claude-opus-4-6-thinking", "gemini-3.7-flash-tiered", "gemini-3-flash-a").
+# They are priced as the public model only when stripping these suffixes lands
+# on an exact catalog ID; anything else ("gemini-default") stays unpriced.
+_VARIANT_SUFFIX = re.compile(r"-(?:thinking|tiered|low|medium|high|exp-[a-z]|[a-z])$")
+
+
+def price_model(model: str, rates: dict) -> str | None:
+    """The catalog ID whose rate a raw Antigravity model ID carries, or None."""
+    candidate = re.sub(r"(\d)p(\d)", r"\1.\2", model)  # "gemini-3p7" is "gemini-3.7"
+    while True:
+        for name in (candidate, candidate + "-preview"):
+            if name in rates:
+                return name
+        stripped = _VARIANT_SUFFIX.sub("", candidate)
+        if stripped == candidate:
+            return None
+        candidate = stripped
+
+
+def with_price_aliases(rates: dict, buckets) -> dict:
+    """Copy of `rates` where each raw model ID also maps to its public model's rate."""
+    out = {provider: dict(provider_rates) for provider, provider_rates in rates.items()}
+    for bucket in buckets:
+        provider_rates = out.get(bucket.provider)
+        if provider_rates and bucket.model and bucket.model not in provider_rates:
+            public = price_model(bucket.model, provider_rates)
+            if public is not None:
+                provider_rates[bucket.model] = provider_rates[public]
+    return out
 
 
 def _provider(model: str) -> str:
