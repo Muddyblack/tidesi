@@ -4,7 +4,7 @@ from unittest import mock
 
 from _support import IsolatedHomeTest
 from test_opencode_costs import _assistant_message, _create_database
-from tidesi import session_manifest, sessions
+from tidesi import session_manifest, sessions, usage_cache
 from tidesi.normalize.opencode import normalize_opencode
 from tidesi.providers import opencode, opencode_usage_cache
 from tidesi.session_index import SkipSource
@@ -73,7 +73,7 @@ class OpenCodeStateTest(IsolatedHomeTest):
 
     def test_cache_write_failure_does_not_hide_successfully_collected_usage(self):
         self.modern_summary()
-        with mock.patch.object(opencode_usage_cache, "_write", side_effect=OSError("read-only cache")):
+        with mock.patch.object(usage_cache.tempfile, "mkstemp", side_effect=OSError("read-only cache")):
             records = opencode._read_database(self.database, include_all=True)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0].usage[0].output_tokens, 100)
@@ -81,7 +81,7 @@ class OpenCodeStateTest(IsolatedHomeTest):
     def test_cache_write_failure_preserves_incomplete_scan_signal(self):
         with (
             mock.patch.object(opencode, "_read_usage", side_effect=SkipSource("fixture timeout")),
-            mock.patch.object(opencode_usage_cache, "_write", side_effect=OSError("read-only cache")),
+            mock.patch.object(usage_cache.tempfile, "mkstemp", side_effect=OSError("read-only cache")),
         ):
             with self.assertRaises(SkipSource):
                 opencode._read_database(self.database, include_all=True)

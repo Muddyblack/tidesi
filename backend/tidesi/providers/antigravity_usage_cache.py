@@ -5,18 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import tempfile
 from pathlib import Path
 
-from .. import config
+from .. import config, usage_cache
 
 
 def parser_fingerprint(files: tuple[Path, ...]) -> str:
     """Hash parser sources once per root scan to invalidate stale summaries."""
-    digest = hashlib.sha256()
-    for path in files:
-        digest.update(path.read_bytes())
-    return digest.hexdigest()
+    return usage_cache.source_fingerprint(*files)
 
 
 def _cache_path(database: Path) -> Path:
@@ -27,15 +23,9 @@ def _cache_path(database: Path) -> Path:
 
 def signature(database: Path, parser: str) -> str | None:
     """Return a signature of parser version and DB/WAL filesystem state."""
-    states = []
-    for suffix in ("", "-wal"):
-        try:
-            stat = os.stat(str(database) + suffix)
-            states.append((stat.st_dev, stat.st_ino, stat.st_mtime_ns, stat.st_size))
-        except FileNotFoundError:
-            states.append(None)
-        except OSError:
-            return None
+    states = usage_cache.database_state(database)
+    if states is None:
+        return None
     return hashlib.sha256(json.dumps((parser, states)).encode()).hexdigest()
 
 
@@ -69,30 +59,7 @@ def load(database: Path, fingerprint: str, state: str) -> tuple[int, tuple[tuple
 
 def save(database: Path, fingerprint: str, state: str, activity: int, usage: tuple[tuple[str, str, int, int, int, int], ...]) -> None:
     """Atomically save aggregate counters without source or session identity."""
-    path = _cache_path(database)
-    temporary = ""
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor, temporary = tempfile.mkstemp(prefix=".antigravity-usage-", dir=str(path.parent))
-        os.chmod(temporary, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            json.dump(
-                {"fingerprint": fingerprint, "state": state, "last_activity": activity, "usage": usage},
-                stream,
-                separators=(",", ":"),
-                allow_nan=False,
-            )
-        os.replace(temporary, path)
-    except (OSError, TypeError, ValueError):
-        return
-    finally:
-        if temporary:
-            try:
-                os.unlink(temporary)
-            except FileNotFoundError:
-                pass
-            except OSError:
-                pass
+    usage_cache.write_private_json(_cache_path(database), {"fingerprint": fingerprint, "state": state, "last_activity": activity, "usage": usage})
 
 
 def prune(databases: list[Path]) -> None:

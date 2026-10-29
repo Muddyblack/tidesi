@@ -6,11 +6,10 @@ import hashlib
 import json
 import os
 import sqlite3
-import tempfile
 import time
 from pathlib import Path
 
-from .. import billing, config
+from .. import billing, config, usage_cache
 from ..session_index import SkipSource
 from . import opencode
 
@@ -21,15 +20,10 @@ def _hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8", errors="surrogatepass")).hexdigest()
 
 
-def _state(database: str, import_tables) -> str:
-    metadata = []
-    for suffix in ("", "-wal"):
-        try:
-            stat = os.stat(database + suffix)
-            metadata.append((stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
-        except FileNotFoundError:
-            metadata.append(None)
-    parser = hashlib.sha256(Path(opencode.__file__).read_bytes() + Path(__file__).read_bytes()).hexdigest()
+def _state(database: str, parser: str, import_tables) -> str:
+    metadata = usage_cache.database_state(database)
+    if metadata is None:
+        raise SkipSource("OpenCode usage scan incomplete: database unreadable")
     return _hash(json.dumps((parser, metadata, import_tables)))
 
 
@@ -42,33 +36,16 @@ def _signatures(connection: sqlite3.Connection, state: str, import_tables) -> di
     return {row[0]: state for row in connection.execute("SELECT id FROM session")}
 
 
-def _write(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = ""
-    try:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
-            temporary = stream.name
-            json.dump(payload, stream, allow_nan=False, separators=(",", ":"))
-        os.replace(temporary, path)
-    finally:
-        if temporary and os.path.exists(temporary):
-            os.unlink(temporary)
-
-
-def _save(path: Path, payload: dict) -> None:
-    try:
-        _write(path, payload)
-    except OSError:
-        return
-
-
 def read_usage(connection: sqlite3.Connection, database: str, session_ids: list[str], import_tables=()):
     deadline = time.monotonic() + opencode._ENRICH_TIMEOUT_SECONDS
     key = _hash(str(Path(database).resolve()) + json.dumps(import_tables))
     cache = Path(config.cache_dir()) / f"opencode-usage-{key}.json"
-    state = _state(database, import_tables)
+    source = usage_cache.source_fingerprint(opencode.__file__, __file__)
+    state = _state(database, source, import_tables)
     stat = os.stat(database)
-    parser = _hash(Path(opencode.__file__).read_text(encoding="utf-8") + Path(__file__).read_text(encoding="utf-8") + str((stat.st_dev, stat.st_ino)))
+    # Entries survive database writes (each session has its own signature), but
+    # not a parser change or a different file at the same path.
+    parser = _hash(source + str((stat.st_dev, stat.st_ino)))
     try:
         cached = json.loads(cache.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -113,5 +90,5 @@ def read_usage(connection: sqlite3.Connection, database: str, session_ids: list[
     finally:
         if changed:
             active = {_hash(session_id) for session_id in session_ids}
-            _save(cache, {"parser": parser, "entries": {key: entry for key, entry in entries.items() if key in active}})
+            usage_cache.write_private_json(cache, {"parser": parser, "entries": {key: entry for key, entry in entries.items() if key in active}})
     return result
