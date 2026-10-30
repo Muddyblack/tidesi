@@ -1895,41 +1895,41 @@ msgstr "Reste : %1%"
 
 #: ui/ZedUsageChart.qml
 msgid "Account-reported usage"
-msgstr ""
+msgstr "Utilisation rapportée par le compte"
 
 #: ui/ZedUsageChart.qml
 msgid "Included allowance unavailable"
-msgstr ""
+msgstr "Crédit inclus indisponible"
 
 #: ui/ZedUsageChart.qml
 msgid "Included allowance · $%1"
-msgstr ""
+msgstr "Crédit inclus · %1 $"
 
 #: ui/ZedUsageChart.qml
 msgid "Above included allowance"
-msgstr ""
+msgstr "Au-delà du crédit inclus"
 
 #: ui/ZedUsageChart.qml
 msgid "Included $0"
-msgstr ""
+msgstr "Crédit inclus : 0 $"
 
 #: ui/ZedUsageChart.qml
 msgid "Billed usage unavailable from the Zed account API"
-msgstr ""
+msgstr "Utilisation facturée indisponible dans l’API du compte Zed"
 
 #: ui/ZedUsageChart.qml
 msgid "Partial account-reported usage."
-msgstr ""
+msgstr "Utilisation partielle rapportée par le compte."
 
 #: ui/ZedUsageChart.qml
 msgid "Resets %1"
-msgstr ""
+msgstr "Réinitialisation le %1"
 
 #: ui/ZedUsageChart.qml
 msgid ""
 "Local Zed tokens are not priced because its internal billing model is "
 "unknown."
-msgstr ""
+msgstr "Les jetons Zed locaux ne sont pas tarifés, car son modèle de facturation interne est inconnu."
 
 #: translate/metadata-i18n.js
 msgid ""
@@ -3021,19 +3021,19 @@ msgstr "Outils Z.AI : %1 %"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Open Zed Usage to load account data"
-msgstr ""
+msgstr "Ouvrez l’utilisation de Zed pour charger les données du compte"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Zed: quota credential access is currently unsupported on Windows"
-msgstr ""
+msgstr "Zed : l’accès aux identifiants de quota n’est actuellement pas pris en charge sous Windows"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Zed: sign in to the Zed editor first"
-msgstr ""
+msgstr "Zed : connectez-vous d’abord à l’éditeur"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Zed: %1"
-msgstr ""
+msgstr "Zed : %1"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Edit predictions"
@@ -3045,7 +3045,7 @@ msgstr "Illimité"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Zed: no usage figures in the account response"
-msgstr ""
+msgstr "Zed : aucune donnée d’utilisation dans la réponse du compte"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Overdue invoices on this account — check your Zed billing page."
@@ -3056,7 +3056,7 @@ msgstr ""
 msgid ""
 "Uses the Zed editor's login on Linux and macOS. Windows quota credential "
 "access is currently unsupported."
-msgstr ""
+msgstr "Utilise la session de l’éditeur Zed sous Linux et macOS. L’accès aux identifiants de quota n’est actuellement pas pris en charge sous Windows."
 
 #: backend/tidesi/providers/antigravity.py
 msgid "antigravity-usage"
