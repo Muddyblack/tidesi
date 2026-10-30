@@ -15,8 +15,8 @@ This document tracks the work needed to add deterministic, useful end-to-end (E2
 
 | Area | Verified current coverage | Remaining gap |
 |---|---|---|
-| Test infrastructure | `[x]` Python `unittest`, Node tests, shell tests, fixture data, and discovery-based CI exist. Initial harness tests are in `tests/python/test_e2e_harness.py`; the local target is `make test-e2e`. | `[ ]` Coverage is an initial slice; feature workflows, populated UI coverage, and the provider matrix remain incomplete. |
-| Provider tests | `[x]` Provider-focused tests and JSON fixtures exist. Initial real HTTP pipeline cases now cover DeepSeek and opt-in Muse quota. | `[ ]` `fetch_json(..., fixture_path=...)` still returns before constructing a `urllib.request.Request` or calling `urlopen`; fixture-based collector tests do not prove the real request path. Audit the remaining provider paths. |
+| Test infrastructure | `[x]` Python `unittest`, Node tests, shell tests, fixture data, and discovery-based CI exist. The hermetic harness tests are in `tests/python/test_e2e_harness.py`; `make test-e2e` runs only E2E modules. | `[ ]` Core cross-feature workflows and populated UI coverage remain incomplete. |
+| Provider tests | `[x]` Every one of the 25 providers has at least one hermetic CLI-to-envelope E2E across loopback HTTP, local files, SQLite, response fixtures, or a fake CLI. Every selectable source mode also has an explicit E2E. | `[ ]` Some non-selectable provider-specific modes and cross-feature workflows remain. |
 | Desktop Qt/QML | `[x]` `tests/python/test_windows_app.py` loads the real app headlessly with providers disabled and checks for load warnings. | `[ ]` It does not exercise populated provider data and UI interactions through a real backend. |
 | Process-based QML | `[x]` `tests/python/test_command_backend.py` runs real `CommandBackend.qml` and `AppState.qml` with backend tools. | `[ ]` Extend seeded-data coverage where valuable; do not rebuild this harness unnecessarily. |
 | QML behavior | `[x]` `tests/python/test_theme_switch.py` exercises real QML behavior. | `[ ]` `tests/python/test_qml_backend_tokens.py` uses regex/source inspection for the session-text safety property; runtime delegate coverage remains a candidate improvement. |
@@ -48,7 +48,7 @@ Implementation: `tests/python/_e2e_harness.py`, with the child audit policy in `
 
 - [x] Provide isolated temporary `HOME`, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, and `XDG_CACHE_HOME` directories in child processes; keep the parent test environment unchanged.
 - [x] Provide a `ThreadingHTTPServer` bound to `127.0.0.1` on an ephemeral port. It records method, target, headers, and body, and supports status responses, malformed bodies, and a dropped connection.
-- [x] Add a narrow test transport seam: `fetch_json()` and Muse's remote direct-`urlopen()` request route through `route_e2e_url()` when explicit `TIDESI_E2E_HTTP_BASE` is set. Existing loopback URLs remain unchanged. Antigravity's direct requests are already loopback-only and will need their own seeded local-service case.
+- [x] Add a narrow test transport seam: `fetch_json()` and Muse's remote direct-`urlopen()` request route through `route_e2e_url()` when explicit `TIDESI_E2E_HTTP_BASE` is set. Existing loopback URLs remain unchanged. Antigravity's loopback-only language-server path has a seeded local-service E2E in `tests/python/test_e2e_source_modes_a.py`.
 - [x] Guard Python child processes against accidental non-loopback DNS/socket access (including UDP `sendmsg`) and untrusted native executable/credential-store launches. Bootstrap failure is fatal; persisted violations fail the parent even if application code catches the denial. Tests also reject unsafe Python startup options and critical environment mutations.
 - [x] Provide isolated child environments and a fake-CLI helper with POSIX executable and Windows wrapper support. Invocation has been verified on POSIX; the wrapper still needs Windows CI validation.
 - [x] Clean up accepted sockets, server workers, and temporary directories. Bound subprocess execution, output draining, and direct-child reaping; terminate ordinary descendants on success and timeout with POSIX process groups or a Windows Job Object.
@@ -60,22 +60,22 @@ Implementation: `tests/python/_e2e_harness.py`, with the child audit policy in `
 
 ### Phase 2 — Provider pipeline E2E
 
-Planned location: `tests/python/test_e2e_providers.py` (split into modules if it becomes difficult to navigate).
+Implemented across `tests/python/test_e2e_providers.py` and focused `tests/python/test_e2e_*providers.py` modules, split by I/O strategy and source mode.
 
 Exercise the real backend/CLI pipeline where applicable:
 
 `isolated credentials or local data → provider discovery/collector → HTTP, subprocess, SQLite, or files → normalizer → envelope/CLI output`
 
-- [ ] Add representative end-to-end cases for subprocess adapters, SQLite/file-ledger readers, and local-model discovery. HTTP API and HTTP POST cases are implemented for DeepSeek and Muse quota.
+- [x] Add representative end-to-end cases for subprocess adapters, SQLite/file-ledger readers, and local-model discovery. Provider/source references are in the coverage matrices below.
 - [x] Verify request method, target path, relevant headers, and body for the two initial loopback HTTP cases; broaden method/query coverage as providers are added.
-- [ ] Verify provider subprocess arguments and required stdin behavior for fake-CLI cases. The harness itself now verifies fake CLI path/argument handling.
-- [x] Verify the final envelope contract for the initial DeepSeek and Muse provider cases, not only intermediate provider dictionaries.
+- [x] Verify provider subprocess behavior through fake CLI boundaries. CodeRabbit asserts the exact `usage` argument; Copilot CLI verifies its seeded token reaches the loopback quota request.
+- [x] Verify the final envelope contract for provider/source E2Es, not only intermediate provider dictionaries.
 - [x] Add provider error-matrix cases for `401`, `403`, `429`, `500`, malformed JSON, and offline/connection errors. `DeepSeekProviderE2ETest` verifies each reaches the final envelope; provider-specific wording is asserted by contract suffix.
 - [ ] Verify one provider failure does not abort a multi-provider run.
 - [ ] Verify `--all --stream` emits partial records followed by a complete envelope.
 - [x] Check sentinel secrets in DeepSeek and Muse CLI output and generated cache/output directories while excluding credential inputs; the Muse case also requires its quota cache to be written. Expand coverage as providers/workflows are added.
-- [ ] Check local-model tests never issue generation/completion requests.
-- [ ] Keep optional and platform-specific provider paths explicitly marked; do not make a test depend on a host machine’s real CLI, database, Keychain, or credentials.
+- [x] Check local-model tests never issue generation/completion requests; Selfhosted asserts only the loopback version and model-list probes.
+- [x] Keep optional and platform-specific provider paths explicitly marked; Antigravity server process discovery and Zed Keychain limitations are documented in the coverage matrix.
 
 **Provider coverage matrix — full-pipeline E2E status**
 
@@ -83,33 +83,56 @@ For each row, fill in **I/O path**, **test reference**, **CI/platform**, and sta
 
 | Provider | Status | E2E test / notes |
 |---|---|---|
-| `claude` | Audit | |
-| `antigravity` | Audit | Include supported source modes where practical. |
-| `openai` | Audit | Map API, Codex, and subprocess modes separately if applicable. |
-| `kiro` | Audit | |
-| `mistral` | Audit | |
-| `openrouter` | Audit | |
-| `ollama` | Audit | |
-| `selfhosted` | Audit | Verify discovery/telemetry only; no generation request. |
-| `grok` | Audit | |
-| `zai` | Audit | |
-| `copilot` | Audit | Map HTTP and CLI/token paths separately if applicable. |
-| `deepseek` | Initial E2E | `tests/python/test_e2e_providers.py::DeepSeekProviderE2ETest` — credential file → real GET → envelope; covers HTTP errors, malformed JSON, and dropped connections. Other provider modes pending. |
-| `kimi` | Audit | |
-| `muse` | Initial E2E | `tests/python/test_e2e_providers.py::MuseQuotaProviderE2ETest` — opt-in direct POST → SSE quota → envelope; other modes pending. |
-| `cursor` | Audit | Include RPC request-body validation. |
-| `cline` | Audit | |
-| `opencode` | Audit | Map API and local-database modes separately if applicable. |
-| `mimo` | Audit | |
-| `junie` | Audit | |
-| `jetbrains` | Audit | |
-| `windsurf` | Audit | |
-| `pi` | Audit | |
-| `kilo` | Audit | |
-| `coderabbit` | Audit | |
-| `zed` | Audit | Mark platform constraints explicitly. |
+| `claude` | Initial E2E | `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_claude_oauth_token_reaches_usage_api_and_envelope` — isolated OAuth credential → loopback GET → envelope. |
+| `antigravity` | Initial E2E | `tests/python/test_e2e_uncovered_providers.py::RemainingProviderE2ETest.test_antigravity_fake_agy_report_reaches_envelope` — fake `agy --usage` response → normalized quota; all selectable source modes are listed below. |
+| `openai` | Initial E2E | Organization usage: `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_openai_organization_key_reaches_usage_api_and_envelope`. Codex plan: `tests/python/test_e2e_source_modes_c.py::OpenAICodexModeE2ETest.test_codex_login_and_rate_limits_reach_openai_envelope`. |
+| `kiro` | Initial E2E | CLI login → regional HTTP: `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_kiro_cli_login_reaches_usage_limits_and_envelope`; IDE snapshot mode is listed below. |
+| `mistral` | Initial E2E | `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_mistral_api_key_reaches_models_api_and_envelope` — API key → loopback models request → envelope. |
+| `openrouter` | Initial E2E | `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_openrouter_key_and_balance_requests_reach_envelope` — validates both key and credits requests. |
+| `ollama` | Initial E2E | API-key account balance: `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_ollama_cloud_key_reaches_balance_api_and_envelope`; OpenCode-stored login mode is listed below. |
+| `selfhosted` | Initial E2E | `tests/python/test_e2e_uncovered_providers.py::RemainingProviderE2ETest.test_selfhosted_ollama_probe_uses_loopback_and_no_generation` — loopback Ollama version/model probes; no generation request. |
+| `grok` | Initial E2E | `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_grok_oauth_token_reaches_billing_api_and_envelope` — isolated OAuth data and loopback billing flow. |
+| `zai` | Initial E2E | `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_zai_token_reaches_quota_api_and_envelope` — token → loopback quota request → envelope. |
+| `copilot` | Initial E2E | API token: `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_copilot_token_reaches_internal_quota_api_and_envelope`; editor and GitHub CLI login modes are listed below. |
+| `deepseek` | Initial E2E | `tests/python/test_e2e_providers.py::DeepSeekProviderE2ETest` — credential file → real GET → envelope; covers HTTP errors, malformed JSON, and dropped connections. |
+| `kimi` | Initial E2E | `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_kimi_api_key_reaches_moonshot_balance_and_envelope` — key → loopback balance request → envelope. |
+| `muse` | Initial E2E | `tests/python/test_e2e_providers.py::MuseQuotaProviderE2ETest` — opt-in direct POST → SSE quota → envelope; default local-stats mode pending. |
+| `cursor` | Initial E2E | cursor-agent login → dashboard RPC: `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_cursor_agent_login_reaches_dashboard_and_envelope`; IDE database mode is listed below. |
+| `cline` | Initial E2E | `tests/python/test_e2e_local_providers.py::LocalProviderE2ETest.test_cline_session_file_reaches_cli_envelope` — isolated session record → envelope; status feed is seeded in cache. |
+| `opencode` | Initial E2E | `tests/python/test_e2e_uncovered_providers.py::RemainingProviderE2ETest.test_opencode_sqlite_session_reaches_cli_envelope` — isolated SQLite ledger → local usage envelope; Go account mode pending. |
+| `mimo` | Initial E2E | `tests/python/test_e2e_storage_providers.py::StorageProviderE2ETest.test_mimo_database_reaches_cli_envelope` — isolated SQLite ledger → envelope. |
+| `junie` | Initial E2E | `tests/python/test_e2e_local_providers.py::LocalProviderE2ETest.test_junie_event_log_reaches_cli_envelope` — isolated event ledger → envelope. |
+| `jetbrains` | Initial E2E | `tests/python/test_e2e_local_providers.py::LocalProviderE2ETest.test_jetbrains_quota_file_reaches_cli_envelope` — isolated quota XML → envelope. |
+| `windsurf` | Initial E2E | `tests/python/test_e2e_storage_providers.py::StorageProviderE2ETest.test_windsurf_state_database_reaches_cli_envelope` — isolated editor state DB → envelope. |
+| `pi` | Initial E2E | `tests/python/test_e2e_local_providers.py::LocalProviderE2ETest.test_pi_session_file_reaches_cli_envelope` — isolated session file → envelope. |
+| `kilo` | Initial E2E | API key → loopback tRPC: `tests/python/test_e2e_http_providers.py::HttpProviderE2ETest.test_kilo_api_key_reaches_trpc_and_envelope`; CLI login mode is listed below. |
+| `coderabbit` | Initial E2E | `tests/python/test_e2e_local_providers.py::LocalProviderE2ETest.test_coderabbit_report_cli_is_invoked_and_normalized` — fake executable argv/output → envelope. |
+| `zed` | Initial E2E | `tests/python/test_e2e_storage_providers.py::StorageProviderE2ETest.test_zed_response_fixture_reaches_cli_envelope` — explicit response-file boundary → envelope; native macOS Keychain path pending. |
 
 **Exit criteria:** All 25 providers have either a passing E2E case for their supported I/O path(s), or a documented platform/opt-in exception with existing focused tests retained. Avoid one enormous test that makes failures hard to localize.
+
+### Selectable provider source-mode E2E coverage
+
+Every source ID declared in `tidesi.sources._registry()` has an E2E that selects that source explicitly and verifies it became active. This covers all 14 selectable modes across the six multi-source providers. Antigravity's `server` mode scans the process table; it skips on platforms without `/proc` when optional `psutil` is not installed. Its mode runs through the real loopback API when process discovery is available.
+
+| Provider | Source | E2E reference |
+|---|---|---|
+| `antigravity` | `aiu` | `test_e2e_source_modes_a.py::ProviderSourceModeE2ETest.test_antigravity_aiu_cli_reaches_envelope` |
+| `antigravity` | `server` | `test_e2e_source_modes_a.py::ProviderSourceModeE2ETest.test_antigravity_server_reaches_envelope_over_loopback` |
+| `antigravity` | `agy` | `test_e2e_uncovered_providers.py::RemainingProviderE2ETest.test_antigravity_fake_agy_report_reaches_envelope` |
+| `cursor` | `cli` | `test_e2e_http_providers.py::HttpProviderE2ETest.test_cursor_agent_login_reaches_dashboard_and_envelope` |
+| `cursor` | `ide` | `test_e2e_source_modes_b.py::SourceModesE2ETest.test_cursor_ide_database_credential_reaches_request_and_envelope` |
+| `kiro` | `cli` | `test_e2e_http_providers.py::HttpProviderE2ETest.test_kiro_cli_login_reaches_usage_limits_and_envelope` |
+| `kiro` | `ide` | `test_e2e_source_modes_b.py::SourceModesE2ETest.test_kiro_ide_snapshot_reaches_envelope` |
+| `copilot` | `key` | `test_e2e_http_providers.py::HttpProviderE2ETest.test_copilot_token_reaches_internal_quota_api_and_envelope` |
+| `copilot` | `editor` | `test_e2e_source_modes_b.py::SourceModesE2ETest.test_copilot_editor_login_reaches_request_and_envelope` |
+| `copilot` | `cli` | `test_e2e_source_modes_b.py::SourceModesE2ETest.test_copilot_cli_gh_token_reaches_request_and_envelope` |
+| `kilo` | `key` | `test_e2e_http_providers.py::HttpProviderE2ETest.test_kilo_api_key_reaches_trpc_and_envelope` |
+| `kilo` | `cli` | `test_e2e_source_modes_a.py::ProviderSourceModeE2ETest.test_kilo_cli_login_reaches_envelope` |
+| `ollama` | `key` | `test_e2e_http_providers.py::HttpProviderE2ETest.test_ollama_cloud_key_reaches_balance_api_and_envelope` |
+| `ollama` | `opencode` | `test_e2e_source_modes_a.py::ProviderSourceModeE2ETest.test_ollama_opencode_login_reaches_envelope` |
+
+The OpenAI Codex plan path is not a selectable `sources._registry()` entry, but has its own CLI E2E in `test_e2e_source_modes_c.py::OpenAICodexModeE2ETest.test_codex_login_and_rate_limits_reach_openai_envelope`; it is tested separately from organization API usage.
 
 ### Phase 3 — Core feature workflow E2E
 
