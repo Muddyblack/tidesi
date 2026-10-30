@@ -13,6 +13,9 @@ function functions(file, root, extra = {}) {
     return root;
 }
 
+const order = fs.readFileSync(path.join(__dirname, "../ui/js/ProviderOrder.js"), "utf8").replace(/^\.pragma library/m, "");
+const ProviderOrder = vm.runInNewContext(`${order}; ({ sort, merge })`);
+
 function state() {
     let history = 0;
     const root = functions("ui/AppState.qml", {
@@ -21,7 +24,7 @@ function state() {
         settingsLoaded: true, settings: { lastTab: "openai" },
         activeId: "openai", lastProviderId: "openai", localSpend: { retained: true },
         updatedAt: 90, lastFetched: 91, publishTray() {},
-    }, { FeatureTabs: { enabledFeatureTabs: () => [] } });
+    }, { FeatureTabs: { enabledFeatureTabs: () => [] }, ProviderOrder });
     root.providerEnabled = (id) => id !== "opencode";
     root.providerById = (id) => root.providers.find((row) => row.id === id);
     root.publishTray = () => {};

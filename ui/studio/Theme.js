@@ -12,6 +12,8 @@ var line = "#14ffffff";
 var line2 = "#26ffffff";
 var card = "#0affffff";
 var sunk = "#33000000";
+// A row held above the others while it is dragged: near opaque so what is under it does not show through.
+var lifted = "#f2222a33";
 var hover = "#14ffffff";
 var navActive = "#1fffffff";
 var brand = "#4f9dde";
