@@ -21,7 +21,7 @@ Nix, install:
 | Node.js | `tests/shared-code.test.js` (skipped when `node` is missing) |
 | Qt 6 `qmllint`, `qmlformat` | QML lint and formatting |
 | `ruff` | `make lint-py` |
-| `pre-commit` + Nix | the git hooks — they run `qmlformat`/`qmllint` through `nix develop` |
+| `pre-commit` | the git hooks — they run `qmlformat`/`qmllint` and the catalog checks through `nix develop` if you have Nix, otherwise from your `PATH` (Qt tools and gettext) |
 
 Only if you work on that part:
 

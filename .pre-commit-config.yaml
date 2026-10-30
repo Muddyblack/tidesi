@@ -1,16 +1,18 @@
+# scripts/dev-tool.sh runs each tool from the Nix dev shell when Nix is installed,
+# and from your own PATH otherwise, so the hooks work with or without Nix.
 repos:
   - repo: local
     hooks:
       - id: qmlformat
         name: qmlformat
-        entry: nix develop --command qmlformat
+        entry: scripts/dev-tool.sh qmlformat
         args: ["-i"]
         language: system
         files: \.qml$
 
       - id: qmllint
         name: qmllint
-        entry: nix develop --command qmllint
+        entry: scripts/dev-tool.sh qmllint
         args: ["-E", "--unresolved-type", "info"]
         language: system
         files: \.qml$
@@ -20,7 +22,7 @@ repos:
       # fails once if it rewrote anything: stage the result and commit again.
       - id: i18n-catalogs
         name: i18n catalogs
-        entry: nix develop --command ./translate/Messages.sh
+        entry: scripts/dev-tool.sh ./translate/Messages.sh
         language: system
         pass_filenames: false
         files: \.(qml|js|py|sh)$
@@ -29,7 +31,7 @@ repos:
       # afterwards, including on commits that only change catalogs or config.
       - id: i18n-complete
         name: i18n catalogs complete
-        entry: nix develop --command ./translate/check.sh
+        entry: scripts/dev-tool.sh ./translate/check.sh
         language: system
         pass_filenames: false
         always_run: true
