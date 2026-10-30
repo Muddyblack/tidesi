@@ -42,8 +42,8 @@ or Auto, which follows the system appearance.
 ## Python on macOS
 
 macOS ships no Python anyone can rely on, so `tideSI.app` carries its own:
-PyInstaller freezes the app, Qt, PyObjC and the standard-library-only backend
-into one bundle (`hosts/macos/tidesi.spec`). The terminal frontend
+PyInstaller freezes the app, Qt, PyObjC, the backend and its zstandard runtime
+dependency into one bundle (`hosts/macos/tidesi.spec`). The terminal frontend
 (`tidesi-cli`) is a separate matter: it is a shell script that needs a
 Python of its own (`brew install python`).
 

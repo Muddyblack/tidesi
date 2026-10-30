@@ -68,7 +68,7 @@ to `AUTO_DETECT_PROVIDERS` and its stat-only probe is implemented and tested.
 
 These providers are in `ALL_PROVIDERS` but are intentionally not detected:
 
-`openrouter`, `ollama`, `selfhosted`, `zai`, `copilot`, `deepseek`, `kimi`, `jetbrains` (IDE installs are too varied for stat-only probes), and `zed` (untested, macOS only).
+`openrouter`, `ollama`, `selfhosted`, `zai`, `copilot`, `deepseek`, `kimi`, `jetbrains` (IDE installs are too varied for stat-only probes), and `zed` (a stored editor credential is not a reliable signal that the user wants quota collection).
 
 They require a user decision, an API key, an endpoint choice, or a credential
 source whose presence is not a sufficient local-use signal. Their tabs are

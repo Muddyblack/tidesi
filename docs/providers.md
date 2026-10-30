@@ -86,7 +86,10 @@ so no session is truncated at a fixed row count. Token-only estimates are
 strict: the local provider and model strings must exactly match a provider and
 model key in the dynamic catalog. Aliases, normalized names, near matches, and
 metadata-only records do not produce estimates. Multi-provider sessions roll up per upstream
-provider (for example `ollama-cloud::opencode`).
+provider (for example `ollama-cloud::opencode`). Zed thread totals are shown in
+a separate token-only row marked **Cost unavailable**: Zed stores cumulative
+thread usage and one selected model, not a reliable per-request model ledger, so
+pricing the full history against that model would be misleading.
 
 ## Defaults and setup per provider
 
@@ -122,7 +125,7 @@ The local provider only reads health, model, slot, and metrics endpoints. It nev
 | Pi / OMP | Pi or OMP, run at least once. Nothing to configure |
 | Kilo | The `kilo` CLI login (`kilo auth login`), or a Kilo API key from widget settings or `$KILO_API_KEY` |
 | CodeRabbit | The `coderabbit` CLI, signed in |
-| Zed | macOS only: the Zed editor signed in. Untested; manual-only |
+| Zed quota | The Zed editor signed in; reads macOS Keychain or Linux Secret Service credentials. Live-verified on Linux; manual-only (Windows credential access unsupported) |
 
 All configuration is done in the widget's settings panel (right-click the widget
 → *Configure*).
@@ -325,7 +328,7 @@ The tab itself is off by default too: enable *Muse* in settings if you use Muse 
 ## Local sessions
 
 The optional Sessions tab (**Settings → Views**) lists recent local activity merged
-from Claude Code, Codex, Grok CLI, Cline, OpenCode, Antigravity and Muse: a redacted title
+from Claude Code, Codex, Grok CLI, Cline, OpenCode, Antigravity, Muse, Mistral Vibe, Cursor, MiMo Code, Junie and Zed Editor: a redacted title
 preview, the workspace/session name, active/idle state and recency only — source paths,
 raw session IDs, and transcript contents never leave the backend
 (`get-ai-usage --sessions`). Claude's title is a clipped opening-prompt preview; raw prompt
@@ -337,8 +340,9 @@ exact session in your terminal (`get-ai-usage --open-session <key>`, using each
 CLI's own resume flag: `claude --resume`, `codex resume`, `grok --resume`,
 `cline --id`, `opencode --session <id>`, `agy --conversation <id>`). The button spawns your `$TERMINAL`, falling back through
 ghostty/alacritty/kitty/wezterm/konsole/gnome-terminal/xfce4-terminal/xterm, and
-resumes headless in the background if none is found. **Muse has no button** — it
-ships no CLI binary here and documents no resume/continue flag, so its rows are
+resumes headless in the background if none is found. **Muse and Zed have no
+button** — Muse ships no CLI binary here and documents no resume/continue flag,
+and Zed documents no exact-thread resume command, so both sources are
 display-only.
 
 Antigravity CLI transcripts are read from
@@ -350,6 +354,22 @@ at a record larger than 256 KiB. Editor title reads are limited to 2,000 charact
 The Sessions tab displays up to 60 characters of the first user prompt or artifact
 heading as plain text. Listing these sessions makes no network requests; choosing
 Resume launches `agy`, which can use its own network connections.
+
+Zed Editor sessions are available on Linux, macOS, and Windows. The reader opens
+Zed's `threads/threads.db` read-only (including live SQLite WAL data), reads
+thread summaries, recency, a workspace basename, token totals, and the saved
+provider/model identity. Linux uses `$XDG_DATA_HOME/zed/threads/threads.db` (by
+default `~/.local/share/zed/threads/threads.db`); macOS uses
+`~/Library/Application Support/Zed/threads/threads.db`; Windows uses
+`%LOCALAPPDATA%/Zed/threads/threads.db`. Set `TIDESI_ZED_THREADS_DB` to override
+the database file path.
+
+Provider and model IDs are read dynamically, not enumerated in Tidesi. Zed's
+saved thread currently contains aggregate usage and one selected model, not a
+per-request model ledger, so token totals are shown but historical usage is not
+priced against that potentially newer model. Zed does not document an exact
+thread-resume command; its rows are display-only. The reader makes no network
+requests and does not expose raw IDs, absolute paths, or transcript contents.
 
 Search is backend-powered, not a client-side-only filter. The command
 `get-ai-usage --sessions --query <text>` searches all underlying session records
@@ -529,17 +549,42 @@ period reset date. CodeRabbit publishes a count, not a quota, so the tab shows
 meterless rows. The widget never handles a CodeRabbit key; the CLI makes its own
 request with its own login.
 
-## Zed *(untested)*
+## Zed
 
-On macOS the Zed editor keeps its sign-in as an internet-password item in the
-login Keychain (server `https://zed.dev`, or the `credentials_url` /
-`server_url` in `~/.config/zed/settings.json`; the account is the Zed user id).
-The widget reads it through `/usr/bin/security` and sends it to Zed's own cloud
-API (`GET /client/users/me`) the way the editor does, then shows the plan and the
-edit-prediction usage and the billing-period end. A custom server must use HTTPS.
-On Linux and Windows the login is in the system secret store, which this package
-has no safe way to read, so the tab explains that. Response field names are read
-defensively and the whole path is untested against a live account.
+The local Sessions source is separate from this account-quota provider. The
+Sessions source works on Linux, macOS, and Windows; the quota provider currently
+reads credentials on macOS and Linux and does not support Windows credential
+access. Linux credential lookup and the account response have been verified
+against a live account; macOS credential lookup has not been live-verified here.
+
+On macOS, Zed stores its sign-in as an internet-password item in the login
+Keychain. On Linux, it stores the login in Secret Service; the widget uses
+`secret-tool search --all --unlock url <server>` and selects the entry whose
+`attribute.url` matches the configured server. Linux may prompt to unlock the
+keyring, and `secret-tool` (libsecret) must be available. In both cases the user
+ID and access token are read from the editor's own credential and sent to Zed's
+cloud API (`GET /client/users/me`). The default server is `https://zed.dev`; a
+`credentials_url` or `server_url` in `~/.config/zed/settings.json` can select a
+custom server, which must use HTTPS. The current `/client/users/me` response
+provides plan, edit-prediction and model-request counts and billing-period
+boundaries, but no billed hosted-model consumption. The Usage graph therefore
+uses monetary usage only when Zed reports it through the account API; for the
+current response it shows consumption as unavailable, never a local estimate.
+Although Zed thread tokens and the selected model are stored locally, Zed's
+internal hosted-model pricing and billing adjustments are not known to tideSI.
+Applying the public API-rate catalog could misstate included-credit consumption
+or overage, so those local details are not used as dollars. The included plan
+allowance is displayed separately from consumed usage.
+
+The chart marks the documented included allowance: Student $10/month, Pro
+$5/month, and Free $0. Business and unknown plans have no assumed allowance.
+This allowance is derived from the account-reported plan and Zed's published
+plan entitlements; it is not a dollar amount returned by the API. If Zed reports
+billed usage in a future account response, the line changes color above that
+allowance. The existing edit-prediction quota rows remain separate.
+Account data is fetched when the Zed Usage tab is opened (or when panel
+rotation selects Zed); background refreshes reuse the last account snapshot and
+do not make a Zed request.
 
 Artwork: `jetbrains.svg` and `zed.svg` come from the
 [simple-icons](https://github.com/simple-icons/simple-icons) set (CC0), fetched
