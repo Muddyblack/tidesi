@@ -5,6 +5,7 @@ import tempfile
 import time
 import unittest
 from contextlib import closing
+from datetime import datetime, timezone
 from pathlib import Path
 
 from _e2e_harness import ChildProcess, LoopbackHTTPServer, LoopbackResponse, install_fake_cli
@@ -153,6 +154,72 @@ class StorageProviderE2ETest(unittest.TestCase):
         self.assertTrue(provider["ok"], provider["error"])
         self.assertEqual(provider["details"]["plan"], "Pro")
         self.assertEqual(provider["details"]["used"], 321)
+
+    def test_zed_threads_database_reaches_session_source_page(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            database = home / "xdg-data" / "zed" / "threads" / "threads.db"
+            database.parent.mkdir(parents=True)
+            updated = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            thread = {
+                "title": "Private thread title",
+                "updated_at": updated,
+                "cumulative_token_usage": {"input_tokens": 12, "output_tokens": 3},
+                "model": {"provider": "zed.dev", "model": "zed-session-fixture"},
+                "messages": [{"text": "PRIVATE_ZED_TRANSCRIPT"}],
+            }
+            with closing(sqlite3.connect(database)) as connection, connection:
+                connection.execute(
+                    "CREATE TABLE threads (id TEXT PRIMARY KEY, summary TEXT, updated_at TEXT, "
+                    "data_type TEXT, data BLOB, parent_id TEXT, folder_paths TEXT, "
+                    "folder_paths_order TEXT, created_at TEXT)"
+                )
+                connection.execute(
+                    "INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        "PRIVATE_ZED_SESSION_ID",
+                        "Zed E2E session",
+                        updated,
+                        "json",
+                        json.dumps(thread).encode("utf-8"),
+                        None,
+                        "/private/workspace/zed-project",
+                        "0",
+                        updated,
+                    ),
+                )
+            child = ChildProcess(home, extra_env={"TIDESI_ZED_THREADS_DB": str(database)})
+            cache = Path(child.env["TIDESI_CACHE_DIR"])
+            cache.mkdir(parents=True, exist_ok=True)
+            (cache / "pricing-models-v2.json").write_text(
+                json.dumps(
+                    {
+                        "version": 2,
+                        "source": "https://models.dev/api.json",
+                        "fetchedAt": time.time(),
+                        "checkedAt": time.time(),
+                        "providers": {},
+                        "error": "",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = child.run([sys.executable, "-m", "tidesi", "--sessions", "--source", "zed"])
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        response = json.loads(result.stdout)
+        self.assertEqual(response["total"], 1)
+        self.assertEqual(response["sources"], [{"id": "zed", "label": "Zed Editor"}])
+        session = response["sessions"][0]
+        self.assertEqual(session["provider"], "zed")
+        self.assertEqual(session["source"], "zed")
+        self.assertEqual(session["title"], "Zed E2E session")
+        self.assertEqual(session["sessionName"], "via Zed")
+        self.assertEqual(session["detail"], "zed-project")
+        self.assertEqual(session["tokens"], 15)
+        self.assertNotIn("PRIVATE_ZED_SESSION_ID", result.stdout)
+        self.assertNotIn("PRIVATE_ZED_TRANSCRIPT", result.stdout)
+        self.assertNotIn("/private/workspace", result.stdout)
 
 
 if __name__ == "__main__":
