@@ -16,10 +16,13 @@ function state() {
     };
     const backend = { firstRun: false, requestCatalog() {} };
     const FeatureTabs = { enabledFeatureTabs: () => [] };
-    for (const name of ["applyLoadedSettings", "applySnapshot", "applyLastSnapshot", "dropDisabledProviders"]) {
+    const order = fs.readFileSync(path.join(__dirname, "../ui/js/ProviderOrder.js"), "utf8").replace(/^\.pragma library/m, "");
+    const ProviderOrder = vm.runInNewContext(`${order}; ({ sort })`);
+    root.allProviders = [{ id: "cursor" }, { id: "ollama" }];
+    for (const name of ["applyLoadedSettings", "applySnapshot", "applyLastSnapshot", "syncProviders", "arrangeProviders"]) {
         const start = source.indexOf(`    function ${name}(`);
         const end = source.indexOf("\n    }", start);
-        root[name] = vm.runInNewContext(`(${source.slice(start, end + 6)})`, { root, backend, FeatureTabs });
+        root[name] = vm.runInNewContext(`(${source.slice(start, end + 6)})`, { root, backend, FeatureTabs, ProviderOrder });
     }
     root.providerEnabled = (id) => root.settings.providers[id] === true;
     root.providerById = (id) => root.providers.find((provider) => provider.id === id) || null;
@@ -56,4 +59,14 @@ test("settings changes remove disabled cards before a delayed refresh finishes",
     const body = source.slice(start, next).replace(/^\s*onSettingsChanged:\s*/, "");
     vm.runInNewContext(body, { root });
     assert.deepEqual(Array.from(root.providers, (provider) => provider.id), ["ollama"]);
+});
+
+test("providers follow the order the user arranged, in cached and live snapshots", () => {
+    const root = state();
+    root.settings = { providers: { cursor: true, ollama: true }, providerDefaultsApplied: true, providerOrder: ["ollama", "cursor"] };
+    root.settingsLoaded = true;
+    root.applySnapshot(snapshot);
+    assert.deepEqual(Array.from(root.providers, (provider) => provider.id), ["ollama", "cursor"]);
+    root.applySnapshot(JSON.stringify({ partial: true, providers: [{ id: "cursor", fresh: true }] }));
+    assert.deepEqual(Array.from(root.providers, (provider) => provider.id), ["ollama", "cursor"]);
 });

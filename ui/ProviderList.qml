@@ -3,12 +3,14 @@ import "theme" as Appearance
 import "studio"
 import "studio/Theme.js" as Theme
 import "js/Tone.js" as Tone
+import "js/ProviderOrder.js" as ProviderOrder
 import "js/ProviderSources.js" as ProviderSources
 
 // The providers that are switched on, each with how it is being read, and the
 // way to add another: Settings → Providers. A long list of switches does not
 // scale to a couple of dozen providers; this shows only what is in use, and
-// puts the rest behind a search.
+// puts the rest behind a search. Drag a row by its grip to change the order the
+// providers are listed in here and in the popup.
 Column {
     id: list
 
@@ -19,9 +21,19 @@ Column {
     signal opened(string id)
 
     // Local Models has a page of its own (Settings → Local Models).
-    readonly property var rows: ProviderSources.added((list.shell.allProviders || []).filter(function (p) {
+    readonly property var rows: list.shell.arrangeProviders(ProviderSources.added((list.shell.allProviders || []).filter(function (p) {
         return p.id !== "selfhosted";
-    }), list.shell.providerEnabled)
+    }), list.shell.providerEnabled))
+    readonly property real rowHeight: 56
+    // The row being dragged and the place it would land, or -1 while none is.
+    property int dragFrom: -1
+    property int dragTo: -1
+
+    function moveRow(from, to) {
+        list.shell.setProviderOrder(ProviderOrder.move(list.rows.map(function (p) {
+            return p.id;
+        }), from, to));
+    }
 
     width: parent ? parent.width : implicitWidth
     spacing: 12
@@ -82,13 +94,25 @@ Column {
                 required property int index
 
                 width: parent.width
-                height: 56
+                height: list.rowHeight
+                z: grip.dragging ? 1 : 0
+                transform: Translate {
+                    y: grip.offset
+                }
 
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 8
+                    visible: grip.dragging
+                    color: Tone.c(Appearance.Palette, Theme.lifted)
+                    border.width: 1
+                    border.color: Tone.c(Appearance.Palette, Theme.line2)
+                }
                 Rectangle {
                     width: parent.width
                     height: 1
                     color: Tone.c(Appearance.Palette, Theme.line)
-                    visible: row.index > 0
+                    visible: row.index > 0 && !grip.dragging
                 }
                 MouseArea {
                     id: rowArea
@@ -98,9 +122,37 @@ Column {
                     onClicked: list.opened(row.modelData.id)
                 }
 
+                StudioReorderHandle {
+                    id: grip
+                    anchors.verticalCenter: parent.verticalCenter
+                    index: row.index
+                    count: list.rows.length
+                    rowHeight: list.rowHeight
+                    onMoved: (from, to) => list.moveRow(from, to)
+                    onDraggingChanged: {
+                        list.dragFrom = dragging ? row.index : -1;
+                        list.dragTo = dragging ? target : -1;
+                    }
+                    onTargetChanged: {
+                        if (dragging)
+                            list.dragTo = target;
+                    }
+                }
+                // Where the dragged row will land: on the near edge of the row it
+                // would take the place of.
+                Rectangle {
+                    readonly property bool above: list.dragTo < list.dragFrom
+                    visible: list.dragFrom !== -1 && list.dragTo !== list.dragFrom && row.index === list.dragTo
+                    x: 0
+                    y: above ? -height / 2 : parent.height - height / 2
+                    width: parent.width
+                    height: 3
+                    radius: 1.5
+                    color: Tone.c(Appearance.Palette, Theme.brand)
+                }
                 ProviderBadge {
                     id: badge
-                    x: 0
+                    x: grip.width + 8
                     anchors.verticalCenter: parent.verticalCenter
                     provider: row.modelData
                     shell: list.shell

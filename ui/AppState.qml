@@ -1,6 +1,7 @@
 import QtQuick
 import "theme" as Appearance
 import QtCore
+import "js/ProviderOrder.js" as ProviderOrder
 import "js/ProviderRegistry.js" as ProviderRegistry
 import "js/ProviderSources.js" as ProviderSources
 import "js/Format.js" as Format
@@ -168,7 +169,7 @@ Item {
     readonly property int popupWidth: showSettings ? 760 : 460
     onSettingsChanged: {
         if (root.settingsLoaded)
-            root.dropDisabledProviders();
+            root.syncProviders();
         root.publishTray();
     }
     readonly property string antigravityChartFilter: root.settings.antigravityChartFilter || "both"
@@ -207,7 +208,7 @@ Item {
         } catch (e) {}
         root.settings = root.normalizeSettings(d);
         root.settingsLoaded = true;
-        root.dropDisabledProviders();
+        root.syncProviders();
         if (root.pendingLastSnapshot !== "") {
             var pending = root.pendingLastSnapshot;
             root.pendingLastSnapshot = "";
@@ -270,12 +271,22 @@ Item {
         return ProviderRegistry.enabled(root.settings, id);
     }
 
+    // `list` in the order the user arranged (Settings → Providers).
+    function arrangeProviders(list) {
+        return ProviderOrder.sort(list, root.settings.providerOrder, root.allProviders);
+    }
+
     // Snapshots (cached or live) can still carry a provider the user has since
-    // turned off; keep only the configured ones.
-    function dropDisabledProviders() {
-        root.providers = root.providers.filter(function (provider) {
+    // turned off; keep only the configured ones, in the user's order.
+    function syncProviders() {
+        root.providers = root.arrangeProviders(root.providers.filter(function (provider) {
             return root.providerEnabled(provider.id);
-        });
+        }));
+    }
+
+    // Save `ids`, the providers on screen, as the order to list them in.
+    function setProviderOrder(ids) {
+        root.setSetting2("providerOrder", ProviderOrder.merge(root.settings.providerOrder, ids));
     }
 
     // ── Provider sources ─────────────────────────────────────────────────────
@@ -804,12 +815,7 @@ Item {
                     else
                         merged[index] = provider;
                 });
-                var order = root.allProviders.map(function (provider) {
-                    return provider.id;
-                });
-                root.providers = merged.sort(function (left, right) {
-                    return order.indexOf(left.id) - order.indexOf(right.id);
-                });
+                root.providers = root.arrangeProviders(merged);
                 if (data.recordHistory !== undefined && incoming.some(function (provider) {
                     return provider.id === "zed";
                 }))
@@ -820,7 +826,7 @@ Item {
                 root.updatedAt = data.updatedAt || 0;
             }
             if (root.settingsLoaded)
-                root.dropDisabledProviders();
+                root.syncProviders();
             var fallback = root.providerById(data.active) ? data.active : (root.providers[0] || {}).id || "";
             // Seed (or heal, if the remembered one got disabled) the pill's
             // fallback provider — needed even before the user ever leaves a
