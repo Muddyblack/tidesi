@@ -112,6 +112,8 @@ def _windows_credential_login(server):
         from ctypes import wintypes
     except (ImportError, ValueError):
         return "", ""
+    if not hasattr(ctypes, "WinDLL"):
+        return "", ""
 
     class Credential(ctypes.Structure):
         _fields_ = [
