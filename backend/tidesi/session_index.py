@@ -6,6 +6,7 @@ import datetime
 import hashlib
 import json
 import math
+import re
 import sqlite3
 import time
 from collections.abc import Iterable, Mapping, Sequence
@@ -38,6 +39,7 @@ SOURCE_REGISTRY: Final = (
     ("mistral", "Mistral"),
     ("cursor", "Cursor"),
     ("junie", "Junie"),
+    ("zed", "Zed Editor"),
 )
 
 
@@ -71,6 +73,7 @@ class SessionRow(_SessionRowCore, total=False):
     costProvenance: str
     costBreakdown: dict
     billingProvider: str
+    billingModel: str
     providerCosts: dict
     costBilling: str
     tokens: int
@@ -154,6 +157,9 @@ def _redact(rows: Sequence[Mapping[str, Any]]) -> list[SessionRow]:
         billing_provider = row.get("billingProvider")
         if isinstance(billing_provider, str) and billing_provider:
             entry["billingProvider"] = billing_provider
+        billing_model = row.get("billingModel")
+        if isinstance(billing_model, str) and billing_model and len(billing_model) <= 256 and all(char.isprintable() for char in billing_model):
+            entry["billingModel"] = billing_model
         cost_billing = row.get("costBilling")
         if cost_billing in ("subscription", "api"):
             entry["costBilling"] = cost_billing
@@ -178,7 +184,7 @@ def _row_from_columns(row: Sequence[Any]) -> SessionRow:
     Column order must match every ``SELECT ... FROM session_rows`` above:
     provider, title, session_name, state, last_activity_at, detail, open_key,
     full_title, source, cost_usd, cost_status, cost_provenance, cost_breakdown,
-    billing_provider, provider_costs, cost_billing, tokens.
+    billing_provider, provider_costs, cost_billing, tokens, billing_model.
     """
     entry: SessionRow = {
         "provider": _text(row[0]),
@@ -212,6 +218,8 @@ def _row_from_columns(row: Sequence[Any]) -> SessionRow:
         entry["providerCosts"] = provider_costs
     if len(row) > 16 and row[16]:
         entry["tokens"] = int(row[16])
+    if len(row) > 17 and isinstance(row[17], str) and row[17] and len(row[17]) <= 256 and all(char.isprintable() for char in row[17]):
+        entry["billingModel"] = row[17]
     return entry
 
 
@@ -244,7 +252,9 @@ def _local_contribution(provider, cost, status, provenance, source, billing_prov
         return None
     if cost is None:
         return None
-    rollup_provider = billing_provider if source in ("opencode", "mimo") and isinstance(billing_provider, str) and billing_provider else provider
+    rollup_provider = provider
+    if source in ("opencode", "mimo", "zed") and isinstance(billing_provider, str) and billing_provider:
+        rollup_provider = billing_provider
     rollup_source = source.strip().lower() if isinstance(source, str) and source.strip() else ""
     rollup = f"{rollup_provider}::{rollup_source}" if rollup_source else rollup_provider
     return rollup, cost, status
@@ -323,6 +333,47 @@ def _session_date(session):
         return datetime.datetime.fromtimestamp(activity).strftime("%Y-%m-%d")
     except (OverflowError, OSError, ValueError):
         return ""
+
+
+def usage_only_groups(rows):
+    """Aggregate unpriced tokens by source and any stored routing identity."""
+    totals: dict[str, float] = {}
+    daily: dict[str, dict[str, float]] = {}
+    metadata: dict[str, dict[str, str]] = {}
+    for session in rows:
+        if not isinstance(session, Mapping) or session.get("costStatus") in ("exact", "partial"):
+            continue
+        tokens = finite_number(session.get("tokens"), minimum=0)
+        if tokens is None or tokens <= 0:
+            continue
+        source = session.get("source") or session.get("provider")
+        if not isinstance(source, str) or not source.strip():
+            continue
+        source = source.strip().lower()
+        identity = source
+        if source in ("opencode", "mimo", "zed"):
+            upstream = session.get("billingProvider")
+            if isinstance(upstream, str) and upstream.strip():
+                upstream = upstream.strip().lower()
+                if len(upstream) <= 64 and re.fullmatch(r"[a-z0-9._-]+", upstream):
+                    identity = f"{upstream}::{source}"
+                    metadata[identity] = {"provider": upstream, "source": source}
+        totals[identity] = totals.get(identity, 0) + tokens
+        day = _session_date(session)
+        if day:
+            per_day = daily.setdefault(identity, {})
+            per_day[day] = per_day.get(day, 0) + tokens
+
+    return {
+        "providers": {
+            identity: {
+                "tokens": int(total),
+                "dailyTokens": [{"date": day, "total": int(amount)} for day, amount in sorted(daily.get(identity, {}).items())],
+                **metadata.get(identity, {}),
+            }
+            for identity, total in totals.items()
+        }
+    }
 
 
 def _row_cost_groups(row, provenance=None):
@@ -552,7 +603,8 @@ class SessionIndex:
                         "title, session_name, state, last_activity_at, detail, "
                         "open_key, full_title, source, cost_usd, cost_status, "
                         "cost_provenance, cost_breakdown, billing_provider, "
-                        "provider_costs, cost_billing, tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "provider_costs, cost_billing, tokens, billing_model) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (
                             (
                                 key,
@@ -574,6 +626,7 @@ class SessionIndex:
                                 _json_or_none(row.get("providerCosts")),
                                 row.get("costBilling", "api"),
                                 int(row.get("tokens") or 0),
+                                row.get("billingModel", ""),
                             )
                             for row_order, row in enumerate(rows)
                         ),
@@ -608,7 +661,7 @@ class SessionIndex:
                 "session_rows.open_key, session_rows.full_title, session_rows.source, "
                 "session_rows.cost_usd, session_rows.cost_status, session_rows.cost_provenance, "
                 "session_rows.cost_breakdown, session_rows.billing_provider, session_rows.provider_costs, "
-                "session_rows.cost_billing, session_rows.tokens "
+                "session_rows.cost_billing, session_rows.tokens, session_rows.billing_model "
                 "FROM session_rows "
                 "LEFT JOIN source_meta ON source_meta.source_key = session_rows.source_key "
                 "ORDER BY source_meta.source_order, session_rows.row_order"
@@ -641,6 +694,30 @@ class SessionIndex:
         finally:
             connection.close()
         return _spend_groups_from_rows(rows)
+
+    def usage_groups(self) -> dict:
+        """Read token-only sessions for Usage & Spend without pricing them."""
+        connection = self._open()
+        try:
+            rows = connection.execute(
+                "SELECT provider, source, billing_provider, billing_model, last_activity_at, tokens "
+                "FROM session_rows WHERE tokens > 0 "
+                "AND (cost_status IS NULL OR cost_status NOT IN ('exact', 'partial'))"
+            ).fetchall()
+        finally:
+            connection.close()
+        sessions = [
+            {
+                "provider": provider,
+                "source": source,
+                "billingProvider": billing_provider,
+                "billingModel": billing_model,
+                "lastActivityAt": activity,
+                "tokens": tokens,
+            }
+            for provider, source, billing_provider, billing_model, activity, tokens in rows
+        ]
+        return usage_only_groups(sessions)
 
     def query(
         self,
@@ -676,7 +753,7 @@ class SessionIndex:
                 "session_rows.open_key, session_rows.full_title, session_rows.source, "
                 "session_rows.cost_usd, session_rows.cost_status, session_rows.cost_provenance, "
                 "session_rows.cost_breakdown, session_rows.billing_provider, session_rows.provider_costs, "
-                "session_rows.cost_billing, session_rows.tokens "
+                "session_rows.cost_billing, session_rows.tokens, session_rows.billing_model "
                 "FROM session_rows "
                 "LEFT JOIN source_meta ON source_meta.source_key = session_rows.source_key" + where + " ORDER BY session_rows.last_activity_at DESC, "
                 "source_meta.source_order ASC, session_rows.row_order ASC LIMIT ? OFFSET ?",

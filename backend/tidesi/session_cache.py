@@ -118,6 +118,15 @@ class SessionCache:
         except (OSError, sqlite3.Error):
             return None
 
+    def usage_groups(self) -> dict:
+        """Token-only session totals for Usage & Spend, separate from costs."""
+        if not self._had_cache:
+            return {"providers": {}}
+        try:
+            return self._index.usage_groups()
+        except (OSError, sqlite3.Error):
+            return {"providers": {}}
+
     def refresh(self, collect: Collector, collect_source: SourceCollector | None = None) -> list[SessionRow] | None:
         """Reconcile the index per source, returning direct rows only when the
         index itself cannot be used.

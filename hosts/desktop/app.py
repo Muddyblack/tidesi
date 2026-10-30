@@ -158,13 +158,16 @@ def open_session_json(key):
             _restore_environ(saved)
 
 
-def collect_snapshot(*, on_provider=None):
+def collect_snapshot(*, on_provider=None, provider_ids=None):
     if _DEMO_ENVELOPE is not None:
         return _DEMO_ENVELOPE
     with _env_lock:
         saved = dict(os.environ)
         try:
-            result = snapshot() if on_provider is None else snapshot(on_provider=on_provider)
+            if provider_ids is not None:
+                result = snapshot(provider_ids=provider_ids)
+            else:
+                result = snapshot() if on_provider is None else snapshot(on_provider=on_provider)
             # The last good answer, replayed (marked stale) on the next start.
             with contextlib.suppress(OSError, ValueError):
                 widget_state.save_snapshot(result)
@@ -519,6 +522,7 @@ class Backend(QObject):
     # notifications are published by slots on this object's GUI thread.
     _refreshCompleted = Signal(str, str)
     _providerCompleted = Signal(str)
+    _zedRefreshCompleted = Signal(str)
     _sessionsCompleted = Signal(str, str, str, int)
     _openSessionCompleted = Signal(str)
     _historyCompleted = Signal(str, str)
@@ -530,6 +534,8 @@ class Backend(QObject):
         super().__init__()
         self._pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="tidesi")
         self._busy = False
+        self._zed_refresh_busy = False
+        self._zed_refresh_pending = False
         self._pricing_busy = False
         self._sessions_request_id = 0
         self._sessions_future = None
@@ -539,6 +545,7 @@ class Backend(QObject):
         self._tray_labels = {}
         self._refreshCompleted.connect(self._finish_refresh, Qt.QueuedConnection)
         self._providerCompleted.connect(self.providerReady, Qt.QueuedConnection)
+        self._zedRefreshCompleted.connect(self._finish_zed_refresh, Qt.QueuedConnection)
         self._sessionsCompleted.connect(self._finish_sessions, Qt.QueuedConnection)
         self._openSessionCompleted.connect(self.openSessionFinished, Qt.QueuedConnection)
         self._historyCompleted.connect(self._finish_history, Qt.QueuedConnection)
@@ -564,6 +571,38 @@ class Backend(QObject):
         self._busy = True
         self.busyChanged.emit()
         self._pool.submit(self._refresh)
+
+    @Slot(str)
+    def refreshProvider(self, provider_id):
+        if provider_id != "zed":
+            return
+        if self._zed_refresh_busy:
+            self._zed_refresh_pending = True
+            return
+        self._zed_refresh_busy = True
+        self._pool.submit(self._refresh_zed_provider)
+
+    def _refresh_zed_provider(self):
+        try:
+            result = collect_snapshot(provider_ids=["zed"])
+            data = json.loads(result)
+            provider = next(provider for provider in data["providers"] if provider["id"] == "zed")
+            update = envelope.provider_update(provider)
+            update["recordHistory"] = provider.get("ok") is True
+            payload = json.dumps(update, separators=(",", ":"), ensure_ascii=False)
+        except (OSError, ValueError, KeyError, StopIteration) as exc:
+            update = envelope.provider_update(envelope.crashed("zed", time.time(), exc))
+            update["recordHistory"] = False
+            payload = json.dumps(update)
+        self._zedRefreshCompleted.emit(payload)
+
+    @Slot(str)
+    def _finish_zed_refresh(self, payload):
+        self._zed_refresh_busy = False
+        self.providerReady.emit(payload)
+        if self._zed_refresh_pending:
+            self._zed_refresh_pending = False
+            QTimer.singleShot(0, lambda: self.refreshProvider("zed"))
 
     def _refresh(self):
         try:

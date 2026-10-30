@@ -1758,6 +1758,44 @@ msgstr ""
 msgid "Rest: %1%"
 msgstr ""
 
+#: ui/ZedUsageChart.qml
+msgid "Account-reported usage"
+msgstr ""
+
+#: ui/ZedUsageChart.qml
+msgid "Included allowance unavailable"
+msgstr ""
+
+#: ui/ZedUsageChart.qml
+msgid "Included allowance · $%1"
+msgstr ""
+
+#: ui/ZedUsageChart.qml
+msgid "Above included allowance"
+msgstr ""
+
+#: ui/ZedUsageChart.qml
+msgid "Included $0"
+msgstr ""
+
+#: ui/ZedUsageChart.qml
+msgid "Billed usage unavailable from the Zed account API"
+msgstr ""
+
+#: ui/ZedUsageChart.qml
+msgid "Partial account-reported usage."
+msgstr ""
+
+#: ui/ZedUsageChart.qml
+msgid "Resets %1"
+msgstr ""
+
+#: ui/ZedUsageChart.qml
+msgid ""
+"Local Zed tokens are not priced because its internal billing model is "
+"unknown."
+msgstr ""
+
 #: translate/metadata-i18n.js
 msgid ""
 "Multi-service AI quota tracker with cost breakdown (Claude, Antigravity, "
@@ -2807,15 +2845,19 @@ msgid "Z.AI tools: %1%"
 msgstr ""
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed (untested): the editor login can only be read on macOS"
+msgid "Open Zed Usage to load account data"
 msgstr ""
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed (untested): sign in to the Zed editor first"
+msgid "Zed: quota credential access is currently unsupported on Windows"
 msgstr ""
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed (untested): %1"
+msgid "Zed: sign in to the Zed editor first"
+msgstr ""
+
+#: backend/tidesi/normalize/zed.py
+msgid "Zed: %1"
 msgstr ""
 
 #: backend/tidesi/normalize/zed.py
@@ -2827,7 +2869,7 @@ msgid "Unlimited"
 msgstr ""
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed (untested): no usage figures in the account response"
+msgid "Zed: no usage figures in the account response"
 msgstr ""
 
 #: backend/tidesi/normalize/zed.py
@@ -2836,8 +2878,8 @@ msgstr ""
 
 #: backend/tidesi/normalize/zed.py
 msgid ""
-"Read with the Zed editor's own login from the macOS Keychain. Untested "
-"against a live account."
+"Uses the Zed editor's login on Linux and macOS. Windows quota credential "
+"access is currently unsupported."
 msgstr ""
 
 #: backend/tidesi/providers/antigravity.py

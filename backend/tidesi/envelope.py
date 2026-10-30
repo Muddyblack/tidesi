@@ -12,7 +12,7 @@ from . import config
 from .collect import collect
 from .contract import SCHEMA_VERSION, provider_error, status_summary
 from .normalize import normalize
-from .session_index import _accumulate_group, _row_cost_groups
+from .session_index import _accumulate_group, _row_cost_groups, usage_only_groups
 
 # Name and accent for a provider whose fetch raised — the ones its normalizer
 # uses, which never runs in that case.
@@ -59,10 +59,14 @@ def _local_spend():
     try:
         from .session_cache import SessionCache
 
-        groups = SessionCache().spend_groups()
+        cache = SessionCache()
+        groups = cache.spend_groups()
+        usage = cache.usage_groups()
     except Exception:  # noqa: BLE001  # noqa: BROAD_EXCEPT_OK
         groups = None
+        usage = {"providers": {}}
     if groups is not None:
+        groups["usageOnly"] = usage
         return groups
     from .sessions import all_session_rows
 
@@ -82,6 +86,7 @@ def _local_spend():
         # two above: a Pro/Max or ChatGPT plan already paid for it.
         "subscription": _local_spend_group(sessions, "estimated", billing="subscription"),
         "subscriptionActual": _local_spend_group(sessions, "actual", billing="subscription"),
+        "usageOnly": usage_only_groups(sessions),
     }
 
 
@@ -107,13 +112,23 @@ def provider_update(provider):
     }
 
 
-def build(selected, now=None, *, on_provider=None):
+def build(selected, now=None, *, on_provider=None, deferred_provider_ids=()):
     """Fetch every id in `selected` concurrently and return a full envelope."""
     if now is None:
         now = time.time()
+    deferred = frozenset(deferred_provider_ids)
 
     def fetch_one(id_):
+        if id_ in deferred:
+            from . import widget_state
+
+            cached = widget_state.last_snapshot()
+            for provider in cached.get("providers", ()):
+                if provider.get("id") == id_:
+                    return {**provider, "stale": True}
         try:
+            if id_ == "zed" and id_ not in deferred:
+                return normalize(collect(id_, now, refresh_zed=True))
             return normalize(collect(id_, now))
         except Exception as exc:  # noqa: BLE001  # noqa: BROAD_EXCEPT_OK
             return crashed(id_, now, exc)

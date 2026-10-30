@@ -28,7 +28,7 @@ import QtQuick
 //               requestLastSnapshot(),
 //               requestLanguages(), initializeProviderDefaults(),
 //               detectProviders(), refresh(), refreshPricing(),
-//               requestRates(query, limit, offset, requestId),
+//               requestRates(query, limit, offset, requestId), refreshProvider(id),
 //               refreshSessions(query, requestId, offset[, sourceIds]),
 //               refreshSessionsAndQuery(query, requestId, offset[, sourceIds]),
 //               openSession(key), history(op, payload),
@@ -68,11 +68,16 @@ QtObject {
     property bool busy: false
     property bool pricingBusy: false
     property bool refreshPending: false
+    property bool zedRefreshBusy: false
+    property bool zedRefreshPending: false
     property bool settingsSaveBlocked: false
     property QtObject settingsQueue: ProcessQueue {
         runner: root.runner
-        onIdle: if (root.refreshPending)
-            root.refresh()
+        onIdle: {
+            if (root.refreshPending)
+                root.refresh();
+            root.runPendingZedRefresh();
+        }
     }
     property QtObject historyQueue: ProcessQueue {
         runner: root.runner
@@ -226,8 +231,56 @@ QtObject {
             root.busy = false;
             if (root.refreshPending)
                 root.refresh();
+            root.runPendingZedRefresh();
         }, function (line) {
             consume(line, true);
+        });
+    }
+
+    function refreshProvider(providerId) {
+        if (providerId !== "zed")
+            return;
+        if (root.zedRefreshBusy || root.busy || root.settingsQueue.busy || root.settingsSaveBlocked) {
+            root.zedRefreshPending = true;
+            return;
+        }
+        root.zedRefreshBusy = true;
+        root.runner.run(root.backendArgs(["--provider", providerId, "--save-snapshot"]), function (out, err, code) {
+            if (code === 0) {
+                try {
+                    var data = JSON.parse((out || "").trim());
+                    var provider = (data.providers || []).filter(function (item) {
+                        return item.id === providerId;
+                    })[0];
+                    if (provider) {
+                        root.providerReady(JSON.stringify({
+                            schemaVersion: data.schemaVersion,
+                            partial: true,
+                            recordHistory: provider.ok === true,
+                            updatedAt: data.updatedAt || provider.updatedAt || 0,
+                            active: providerId,
+                            providers: [provider]
+                        }));
+                    } else {
+                        root.refreshFailed("Zed usage backend returned no provider data");
+                    }
+                } catch (e) {
+                    root.refreshFailed("Zed usage backend returned invalid data");
+                }
+            } else {
+                root.refreshFailed(root.firstLine(err) || "Zed usage backend failed");
+            }
+            root.zedRefreshBusy = false;
+            root.runPendingZedRefresh();
+        });
+    }
+
+    function runPendingZedRefresh() {
+        if (!root.zedRefreshPending || root.zedRefreshBusy || root.busy || root.settingsQueue.busy || root.settingsSaveBlocked)
+            return;
+        root.zedRefreshPending = false;
+        Qt.callLater(function () {
+            root.refreshProvider("zed");
         });
     }
 

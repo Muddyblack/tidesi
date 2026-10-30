@@ -24,6 +24,7 @@ _CONTENT_SOURCES: Final = (
     "pricing.py",  # the rates that cost is computed against
     "billing_mode.py",  # metered vs. plan-covered
     "session_index.py",  # how rows are stored and read back
+    "session_index_storage.py",  # cache schema and invalidation behavior
 )
 _CONTENT_PACKAGES: Final = ("providers",)
 
@@ -126,6 +127,7 @@ def _ensure_schema(connection: sqlite3.Connection, *, discard_stale: bool = Fals
         "provider_costs TEXT, "
         "cost_billing TEXT NOT NULL DEFAULT 'api', "
         "tokens INTEGER NOT NULL DEFAULT 0, "
+        "billing_model TEXT NOT NULL DEFAULT '', "
         "PRIMARY KEY (source_key, row_order))"
     )
     connection.execute("CREATE INDEX IF NOT EXISTS idx_session_rows_activity ON session_rows (last_activity_at DESC)")
@@ -162,6 +164,7 @@ def _ensure_schema(connection: sqlite3.Connection, *, discard_stale: bool = Fals
             "provider_costs",
             "cost_billing",
             "tokens",
+            "billing_model",
         },
         "session_cost_groups": {
             "source_key",

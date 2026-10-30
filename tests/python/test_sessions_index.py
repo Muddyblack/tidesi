@@ -104,7 +104,7 @@ class SessionIndexTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             cache = root / "sessions.sqlite3"
-            source_ids = ("antigravity", "openai", "cline", "opencode", "claude")
+            source_ids = ("antigravity", "openai", "cline", "opencode", "claude", "zed")
             sources = [_source(root, f"{source_id}.jsonl", source_id, index + 1) for index, source_id in enumerate(source_ids)]
 
             def parse(source: Source) -> list[Row]:
@@ -132,6 +132,7 @@ class SessionIndexTest(unittest.TestCase):
                 {"id": "claude", "label": "Claude Code"},
                 {"id": "opencode", "label": "OpenCode"},
                 {"id": "antigravity", "label": "Antigravity"},
+                {"id": "zed", "label": "Zed Editor"},
             ],
         )
         self.assertEqual([row["provider"] for row in result["sessions"]], ["openai"])
@@ -478,6 +479,75 @@ class ContributionTableTest(unittest.TestCase):
 
         self.assertEqual(groups["actual"]["totalUSD"], 0.42)
         self.assertEqual(groups["actual"]["providers"]["opencode::opencode"]["costUSD"], 0.42)
+
+    def test_zed_local_tokens_do_not_become_spend_without_account_reported_billing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _source(root, "zed.db", "zed")
+            index = _index_class()(root / "sessions.sqlite3")
+            index.reconcile(
+                [source],
+                self._cost_parser(
+                    [
+                        {
+                            "provider": "zed",
+                            "source": "zed",
+                            "billingProvider": "openai",
+                            "billingModel": "gpt-6-luna",
+                            "tokens": 1234,
+                            "costStatus": "unavailable",
+                            "lastActivityAt": 1_789_046_340,
+                        }
+                    ]
+                ),
+            )
+            groups = index.spend_groups()
+            usage = index.usage_groups()
+
+        for group_name in ("actual", "estimated", "subscription", "subscriptionActual"):
+            self.assertFalse(groups[group_name].get("providers"))
+        row = usage["providers"]["openai::zed"]
+        self.assertEqual(row["tokens"], 1234)
+        self.assertEqual(row["provider"], "openai")
+        self.assertEqual(row["source"], "zed")
+
+    def test_usage_groups_include_unpriced_tokens_without_recounting_costed_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _source(root, "zed.db", "zed")
+            index = _index_class()(root / "sessions.sqlite3")
+            index.reconcile(
+                [source],
+                self._cost_parser(
+                    [
+                        {
+                            "provider": "zed",
+                            "source": "zed",
+                            "billingProvider": "zed.dev",
+                            "billingModel": "gpt-6-luna",
+                            "tokens": 1234,
+                            "costStatus": "unavailable",
+                            "lastActivityAt": 1_789_046_340,
+                        },
+                        {
+                            "provider": "zed",
+                            "source": "zed",
+                            "tokens": 500,
+                            "costUSD": 0.25,
+                            "costStatus": "exact",
+                            "costProvenance": "estimated",
+                            "lastActivityAt": 1_789_046_340,
+                        },
+                    ]
+                ),
+            )
+            usage = index.usage_groups()
+
+        rollup = usage["providers"]["zed.dev::zed"]
+        self.assertEqual(rollup["tokens"], 1234)
+        self.assertEqual(rollup["provider"], "zed.dev")
+        self.assertNotIn("model", rollup)
+        self.assertEqual(sum(point["total"] for point in rollup["dailyTokens"]), 1234)
 
     def test_removed_source_drops_its_contributions(self):
         with tempfile.TemporaryDirectory() as directory:

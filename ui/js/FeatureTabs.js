@@ -103,7 +103,8 @@ function localSourceLabel(source) {
         grok: "Grok CLI",
         "grok-cli": "Grok CLI",
         muse: "Muse",
-        antigravity: "Antigravity"
+        antigravity: "Antigravity",
+        zed: "Zed Editor"
     };
     if (labels[key] !== undefined)
         return labels[key];
@@ -125,6 +126,7 @@ function upstreamProviderLabel(provider) {
         zenmux: "ZenMux",
         opencode: "OpenCode Zen",
         "opencode-go": "OpenCode Go",
+        "zed.dev": "Zed",
     };
     return labels[localSourceKey(provider)] || localSourceLabel(provider);
 }
@@ -157,14 +159,16 @@ function providerAccent(provider) {
         pi: "#d4d4d8",
         kilo: "#f4e04d",
         coderabbit: "#ff7a3d",
-        zed: "#e6e6e6"
+        zed: "#e6e6e6",
+        "zed.dev": "#e6e6e6"
     };
     var key = localSourceKey(provider);
     return colors[key] || "#34d399";
 }
 
 function localSpendNote(provenance, costStatus, source) {
-    var prefix = source === "mimo" ? "via MiMo Code" : source === "opencode" ? "via OpenCode" : "local CLI logs";
+    var prefix = source === "mimo" ? "via MiMo Code" : source === "opencode" ? "via OpenCode" : source === "zed" ? "via Zed" : "local CLI logs";
+    var attribution = source === "zed" ? " · saved thread model, not request-level" : "";
     var notes = {
         "legacy:exact": prefix + " · complete",
         "legacy:partial": prefix + " · partial",
@@ -175,14 +179,15 @@ function localSpendNote(provenance, costStatus, source) {
         "mixed:exact": prefix + " · mixed · complete",
         "mixed:partial": prefix + " · mixed · partial"
     };
-    return notes[provenance + ":" + costStatus] || prefix;
+    return (notes[provenance + ":" + costStatus] || prefix) + attribution;
 }
 
 // Plan-covered work: the figure is what the API would have charged, not money
 // owed, so its note has to say so rather than read like a bill.
 function planSpendNote(costStatus, source) {
-    var prefix = source === "mimo" ? "via MiMo Code" : source === "opencode" ? "via OpenCode" : "covered by plan";
-    return prefix + " · would cost on API" + (costStatus === "partial" ? " · partial" : "");
+    var prefix = source === "mimo" ? "via MiMo Code" : source === "opencode" ? "via OpenCode" : source === "zed" ? "via Zed" : "covered by plan";
+    var attribution = source === "zed" ? " · saved thread model, not request-level" : "";
+    return prefix + " · would cost on API" + (costStatus === "partial" ? " · partial" : "") + attribution;
 }
 
 function localProviderCost(group, source) {
@@ -247,9 +252,9 @@ function mergeDailySeries() {
 // provider's own dailySeries because that aggregate often covers a different,
 // much older span than the sessions do — plotting the two together drew a
 // token line that stopped exactly where the cost line started.
-function sessionDailyTokensByProvider(localSpend) {
+function sessionDailyTokensByProvider(localSpend, preserveSource) {
     var byProvider = {};
-    var groups = ["actual", "estimated", "subscription", "subscriptionActual"];
+    var groups = ["actual", "estimated", "subscription", "subscriptionActual", "usageOnly"];
     for (var g = 0; g < groups.length; g++) {
         var group = localSpend && localSpend[groups[g]];
         var providers = group && group.providers;
@@ -257,10 +262,11 @@ function sessionDailyTokensByProvider(localSpend) {
             continue;
         var keys = Object.keys(providers);
         for (var i = 0; i < keys.length; i++) {
-            var series = (providers[keys[i]] || {}).dailyTokens;
+            var usageEntry = providers[keys[i]] || {};
+            var series = usageEntry.dailyTokens;
             if (!series || !series.length)
                 continue;
-            var key = localProviderKey(keys[i]);
+            var key = preserveSource ? localSourceKey(keys[i]) : localProviderKey(keys[i]);
             var totals = byProvider[key] || (byProvider[key] = {});
             for (var j = 0; j < series.length; j++) {
                 var point = series[j] || {};
@@ -349,10 +355,10 @@ function dailyTokensByProvider(rawProviders) {
 
 function localSpendRows(localSpend, providerRows, rawProviders) {
     var statsTokens = dailyTokensByProvider(rawProviders);
-    var sessionTokens = sessionDailyTokensByProvider(localSpend);
-    function tokensFor(providerKey) {
-        var fromSessions = sessionTokens[providerKey];
-        return (fromSessions && fromSessions.length) ? fromSessions : (statsTokens[providerKey] || []);
+    var sessionTokens = sessionDailyTokensByProvider(localSpend, true);
+    function tokensFor(identity) {
+        var fromSessions = sessionTokens[identity];
+        return (fromSessions && fromSessions.length) ? fromSessions : (statsTokens[localProviderKey(identity)] || []);
     }
     var rows = [];
     var hasOpenCodeProvider = false;
@@ -405,7 +411,7 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
                 (estimated && estimated.status === "partial") ? "partial" : "exact";
         rows.push({
             id: "local-" + (source ? source + "-" : "") + providerKey,
-            label: (source === "opencode" || source === "mimo") ? upstreamProviderLabel(providerKey) : localSourceLabel(providerKey),
+            label: (source === "opencode" || source === "mimo" || source === "zed") ? upstreamProviderLabel(providerKey) : localSourceLabel(providerKey),
             cost: actualUSD + estimatedUSD,
             costAvailable: true,
             currency: "USD",
@@ -418,7 +424,7 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
             accent: providerAccent(providerKey),
             // Both halves of this row's own total, by day.
             dailyCost: mergeDailySeries(actual && actual.daily, estimated && estimated.daily),
-            dailyTokens: tokensFor(providerKey)
+            dailyTokens: tokensFor(sourceKey)
         });
     }
 
@@ -452,7 +458,7 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
                 (planActual && planActual.status === "partial") ? "partial" : "exact";
         rows.push({
             id: "plan-" + (planSource ? planSource + "-" : "") + planProviderKey,
-            label: (planSource === "opencode" || planSource === "mimo") ? upstreamProviderLabel(planProviderKey) : localSourceLabel(planProviderKey),
+            label: (planSource === "opencode" || planSource === "mimo" || planSource === "zed") ? upstreamProviderLabel(planProviderKey) : localSourceLabel(planProviderKey),
             cost: planCost,
             costAvailable: true,
             currency: "USD",
@@ -464,8 +470,50 @@ function localSpendRows(localSpend, providerRows, rawProviders) {
             costStatus: planStatus,
             accent: providerAccent(planProviderKey),
             dailyCost: mergeDailySeries(planActual && planActual.daily, planEstimated && planEstimated.daily),
-            dailyTokens: tokensFor(planProviderKey)
+            dailyTokens: tokensFor(planSourceKey)
         });
+    }
+
+    var usageProviders = localSpend && localSpend.usageOnly && localSpend.usageOnly.providers;
+    if (usageProviders) {
+        var usageIds = Object.keys(usageProviders);
+        for (var usageIndex = 0; usageIndex < usageIds.length; usageIndex++) {
+            var usageIdentity = usageIds[usageIndex];
+            var normalizedIdentity = localSourceKey(usageIdentity);
+            var usage = usageProviders[usageIdentity] || {};
+            var tokens = typeof usage.tokens === "number" && isFinite(usage.tokens) ? usage.tokens : 0;
+            if (!normalizedIdentity || !(tokens > 0))
+                continue;
+            var usageProvider = localSourceKey(usage.provider) || localProviderKey(normalizedIdentity);
+            var usageSource = localSourceKey(usage.source) || (normalizedIdentity.lastIndexOf("::") > 0 ? normalizedIdentity.slice(normalizedIdentity.lastIndexOf("::") + 2) : normalizedIdentity);
+            var isRouted = usageSource === "opencode" || usageSource === "mimo" || usageSource === "zed";
+            var alreadyVisible = rows.some(function (row) {
+                return (isRouted ? localProviderKey(row.id.replace(/^(local|plan)-[^-]+-/, "")) === usageProvider && localSourceKey(row.source) === usageSource
+                               : localSourceKey(row.source) === normalizedIdentity);
+            }) || (!isRouted && (providerRows || []).some(function (row) {
+                return row && row.id === normalizedIdentity;
+            }));
+            if (alreadyVisible)
+                continue;
+            var usageLabel = isRouted && (usage.provider || normalizedIdentity.indexOf("::") > 0)
+                ? upstreamProviderLabel(usageProvider) : localSourceLabel(usageIdentity);
+            var usageId = "session-usage-" + encodeURIComponent(usageIdentity);
+            rows.push({
+                id: usageId,
+                label: usageLabel,
+                cost: null,
+                costAvailable: false,
+                usageOnly: true,
+                currency: "USD",
+                note: isRouted ? "via " + localSourceLabel(usageSource) : "Cost unavailable",
+                tokens: tokens,
+                local: true,
+                source: usageSource,
+                accent: providerAccent(usageProvider),
+                dailyCost: [],
+                dailyTokens: usage.dailyTokens || []
+            });
+        }
     }
 
     if (rows.length === 0 && localSpend && !localSpend.actual && !localSpend.estimated &&

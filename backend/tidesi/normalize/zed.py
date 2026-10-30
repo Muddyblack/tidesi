@@ -21,12 +21,24 @@ def normalize_zed(raw):
     res = raw["inputs"].get("usage")
     res = res if isinstance(res, dict) else {}
 
+    if res.get("deferred"):
+        result = provider_base("zed", "Zed", ACCENT, now)
+        result["stale"] = True
+        result["summary"] = {"pct": 0, "text": "…", "detail": tr("Open Zed Usage to load account data"), "hasChart": False}
+        result["slots"] = [{"pct": 0, "color": ACCENT, "text": "…", "tooltip": tr("Open Zed Usage to load account data")}]
+        result["details"] = {
+            "available": False,
+            "deferred": True,
+            "agentUsage": {"available": False, "source": "account-api", "usedUSD": None, "includedUSD": None},
+        }
+        return result
+
     if res.get("unsupported"):
-        return provider_error("zed", "Zed", ACCENT, now, tr("Zed (untested): the editor login can only be read on macOS"), {"available": False})
+        return provider_error("zed", "Zed", ACCENT, now, tr("Zed: quota credential access is currently unsupported on Windows"), {"available": False})
     if not res:
-        return provider_error("zed", "Zed", ACCENT, now, tr("Zed (untested): sign in to the Zed editor first"), {"available": False})
+        return provider_error("zed", "Zed", ACCENT, now, tr("Zed: sign in to the Zed editor first"), {"available": False})
     if res.get("error") is not None:
-        return provider_error("zed", "Zed", ACCENT, now, tr("Zed (untested): %1", res["error"]), {"available": False})
+        return provider_error("zed", "Zed", ACCENT, now, tr("Zed: %1", res["error"]), {"available": False})
 
     plan = res.get("plan") or ""
     used, limit = res.get("used"), res.get("limit")
@@ -41,14 +53,12 @@ def normalize_zed(raw):
     elif unlimited:
         rows.append(flat_window("zed_predictions", tr("Edit predictions"), 0, reset_at, tr("Unlimited"), False))
     if not rows:
-        return provider_error(
-            "zed", "Zed", ACCENT, now, tr("Zed (untested): no usage figures in the account response"), {"available": False, "plan": plan}
-        )
+        return provider_error("zed", "Zed", ACCENT, now, tr("Zed: no usage figures in the account response"), {"available": False, "plan": plan})
     pct = rows[0]["pct"]
     r["summary"] = {
         "pct": pct,
         "text": f"{jround(pct)}%" if rows[0]["showMeter"] else "∞",
-        "detail": (plan + " · untested").strip(" ·"),
+        "detail": plan,
         "hasChart": rows[0]["showMeter"],
     }
     r["quotaWindows"] = rows
@@ -62,10 +72,12 @@ def normalize_zed(raw):
     ]
     r["sections"] = sections(
         note_section(tr("Overdue invoices on this account — check your Zed billing page.")) if res.get("overdue") else None,
-        note_section(tr("Read with the Zed editor's own login from the macOS Keychain. Untested against a live account.")),
+        note_section(tr("Uses the Zed editor's login on Linux and macOS. Windows quota credential access is currently unsupported.")),
     )
     if rows[0]["showMeter"]:
         r["chartWindows"] = monthly_window("zed", "zd", False)
         r["historyValues"] = {"zd": pct}
-    r["details"] = {"available": True, "plan": plan, "used": used, "limit": limit, "unlimited": unlimited, "resetAt": reset_at, "untested": True}
+    r["details"] = {"available": True, "plan": plan, "used": used, "limit": limit, "unlimited": unlimited, "resetAt": reset_at, "untested": False}
+    if isinstance(res.get("agentUsage"), dict):
+        r["details"]["agentUsage"] = res["agentUsage"]
     return r
