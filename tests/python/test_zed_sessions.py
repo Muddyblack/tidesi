@@ -88,8 +88,8 @@ class ZedSessionReaderTest(unittest.TestCase):
                 mock.patch.object(zed_sessions.paths, "IS_WINDOWS", False),
             ):
                 self.assertEqual(
-                    zed_sessions.discover_database_paths(),
-                    [str(home / "Library/Application Support/Zed/threads/threads.db")],
+                    [os.path.normcase(os.path.normpath(path)) for path in zed_sessions.discover_database_paths()],
+                    [os.path.normcase(os.path.normpath(str(home / "Library/Application Support/Zed/threads/threads.db")))],
                 )
 
             local = home / "AppData/Local"
