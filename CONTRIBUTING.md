@@ -111,8 +111,9 @@ The portable E2Es in `tests/python/test_e2e_*.py` run the real CLI/backend in
 isolated subprocesses, using loopback HTTP servers, temporary provider data, and
 fake executables instead of live vendor services. They cover at least one path
 for each of the 25 providers, every selectable source mode, the OpenAI Codex plan
-path, and Zed's Linux Secret Service credential path. Native macOS Keychain and
-Windows Credential Manager access are not exercised by these hermetic tests.
+path, Zed's Linux Secret Service credential path, and Zed's local Sessions
+database source. Native macOS Keychain and Windows Credential Manager access are
+not exercised by these hermetic tests.
 
 `tests/python/test_fixtures.py` replays the provider envelopes in `tests/fixtures/` through
 the in-process normalizers — success, missing credentials, malformed responses,
