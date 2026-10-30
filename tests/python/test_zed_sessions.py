@@ -76,14 +76,14 @@ class ZedSessionReaderTest(unittest.TestCase):
             home = Path(root)
             linux_data = home / "xdg-data"
             with (
-                mock.patch.dict(os.environ, {"HOME": root, "XDG_DATA_HOME": str(linux_data)}, clear=True),
+                mock.patch.dict(os.environ, {"HOME": root, "USERPROFILE": root, "XDG_DATA_HOME": str(linux_data)}, clear=True),
                 mock.patch.object(zed_sessions.paths, "IS_MACOS", False),
                 mock.patch.object(zed_sessions.paths, "IS_WINDOWS", False),
             ):
                 self.assertEqual(zed_sessions.discover_database_paths(), [str(linux_data / "zed/threads/threads.db")])
 
             with (
-                mock.patch.dict(os.environ, {"HOME": root, "XDG_DATA_HOME": str(linux_data)}, clear=True),
+                mock.patch.dict(os.environ, {"HOME": root, "USERPROFILE": root, "XDG_DATA_HOME": str(linux_data)}, clear=True),
                 mock.patch.object(zed_sessions.paths, "IS_MACOS", True),
                 mock.patch.object(zed_sessions.paths, "IS_WINDOWS", False),
             ):

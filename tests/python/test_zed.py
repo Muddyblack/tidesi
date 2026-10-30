@@ -1,5 +1,4 @@
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,22 +31,26 @@ class ZedLinuxCredentialsTest(unittest.TestCase):
         get_usage.assert_called_once_with(refresh=True)
 
     def test_secret_tool_attributes_on_stderr_are_read_with_the_matching_secret(self):
-        with tempfile.TemporaryDirectory() as directory:
-            executable = Path(directory) / "secret-tool"
-            executable.write_text(
-                f"#!{sys.executable}\n"
-                "import sys\n"
-                "print('[/org/freedesktop/secrets/item/zed]', flush=True)\n"
-                "print('secret = fixture-token', flush=True)\n"
-                "print('attribute.url = https://zed.dev', file=sys.stderr, flush=True)\n"
-                "print('attribute.username = 12345', file=sys.stderr, flush=True)\n",
-                encoding="utf-8",
+        output = "\n".join(
+            (
+                "[/org/freedesktop/secrets/item/zed]",
+                "secret = fixture-token",
+                "attribute.url = https://zed.dev",
+                "attribute.username = 12345",
             )
-            executable.chmod(0o700)
-            with mock.patch.object(zed.shutil, "which", return_value=str(executable)):
-                login = zed._secret_service_login("https://zed.dev")
+        )
+        with (
+            mock.patch.object(zed.shutil, "which", return_value="secret-tool"),
+            mock.patch.object(
+                zed.subprocess,
+                "run",
+                return_value=SimpleNamespace(returncode=0, stdout=output),
+            ) as run,
+        ):
+            login = zed._secret_service_login("https://zed.dev")
 
         self.assertEqual(login, ("12345", "fixture-token"))
+        self.assertIs(run.call_args.kwargs["stderr"], zed.subprocess.STDOUT)
 
     def test_linux_secret_service_login_fetches_account_quota(self):
         secret_output = """[/org/freedesktop/secrets/item/wrong]
