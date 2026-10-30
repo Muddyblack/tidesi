@@ -316,7 +316,7 @@ class ZedTest(IsolatedHomeTest):
         self.assertEqual(
             (result["quotaWindows"][0]["pct"], result["quotaWindows"][0]["resetAt"], result["account"]["chips"][0]["text"]), (6, 1793491200, "PRO")
         )
-        self.assertTrue(result["details"]["untested"])
+        self.assertFalse(result["details"]["untested"])
         unlimited = self.collect({"plan": {"plan_v3": "zed_pro", "usage": {"edit_predictions": {"used": 5, "limit": "unlimited"}}}})
         result = normalized("zed", unlimited)
         self.assertTrue(result["ok"])
@@ -325,7 +325,7 @@ class ZedTest(IsolatedHomeTest):
     def test_garbage_and_unsupported_platforms(self):
         self.assertEqual(self.collect({"nope": 1}), {"error": "unexpected response"})
         self.assertFalse(normalized("zed", {"error": "x"})["ok"])
-        with mock.patch.object(zed.paths, "IS_MACOS", False):
+        with mock.patch.object(zed.paths, "IS_MACOS", False), mock.patch.object(zed.paths, "IS_WINDOWS", True):
             self.assertEqual(zed.get_zed_usage(), {"unsupported": True})
         self.assertFalse(normalized("zed", {"unsupported": True})["ok"])
 
