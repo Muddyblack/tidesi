@@ -13,7 +13,7 @@ from unittest import mock
 import _support  # noqa: F401 — puts the backend package on sys.path
 from _support import seed_session_index
 from tidesi import config, envelope
-from tidesi.session_index import _accumulate_group, _row_cost_groups
+from tidesi.session_index import _accumulate_group, _row_cost_groups, usage_only_groups
 
 
 def _fallback_spend(sessions):
@@ -35,6 +35,7 @@ def _fallback_spend(sessions):
             (group[2:] for session in sessions for group in _row_cost_groups(session, "actual") if group[0] == "subscription"),
             "actual",
         ),
+        "usageOnly": usage_only_groups(sessions),
     }
 
 
