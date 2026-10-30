@@ -44,7 +44,7 @@ jobs:
   # themselves are the portable ones lint.yml already runs on Linux and
   # Windows; what this adds is a platform where paths.IS_MACOS is true.
   backend:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
 
@@ -71,7 +71,7 @@ jobs:
           "
 
   # One build per CPU: psutil ships no universal wheel, so a universal app
-  # would mean stitching two builds together. Apple Silicon on macos-14,
+  # would mean stitching two builds together. Apple Silicon on macos-15,
   # Intel on macos-15-intel (GitHub's last Intel image).
   app:
     strategy:
@@ -79,7 +79,7 @@ jobs:
       matrix:
         include:
           - arch: apple-silicon
-            runner: macos-14
+            runner: macos-15
           - arch: intel
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}

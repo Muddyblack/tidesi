@@ -142,7 +142,7 @@ host (`ui/js/I18n.js`); there is no separate macOS catalog.
 Each release has two builds: `tidesi-macos-<version>-apple-silicon.dmg`
 for M1 and later, and `tidesi-macos-<version>-intel.dmg` for Intel Macs
 (Apple menu → **About This Mac** says which). psutil ships no universal
-wheel, so CI builds each on its own runner (`macos-14`, `macos-15-intel`).
+wheel, so CI builds each on its own runner (`macos-15`, `macos-15-intel`).
 Download the right DMG, open it, and drag **tideSI.app** onto
 **Applications**. Eject the disk image and open the app from Applications.
 
