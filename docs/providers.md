@@ -125,7 +125,7 @@ The local provider only reads health, model, slot, and metrics endpoints. It nev
 | Pi / OMP | Pi or OMP, run at least once. Nothing to configure |
 | Kilo | The `kilo` CLI login (`kilo auth login`), or a Kilo API key from widget settings or `$KILO_API_KEY` |
 | CodeRabbit | The `coderabbit` CLI, signed in |
-| Zed quota | The Zed editor signed in; reads macOS Keychain or Linux Secret Service credentials. Live-verified on Linux; manual-only (Windows credential access unsupported) |
+| Zed quota | The Zed editor signed in; reads macOS Keychain, Linux Secret Service or Windows Credential Manager credentials. Live-verified on Linux only; macOS and Windows are untested against a live account |
 
 All configuration is done in the widget's settings panel (right-click the widget
 → *Configure*).

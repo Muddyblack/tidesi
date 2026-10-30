@@ -34,7 +34,7 @@ Switch between tabs in the popup for each service:
 [*] [b]Pi / OMP[/b] — Local token activity and model breakdowns from the agents' session files
 [*] [b]Kilo[/b] — Prepaid credit balance and Kilo Pass usage via an API key or the kilo CLI login
 [*] [b]CodeRabbit[/b] — Review count and reset date from the CodeRabbit CLI
-[*] [b]Zed[/b] — Local Agent thread tokens on Linux, macOS and Windows; separate plan/edit-prediction quota via macOS Keychain or Linux Secret Service (live-verified on Linux; Windows quota credential access currently unsupported); thread cost is unavailable without per-request model attribution
+[*] [b]Zed[/b] — Local Agent thread tokens on Linux, macOS and Windows; separate plan/edit-prediction quota via macOS Keychain, Linux Secret Service or Windows Credential Manager (live-verified on Linux only); thread cost is unavailable without per-request model attribution
 [*] [b]MiMo Code[/b] — Local token usage, model breakdowns, session history and recorded or estimated costs
 [*] [b]Ollama Cloud[/b] — Cloud usage windows, including weekly limits in the panel
 [*] [b]Local Models[/b] — Monitor Ollama, vLLM and llama.cpp servers, with automatic endpoint discovery and runtime or GPU metrics where available

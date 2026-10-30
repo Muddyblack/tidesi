@@ -2849,10 +2849,6 @@ msgid "Open Zed Usage to load account data"
 msgstr ""
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed: quota credential access is currently unsupported on Windows"
-msgstr ""
-
-#: backend/tidesi/normalize/zed.py
 msgid "Zed: sign in to the Zed editor first"
 msgstr ""
 
@@ -2878,8 +2874,8 @@ msgstr ""
 
 #: backend/tidesi/normalize/zed.py
 msgid ""
-"Uses the Zed editor's login on Linux and macOS. Windows quota credential "
-"access is currently unsupported."
+"Uses the Zed editor's login from the macOS Keychain, Linux Secret Service or "
+"Windows Credential Manager."
 msgstr ""
 
 #: backend/tidesi/providers/antigravity.py

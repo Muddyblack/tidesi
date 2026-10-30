@@ -33,8 +33,6 @@ def normalize_zed(raw):
         }
         return result
 
-    if res.get("unsupported"):
-        return provider_error("zed", "Zed", ACCENT, now, tr("Zed: quota credential access is currently unsupported on Windows"), {"available": False})
     if not res:
         return provider_error("zed", "Zed", ACCENT, now, tr("Zed: sign in to the Zed editor first"), {"available": False})
     if res.get("error") is not None:
@@ -72,7 +70,7 @@ def normalize_zed(raw):
     ]
     r["sections"] = sections(
         note_section(tr("Overdue invoices on this account — check your Zed billing page.")) if res.get("overdue") else None,
-        note_section(tr("Uses the Zed editor's login on Linux and macOS. Windows quota credential access is currently unsupported.")),
+        note_section(tr("Uses the Zed editor's login from the macOS Keychain, Linux Secret Service or Windows Credential Manager.")),
     )
     if rows[0]["showMeter"]:
         r["chartWindows"] = monthly_window("zed", "zd", False)

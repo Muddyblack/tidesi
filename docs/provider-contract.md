@@ -817,8 +817,8 @@ price even on subscription logins, so it is never presented as spend.
 `kilo` and `zed` make the vendor's own request with the vendor's own login (or
 an API key for `kilo`); `coderabbit` runs `coderabbit usage` and exposes only a
 review count in non-metered rows. `zed` carries `details.untested: false` after
-live Linux quota verification. macOS credential access is implemented; Windows
-quota credential access is currently unsupported. Local Zed sessions remain
+live Linux quota verification. macOS and Windows credential access are implemented but
+not live-verified. Local Zed sessions remain
 available on all three platforms.
 Zed's additive `details.agentUsage` is sourced only from the account API. Its
 shape contains `available`, `source` (`account-api`), nullable `usedUSD` and

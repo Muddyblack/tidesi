@@ -1,12 +1,12 @@
-"""Zed plan and edit-prediction usage (macOS/Linux; live-verified on Linux).
+"""Zed plan and edit-prediction usage (macOS/Linux/Windows; live-verified on Linux).
 
-The editor stores its sign-in in the macOS login Keychain or Linux Secret
-Service. The server is ``https://zed.dev`` (or ``server_url`` /
+The editor stores its sign-in in the macOS login Keychain, Linux Secret
+Service or Windows Credential Manager. The server is ``https://zed.dev`` (or ``server_url`` /
 ``credentials_url`` from ``settings.json``), the account is the Zed user id,
 and the secret is the access token. This provider reads the credential from the
 platform store and sends it to Zed's own cloud API, as the editor does. Linux
 uses ``secret-tool`` and may need the Secret Service keyring unlocked. Windows
-credential access is not supported. Response field names are read defensively;
+reads the Credential Manager entry named after the server URL. Response field names are read defensively;
 the plan block is ``plan.plan_v3`` / ``plan.usage.edit_predictions`` /
 ``plan.subscription_period``. This API reports plan/edit-prediction quota, not
 local model-token spend.
@@ -104,10 +104,57 @@ def _secret_service_login(server):
     return "", ""
 
 
+def _windows_credential_login(server):
+    """(user_id, access_token) from the Windows Credential Manager entry the
+    editor writes under the server URL as its target name, or ("", "")."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+    except (ImportError, ValueError):
+        return "", ""
+
+    class Credential(ctypes.Structure):
+        _fields_ = [
+            ("Flags", wintypes.DWORD),
+            ("Type", wintypes.DWORD),
+            ("TargetName", wintypes.LPWSTR),
+            ("Comment", wintypes.LPWSTR),
+            ("LastWritten", wintypes.FILETIME),
+            ("CredentialBlobSize", wintypes.DWORD),
+            ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
+            ("Persist", wintypes.DWORD),
+            ("AttributeCount", wintypes.DWORD),
+            ("Attributes", ctypes.c_void_p),
+            ("TargetAlias", wintypes.LPWSTR),
+            ("UserName", wintypes.LPWSTR),
+        ]
+
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    read = advapi32.CredReadW
+    read.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(ctypes.POINTER(Credential))]
+    read.restype = wintypes.BOOL
+    free = advapi32.CredFree
+    free.argtypes = [ctypes.c_void_p]
+    free.restype = None
+
+    pointer = ctypes.POINTER(Credential)()
+    if not read(server, 1, 0, ctypes.byref(pointer)):  # 1 = CRED_TYPE_GENERIC
+        return "", ""
+    try:
+        credential = pointer.contents
+        blob = ctypes.string_at(credential.CredentialBlob, credential.CredentialBlobSize) if credential.CredentialBlobSize else b""
+        user_id = credential.UserName or ""
+    finally:
+        free(pointer)
+    return user_id, blob.decode("utf-8", "replace")
+
+
 def _credential_store_login(server):
     """(user_id, access_token) from the platform credential store, or empty."""
+    if paths.IS_WINDOWS:
+        return _windows_credential_login(server)
     if not paths.IS_MACOS:
-        return _secret_service_login(server) if not paths.IS_WINDOWS else ("", "")
+        return _secret_service_login(server)
     try:
         done = subprocess.run(
             ["/usr/bin/security", "find-internet-password", "-s", server, "-g"],
@@ -170,8 +217,6 @@ def get_zed_usage(*, refresh=True):
     user_id, token = _credential_store_login(server)
     fixture = os.environ.get("ZED_USAGE_RESPONSE_FILE")
     if not fixture and not (user_id and token):
-        if paths.IS_WINDOWS:
-            return {"unsupported": True}
         return {}
     result = fetch_json(
         url,

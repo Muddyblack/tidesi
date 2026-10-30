@@ -147,19 +147,35 @@ attribute.username = 12345
         self.assertEqual(result, {})
         fetch.assert_not_called()
 
-    def test_windows_remains_explicitly_unsupported_without_credentials(self):
+    def test_windows_without_a_credential_asks_to_sign_in(self):
         with (
             mock.patch.object(zed, "_settings", return_value={}),
             mock.patch.object(zed.paths, "IS_MACOS", False),
             mock.patch.object(zed.paths, "IS_WINDOWS", True),
+            mock.patch.object(zed, "_windows_credential_login", return_value=("", "")) as login,
             mock.patch.object(zed, "fetch_json") as fetch,
         ):
             result = zed.get_zed_usage()
 
-        self.assertEqual(result, {"unsupported": True})
+        self.assertEqual(result, {})
+        login.assert_called_once_with("https://zed.dev")
         fetch.assert_not_called()
-        normalized = normalize_zed({"now": 1_800_000_000, "inputs": {"usage": result}})
-        self.assertIn("Windows", normalized["error"])
+
+    def test_windows_credential_is_sent_only_to_zed(self):
+        with (
+            mock.patch.object(zed, "_settings", return_value={}),
+            mock.patch.object(zed.paths, "IS_MACOS", False),
+            mock.patch.object(zed.paths, "IS_WINDOWS", True),
+            mock.patch.object(zed, "_windows_credential_login", return_value=("42", "tok")),
+            mock.patch.object(zed, "fetch_json", return_value=mock.Mock(status=200, body="{}")) as fetch,
+        ):
+            zed.get_zed_usage()
+
+        self.assertEqual(fetch.call_args.args[0], "https://cloud.zed.dev/client/users/me")
+        self.assertEqual(fetch.call_args.kwargs["headers"]["Authorization"], "42 tok")
+
+    def test_windows_credential_reader_is_empty_off_windows(self):
+        self.assertEqual(zed._windows_credential_login("https://zed.dev"), ("", ""))
 
     def test_verified_quota_response_is_not_marked_untested(self):
         result = normalize_zed(

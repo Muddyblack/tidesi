@@ -322,12 +322,9 @@ class ZedTest(IsolatedHomeTest):
         self.assertTrue(result["ok"])
         self.assertFalse(result["quotaWindows"][0]["showMeter"])
 
-    def test_garbage_and_unsupported_platforms(self):
+    def test_garbage_responses(self):
         self.assertEqual(self.collect({"nope": 1}), {"error": "unexpected response"})
         self.assertFalse(normalized("zed", {"error": "x"})["ok"])
-        with mock.patch.object(zed.paths, "IS_MACOS", False), mock.patch.object(zed.paths, "IS_WINDOWS", True):
-            self.assertEqual(zed.get_zed_usage(), {"unsupported": True})
-        self.assertFalse(normalized("zed", {"unsupported": True})["ok"])
 
     def test_custom_server_must_be_https(self):
         self.write(".config/zed/settings.json", '{"server_url": "http://zed.internal"}')

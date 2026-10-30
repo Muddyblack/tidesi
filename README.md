@@ -185,7 +185,7 @@ Also runs [on Hyprland](docs/hyprland.md), [on Windows](docs/windows.md), [on ma
 | Pi / OMP | Local token activity, model breakdowns and workspaces from the agents' session files | Local files only; spend is not shown (see below) |
 | Kilo | Prepaid credit balance and Kilo Pass period usage, via an API key or the `kilo` CLI login | Request shape from Kilo's web API; not yet verified against a live account |
 | CodeRabbit | Review count and reset date from `coderabbit usage` | Supported where the CLI is signed in; CodeRabbit publishes a count, not a quota |
-| Zed | Local Agent thread sessions on Linux, macOS, and Windows; separate plan/edit-prediction quota via macOS Keychain or Linux Secret Service | Sessions: token-only, no local dollar estimate because Zed's internal pricing and billing adjustments are unknown; account API reports no billed model usage |
+| Zed | Local Agent thread sessions on Linux, macOS, and Windows; separate plan/edit-prediction quota via macOS Keychain, Linux Secret Service or Windows Credential Manager | Sessions: token-only, no local dollar estimate because Zed's internal pricing and billing adjustments are unknown; account API reports no billed model usage |
 
 What each provider needs signed in, and what it reads, is in
 **[docs/providers.md](docs/providers.md)**.
