@@ -7,7 +7,7 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 
-from _e2e_harness import ChildProcess
+from _e2e_harness import ChildProcess, LoopbackHTTPServer, LoopbackResponse, install_fake_cli
 
 
 class StorageProviderE2ETest(unittest.TestCase):
@@ -105,6 +105,54 @@ class StorageProviderE2ETest(unittest.TestCase):
             row = self.invoke(home, "zed", {"ZED_USAGE_RESPONSE_FILE": str(response)})
         self.assertEqual(row["details"]["plan"], "Pro")
         self.assertEqual(row["details"]["used"], 321)
+
+    @unittest.skipUnless(sys.platform == "linux", "exercises Zed's Linux Secret Service adapter")
+    def test_zed_secret_service_login_reaches_authenticated_api_and_envelope(self):
+        token = "E2E_ZED_SECRET_SERVICE_TOKEN"
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            bindir = home / "bin"
+            args_path = home / "secret-tool-args.json"
+            secret_entry = (
+                "[/org/freedesktop/secrets/item/zed]\n"
+                "label = zed-github-account\n"
+                "attribute.url = https://zed.dev\n"
+                "attribute.username = e2e-zed-user\n"
+                f"secret = {token}\n"
+            )
+            script = (
+                f"import json, pathlib, sys\npathlib.Path({str(args_path)!r}).write_text("
+                "json.dumps(sys.argv[1:]), encoding='utf-8')\n"
+                f"print({secret_entry!r}, end='')"
+            )
+            install_fake_cli(bindir, "secret-tool", script)
+            response = {
+                "plan": {
+                    "plan_v3": "zed_pro",
+                    "usage": {"edit_predictions": {"used": 321, "limit": 1000}},
+                    "subscription_period": {"ended_at": "2030-01-01T00:00:00Z"},
+                }
+            }
+            with LoopbackHTTPServer(lambda _request: LoopbackResponse(body=json.dumps(response))) as server:
+                child = ChildProcess(home, http_base=server.base_url, bin_dir=bindir)
+                Path(child.env["TIDESI_CONFIG"]).write_text(json.dumps({"providers": {"zed": True}}), encoding="utf-8")
+                result = child.run([sys.executable, "-m", "tidesi", "--provider", "zed"])
+            self.assertEqual(len(server.requests), 1)
+            request = server.requests[0]
+            self.assertEqual((request.method, request.path), ("GET", "/https/cloud.zed.dev/client/users/me"))
+            self.assertEqual(request.header("authorization"), f"e2e-zed-user {token}")
+            self.assertEqual(
+                json.loads(args_path.read_text(encoding="utf-8")),
+                ["search", "--all", "--unlock", "url", "https://zed.dev"],
+            )
+
+        transcript = result.stdout + result.stderr
+        self.assertNotIn(token, transcript)
+        self.assertEqual(result.returncode, 0, transcript)
+        provider = json.loads(result.stdout)["providers"][0]
+        self.assertTrue(provider["ok"], provider["error"])
+        self.assertEqual(provider["details"]["plan"], "Pro")
+        self.assertEqual(provider["details"]["used"], 321)
 
 
 if __name__ == "__main__":
