@@ -34,6 +34,90 @@ test("token-only providers stay visible without inventing dollar costs", () => {
     }
 });
 
+test("local Zed thread tokens appear in Usage & Spend without invented costs", () => {
+    const localSpend = { usageOnly: { providers: { zed: {
+        tokens: 1234, dailyTokens: [{ date: dateDaysAgo(0), total: 734 }, { date: dateDaysAgo(3), total: 500 }],
+    } } } };
+    const rows = FeatureTabs.localSpendRows(localSpend, [], []);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, "session-usage-zed");
+    assert.equal(rows[0].label, "Zed Editor");
+    assert.equal(rows[0].cost, null);
+    assert.equal(rows[0].costAvailable, false);
+    assert.equal(rows[0].usageOnly, true);
+    assert.equal(rows[0].tokens, 1234);
+    assert.equal(FeatureTabs.spendAllTotal(rows, "USD"), 0);
+    assert.equal(FeatureTabs.spendMeteredTotal(rows, "USD"), 0);
+    assert.equal(FeatureTabs.spendPlanTotal(rows, "USD"), 0);
+
+    const filtered = FeatureTabs.spendRowsForWindow(rows, 1);
+    assert.equal(filtered[0].tokens, 734);
+    assert.equal(filtered[0].cost, null);
+});
+
+test("Zed token-only rows use upstream providers without hiding against provider cards", () => {
+    const localSpend = { usageOnly: { providers: {
+        "zed.dev::zed": {
+            provider: "zed.dev", source: "zed", tokens: 1200,
+            dailyTokens: [{ date: dateDaysAgo(0), total: 1200 }],
+        },
+        "another-provider::zed": {
+            provider: "another-provider", source: "zed", tokens: 800,
+            dailyTokens: [{ date: dateDaysAgo(1), total: 800 }],
+        },
+        "future-provider::zed": {
+            provider: "future-provider", model: "future-model-v1", source: "zed", tokens: 450,
+            dailyTokens: [{ date: dateDaysAgo(2), total: 450 }],
+        },
+        "openai::zed": {
+            provider: "openai", model: "gpt-4.1", source: "zed", tokens: 300,
+            dailyTokens: [{ date: dateDaysAgo(3), total: 300 }],
+        },
+        "anthropic::zed": {
+            provider: "anthropic", model: "claude-sonnet-4-5", source: "zed", tokens: 200,
+            dailyTokens: [{ date: dateDaysAgo(4), total: 200 }],
+        },
+        "google::zed": {
+            provider: "google", model: "gemini-2.5-pro", source: "zed", tokens: 100,
+            dailyTokens: [{ date: dateDaysAgo(5), total: 100 }],
+        },
+    } } };
+    const providers = [provider("openai", {
+        totalTokens: 800, dailySeries: [{ date: dateDaysAgo(1), total: 800 }],
+    })];
+    const providerRows = FeatureTabs.spendProviderRows(providers, localSpend);
+    assert.deepEqual(Array.from(providerRows[0].dailyTokens, point => point.total), [800]);
+    const rows = FeatureTabs.localSpendRows(localSpend, providerRows, providers);
+
+    assert.deepEqual(Array.from(rows, row => [row.label, row.source, row.tokens, row.cost]), [
+        ["Zed", "zed", 1200, null],
+        ["Another Provider", "zed", 800, null],
+        ["Future Provider", "zed", 450, null],
+        ["OpenAI", "zed", 300, null],
+        ["Anthropic", "zed", 200, null],
+        ["Google", "zed", 100, null],
+    ]);
+    assert.equal(FeatureTabs.spendAllTotal(rows, "USD"), 0);
+    assert.equal(FeatureTabs.spendRowsForWindow(rows, 1)[0].tokens, 1200);
+});
+
+test("Zed session usage rows show tokens without presenting local values as money", () => {
+    const localSpend = {
+        usageOnly: { providers: {
+            "openai::zed": { provider: "openai", source: "zed", tokens: 800, dailyTokens: [{ date: dateDaysAgo(1), total: 800 }] },
+            "google::zed": { provider: "google", source: "zed", tokens: 550, dailyTokens: [{ date: dateDaysAgo(2), total: 550 }] },
+        } },
+    };
+    const rows = FeatureTabs.localSpendRows(localSpend, [], []);
+
+    assert.deepEqual(Array.from(rows, row => [row.label, row.cost, row.usageOnly]), [
+        ["OpenAI", null, true],
+        ["Google", null, true],
+    ]);
+    assert.deepEqual(Array.from(rows, row => row.tokens), [800, 550]);
+    assert.equal(FeatureTabs.spendAllTotal(rows, "USD"), 0);
+});
+
 test("token-only day filters trim activity without converting unknown cost to zero", () => {
     const rows = FeatureTabs.spendProviderRows([provider("antigravity", {
         totalTokens: 1600,

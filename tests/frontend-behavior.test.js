@@ -334,6 +334,56 @@ test("panel thresholds and stale opacity remain panel contracts", () => {
     assert.match(state, /readonly property var pillSlots/);
 });
 
+test("Zed activation and taskbar rotation request only the Zed account provider", () => {
+    const refreshZedUsage = qmlFunction("ui/AppState.qml", "refreshZedUsage");
+    const refreshTab = qmlFunction("ui/AppState.qml", "refreshTab");
+    const calls = [];
+    const root = {
+        activeId: "zed", zedUsageBusy: false, zedUsageLastFetch: 0,
+        providerDefaultsReady: true, providerDefaultsInitializing: false,
+        panelRotationEnabled: true, panelProviderIds: ["zed"], popupVisible: false,
+        lastFetched: Date.now(), refresh: () => calls.push("all"), refreshZedUsage: null,
+        backend: { refreshProvider: provider => calls.push(provider) },
+    };
+    root.refreshZedUsage = vm.runInNewContext(`(${refreshZedUsage})`, { root, backend: root.backend, Date });
+    root.refreshTab = vm.runInNewContext(`(${refreshTab})`, { root, Date });
+
+    root.refreshTab();
+    assert.deepEqual(calls, ["zed"]);
+    assert.match(qmlSource("ui/AppState.qml"), /onPanelProviderIdsChanged: root\.refreshRotatedZedUsage\(\)/);
+});
+
+test("repeated Zed activation does not overlap account requests", () => {
+    const refreshZedUsage = qmlFunction("ui/AppState.qml", "refreshZedUsage");
+    const calls = [];
+    const root = {
+        providerDefaultsReady: true, providerDefaultsInitializing: false,
+        zedUsageLoading: false, zedUsageLastRequested: 0,
+    };
+    const backend = { refreshProvider: provider => calls.push(provider) };
+    const request = vm.runInNewContext(`(${refreshZedUsage})`, { root, backend, Date });
+    request();
+    request();
+    assert.deepEqual(calls, ["zed"]);
+});
+
+test("rotating the taskbar provider to Zed requests only Zed", () => {
+    const rotate = qmlFunction("ui/AppState.qml", "refreshRotatedZedUsage");
+    const calls = [];
+    const root = {
+        panelRotationEnabled: true,
+        panelProviderIds: ["zed"],
+        popupVisible: false,
+        refreshZedUsage: () => calls.push("zed"),
+    };
+    vm.runInNewContext(`(${rotate})`, { root })();
+    assert.deepEqual(calls, ["zed"]);
+    calls.length = 0;
+    root.panelProviderIds = ["openai"];
+    vm.runInNewContext(`(${rotate})`, { root })();
+    assert.deepEqual(calls, []);
+});
+
 // A replay only paints a widget that has no live answer yet: once one arrived,
 // a replay that resolves late must leave the live state (and its freshness) alone.
 const hyprlandCost = qmlFunction("ui/SessionsPage.qml", "sessionCostText");
