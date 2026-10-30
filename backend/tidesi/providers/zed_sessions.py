@@ -9,14 +9,14 @@ import os
 import re
 import sqlite3
 import time
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .. import paths
 from ..session_index import SkipSource
+from ..sqlite_readonly import connect_readonly as _connect_readonly
+from ..sqlite_readonly import table_columns
 
 _REQUIRED_COLUMNS = {"id", "summary", "updated_at", "data_type", "data"}
 _MAX_THREAD_DATA_BYTES = 64 * 1024 * 1024
@@ -62,21 +62,6 @@ def discover_database_paths() -> list[str]:
         root = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
         app_directory = "zed"
     return [os.path.join(root, app_directory, "threads", "threads.db")]
-
-
-@contextmanager
-def _connect_readonly(database_path: str) -> Iterator[sqlite3.Connection]:
-    uri = f"{Path(database_path).resolve().as_uri()}?mode=ro"
-    connection = sqlite3.connect(uri, uri=True, timeout=1.0)
-    try:
-        connection.execute("PRAGMA query_only = ON")
-        yield connection
-    finally:
-        connection.close()
-
-
-def _table_columns(connection: sqlite3.Connection) -> set[str]:
-    return {row[1] for row in connection.execute("PRAGMA table_info(threads)").fetchall() if len(row) > 1}
 
 
 def _text(value: object, *, limit: int = 4096) -> str:
@@ -226,7 +211,7 @@ def _read_database(database_path: str, *, include_all: bool = False) -> list[Zed
 
     try:
         with _connect_readonly(database_path) as connection:
-            columns = _table_columns(connection)
+            columns = table_columns(connection, "threads")
             if not _REQUIRED_COLUMNS <= columns:
                 raise SkipSource("Zed thread database has an unsupported schema")
 

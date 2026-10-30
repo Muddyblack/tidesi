@@ -7,14 +7,14 @@ import sqlite3
 import subprocess
 import sys
 import time
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
 from .. import billing, paths
 from ..contract import finite_number
 from ..session_index import SkipSource
+from ..sqlite_readonly import connect_readonly as _connect_readonly
+from ..sqlite_readonly import table_columns as _table_columns
 
 _MAX_ROWS = 60
 _QUERY_TIMEOUT_SECONDS = 2.0
@@ -105,24 +105,9 @@ def discover_database_paths() -> list[str]:
     return [cli_path] if cli_path else []
 
 
-@contextmanager
-def _connect_readonly(database_path: str) -> Iterator[sqlite3.Connection]:
-    uri = f"{Path(database_path).resolve().as_uri()}?mode=ro"
-    connection = sqlite3.connect(uri, uri=True, timeout=1.0)
-    try:
-        connection.execute("PRAGMA query_only = ON")
-        yield connection
-    finally:
-        connection.close()
-
-
 def _schema_is_supported(connection: sqlite3.Connection) -> bool:
     columns = {row[1] for row in connection.execute("PRAGMA table_info(session)").fetchall() if len(row) > 1}
     return _REQUIRED_COLUMNS <= columns
-
-
-def _table_columns(connection: sqlite3.Connection, table: str) -> set[str]:
-    return {row[1] for row in connection.execute(f"PRAGMA table_info({table})").fetchall() if len(row) > 1}
 
 
 def _usage_schema(connection: sqlite3.Connection) -> tuple[bool, bool, bool]:

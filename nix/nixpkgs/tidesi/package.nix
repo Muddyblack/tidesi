@@ -57,10 +57,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # Remote devices reuse Antigravity's Secret Service credential.
     substituteInPlace "$root/contents/backend/tidesi/providers/antigravity_remote.py" \
       --replace-fail 'SECRET_TOOL = "secret-tool"' \
-                     'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}'
+                     'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}"'
     substituteInPlace "$root/contents/backend/tidesi/providers/zed.py" \
-      --replace-quiet 'SECRET_TOOL = "secret-tool"' \
-                      'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}'
+      --replace-fail 'SECRET_TOOL = "secret-tool"' \
+                     'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}"'
 
     # Register the icon in the hicolor theme so the Widget Explorer finds it.
     install -Dm644 assets/icons/org.muddyblack.tidesi.svg \
