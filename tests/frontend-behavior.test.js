@@ -477,7 +477,7 @@ test("local spend rows merge actual and estimated costs by source", () => {
             provenance: "mixed",
             costStatus: "partial",
             costBreakdown: { actualUSD: 12.34, estimatedUSD: 1.5 },
-            note: "local CLI logs · recorded + estimated · partial",
+            note: "local CLI logs · mixed · partial",
         },
         {
             id: "local-cline",
