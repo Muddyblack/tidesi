@@ -70,7 +70,7 @@ def normalize_zed(raw):
     ]
     r["sections"] = sections(
         note_section(tr("Overdue invoices on this account — check your Zed billing page.")) if res.get("overdue") else None,
-        note_section(tr("Uses the Zed editor's login from the macOS Keychain, Linux Secret Service or Windows Credential Manager.")),
+        note_section(tr("Uses the Zed editor's own login on macOS, Linux and Windows.")),
     )
     if rows[0]["showMeter"]:
         r["chartWindows"] = monthly_window("zed", "zd", False)

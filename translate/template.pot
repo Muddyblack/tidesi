@@ -2873,9 +2873,7 @@ msgid "Overdue invoices on this account — check your Zed billing page."
 msgstr ""
 
 #: backend/tidesi/normalize/zed.py
-msgid ""
-"Uses the Zed editor's login from the macOS Keychain, Linux Secret Service or "
-"Windows Credential Manager."
+msgid "Uses the Zed editor's own login on macOS, Linux and Windows."
 msgstr ""
 
 #: backend/tidesi/providers/antigravity.py

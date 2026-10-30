@@ -3051,13 +3051,9 @@ msgstr ""
 "Factures en retard sur ce compte — consultez votre page de facturation Zed."
 
 #: backend/tidesi/normalize/zed.py
-msgid ""
-"Uses the Zed editor's login from the macOS Keychain, Linux Secret Service or "
-"Windows Credential Manager."
+msgid "Uses the Zed editor's own login on macOS, Linux and Windows."
 msgstr ""
-"Utilise la connexion de l'éditeur Zed depuis le trousseau macOS, le Secret "
-"Service de Linux ou le Gestionnaire d'informations d'identification de "
-"Windows."
+"Utilise la connexion propre de l'éditeur Zed sous macOS, Linux et Windows."
 
 #: backend/tidesi/providers/antigravity.py
 msgid "antigravity-usage"
