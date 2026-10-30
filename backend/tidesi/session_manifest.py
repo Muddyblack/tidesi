@@ -7,11 +7,13 @@ import json
 import os
 from dataclasses import dataclass
 
-from . import paths
-from .providers import cursor_sessions, junie, mimo, mistral_sessions, opencode  # noqa: F401
+from . import config, paths, pricing
+from .providers import cursor_sessions, junie, mimo, mistral_sessions, opencode, zed_sessions  # noqa: F401
 from .providers.grok import grok_home
 from .providers.muse import sessions_root as muse_sessions_root
 from .providers.openai_credentials import codex_home
+
+_ZED_SESSION_READER_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -98,6 +100,14 @@ def _claude_records(root: str) -> list[tuple[str, str, int, int, int]]:
     return records
 
 
+def _zed_records() -> list[tuple[str, str, int, int, int]]:
+    # Include parser generation so unchanged Zed data is reread after parsing or
+    # normalization changes; otherwise cached rows can keep stale rollups.
+    records = [("version", "zed-session-reader", 1, _ZED_SESSION_READER_VERSION, 0)]
+    records.extend(_stat_record(path + suffix, "file") for path in zed_sessions.discover_database_paths() for suffix in ("", "-wal"))
+    return records
+
+
 def _opencode_records() -> list[tuple[str, str, int, int, int]]:
     records: list[tuple[str, str, int, int, int]] = []
     explicit = os.environ.get("OPENCODE_DB", "").strip()
@@ -175,7 +185,7 @@ def _fingerprint(source_id: str, records: list[tuple[str, str, int, int, int]]) 
 def build_manifests() -> list[SessionManifest]:
     """Fingerprint each session collector's metadata inputs separately.
 
-    One digest per collector, not one for all seven: the stores are written
+    One digest per collector, not one for all sources: the stores are written
     independently and constantly — a Claude transcript grows while you read it
     — so a combined digest changed on nearly every poll and re-ran every
     collector. Keyed per source, a Claude write re-parses only Claude and the
@@ -219,4 +229,6 @@ def build_manifests() -> list[SessionManifest]:
         ),
     )
     groups += (("junie", _matching_files(str(junie.sessions_root()), lambda name: name in ("index.jsonl", "summary.json", "events.jsonl"))),)
-    return [_fingerprint(source_id, records) for source_id, records in groups]
+    groups += (("zed", _zed_records()),)
+    pricing_record = _stat_record(os.path.join(config.cache_dir(), pricing.CACHE_FILENAME), "file")
+    return [_fingerprint(source_id, records + [pricing_record]) for source_id, records in groups]

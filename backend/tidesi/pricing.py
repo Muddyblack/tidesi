@@ -424,6 +424,23 @@ def _provider_rank(provider):
         return (1, 0, provider)
 
 
+def provider_for_model(model):
+    """Resolve a model ID to a catalog provider without guessing from its name.
+
+    Prefer the catalog's primary provider order when a model ID is shared by
+    multiple vendors/resellers. An otherwise unknown model is only resolved if
+    exactly one provider has an exact rate entry for it.
+    """
+    if not isinstance(model, str) or not model:
+        return ""
+    catalog = cached_catalog()
+    matches = [provider for provider, models in catalog.items() if isinstance(models, dict) and model in models]
+    primary = [provider for provider in matches if provider in _PRIMARY_PROVIDERS]
+    if primary:
+        return min(primary, key=_provider_rank)
+    return matches[0] if len(matches) == 1 else ""
+
+
 def catalog_rows(query="", limit=60, offset=0):
     """A searchable, paged view of the cached rate table for the frontends.
 

@@ -1893,6 +1893,46 @@ msgstr "Gemini : %1%"
 msgid "Rest: %1%"
 msgstr "Reste : %1%"
 
+#: ui/ZedUsageChart.qml
+msgid "Account-reported usage"
+msgstr "Utilisation rapportée par le compte"
+
+#: ui/ZedUsageChart.qml
+msgid "Included allowance unavailable"
+msgstr "Crédit inclus indisponible"
+
+#: ui/ZedUsageChart.qml
+msgid "Included allowance · $%1"
+msgstr "Crédit inclus · %1 $"
+
+#: ui/ZedUsageChart.qml
+msgid "Above included allowance"
+msgstr "Au-delà du crédit inclus"
+
+#: ui/ZedUsageChart.qml
+msgid "Included $0"
+msgstr "Crédit inclus : 0 $"
+
+#: ui/ZedUsageChart.qml
+msgid "Billed usage unavailable from the Zed account API"
+msgstr "Utilisation facturée indisponible dans l’API du compte Zed"
+
+#: ui/ZedUsageChart.qml
+msgid "Partial account-reported usage."
+msgstr "Utilisation partielle rapportée par le compte."
+
+#: ui/ZedUsageChart.qml
+msgid "Resets %1"
+msgstr "Réinitialisation le %1"
+
+#: ui/ZedUsageChart.qml
+msgid ""
+"Local Zed tokens are not priced because its internal billing model is "
+"unknown."
+msgstr ""
+"Les jetons Zed locaux ne sont pas tarifés, car son modèle de facturation "
+"interne est inconnu."
+
 #: translate/metadata-i18n.js
 msgid ""
 "Multi-service AI quota tracker with cost breakdown (Claude, Antigravity, "
@@ -2982,17 +3022,16 @@ msgid "Z.AI tools: %1%"
 msgstr "Outils Z.AI : %1 %"
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed (untested): the editor login can only be read on macOS"
-msgstr ""
-"Zed (non testé) : la connexion de l’éditeur n’est lisible que sous macOS"
+msgid "Open Zed Usage to load account data"
+msgstr "Ouvrez l’utilisation de Zed pour charger les données du compte"
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed (untested): sign in to the Zed editor first"
-msgstr "Zed (non testé) : connectez-vous d’abord à l’éditeur Zed"
+msgid "Zed: sign in to the Zed editor first"
+msgstr "Zed : connectez-vous d’abord à l’éditeur"
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed (untested): %1"
-msgstr "Zed (non testé) : %1"
+msgid "Zed: %1"
+msgstr "Zed : %1"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Edit predictions"
@@ -3003,9 +3042,8 @@ msgid "Unlimited"
 msgstr "Illimité"
 
 #: backend/tidesi/normalize/zed.py
-msgid "Zed (untested): no usage figures in the account response"
-msgstr ""
-"Zed (non testé) : aucun chiffre d’utilisation dans la réponse du compte"
+msgid "Zed: no usage figures in the account response"
+msgstr "Zed : aucune donnée d’utilisation dans la réponse du compte"
 
 #: backend/tidesi/normalize/zed.py
 msgid "Overdue invoices on this account — check your Zed billing page."
@@ -3013,12 +3051,9 @@ msgstr ""
 "Factures en retard sur ce compte — consultez votre page de facturation Zed."
 
 #: backend/tidesi/normalize/zed.py
-msgid ""
-"Read with the Zed editor's own login from the macOS Keychain. Untested "
-"against a live account."
+msgid "Uses the Zed editor's own login on macOS, Linux and Windows."
 msgstr ""
-"Lu avec la connexion de l’éditeur Zed depuis le trousseau macOS. Non testé "
-"avec un compte réel."
+"Utilise la connexion propre de l'éditeur Zed sous macOS, Linux et Windows."
 
 #: backend/tidesi/providers/antigravity.py
 msgid "antigravity-usage"

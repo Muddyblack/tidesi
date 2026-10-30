@@ -64,13 +64,43 @@ test("a late startup cache fills pending peers without overwriting an already fr
     assert.deepEqual(Array.from(root.providers, (row) => [row.id, row.value]), [["cursor", "final"]]);
 });
 
+test("targeted Zed API updates record history without replacing other providers", () => {
+    const { root, history } = state();
+    root.allProviders.push({ id: "zed" });
+    root.providerEnabled = () => true;
+    root.zedUsageLoading = true;
+    root.applySnapshot(JSON.stringify({
+        partial: true,
+        recordHistory: true,
+        providers: [{ id: "zed", ok: true, details: { agentUsage: { available: false, source: "account-api", usedUSD: null } } }],
+    }));
+    assert.equal(root.providerById("openai").value, "cached");
+    assert.equal(root.providerById("zed").details.agentUsage.usedUSD, null);
+    assert.equal(root.zedUsageLoading, false);
+    assert.equal(history(), 1);
+});
+
+test("failed targeted Zed updates release the usage loading state without recording history", () => {
+    const { root, history } = state();
+    root.allProviders.push({ id: "zed" });
+    root.providerEnabled = () => true;
+    root.zedUsageLoading = true;
+    root.applySnapshot(JSON.stringify({
+        partial: true,
+        recordHistory: false,
+        providers: [{ id: "zed", ok: false, stale: true, error: "fixture" }],
+    }));
+    assert.equal(root.zedUsageLoading, false);
+    assert.equal(history(), 0);
+});
+
 function commandBackend() {
     const jobs = [];
     const partials = [];
     const snapshots = [];
     const failures = [];
     const root = functions("ui/CommandBackend.qml", {
-        busy: false, refreshPending: false, settingsSaveBlocked: false,
+        busy: false, refreshPending: false, zedRefreshBusy: false, zedRefreshPending: false, settingsSaveBlocked: false,
         settingsQueue: { busy: false }, configPath: "/fixture/settings.json", toolsDir: "/fixture/backend/sh", pythonPath: "",
         runner: { run: (argv, callback, onLine) => jobs.push({ argv, callback, onLine }) },
         providerReady: (text) => partials.push(JSON.parse(text)),
@@ -96,6 +126,17 @@ test("streamed providers are published before process completion and the final s
     assert.equal(partials.length, 1);
     assert.equal(snapshots.length, 1);
     assert.equal(root.busy, false);
+});
+
+test("targeted Zed refresh requests only its provider and returns a history-bearing partial", () => {
+    const { root, jobs, partials } = commandBackend();
+    root.refreshProvider("zed");
+    assert.equal(jobs.length, 1);
+    assert.deepEqual(Array.from(jobs[0].argv).filter(value => ["--provider", "zed", "--save-snapshot"].includes(value)), ["--provider", "zed", "--save-snapshot"]);
+    jobs[0].callback(JSON.stringify({ updatedAt: 10, providers: [{ id: "zed", ok: true }] }), "", 0);
+    assert.equal(partials[0].partial, true);
+    assert.equal(partials[0].recordHistory, true);
+    assert.equal(partials[0].providers[0].id, "zed");
 });
 
 test("EOF-only runners consume a streamed final snapshot without corrupting the JSON contract", () => {

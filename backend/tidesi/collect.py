@@ -311,7 +311,7 @@ _SIMPLE = {
 }
 
 
-def collect(id_, now):
+def collect(id_, now, *, refresh_zed=False):
     if id_ == "selfhosted":
         from .providers.selfhosted import get_selfhosted_usage
 
@@ -328,6 +328,8 @@ def collect(id_, now):
         return collect_kimi(now)
     if id_ == "opencode":
         return collect_opencode(now)
+    if id_ == "zed":
+        return {"id": id_, "now": now, "inputs": {"usage": get_zed_usage(refresh=refresh_zed)}}
     if id_ in _SIMPLE:
         usage = _SIMPLE[id_]() or {}
         inputs = {"usage": usage, "status": provider_status(id_)}

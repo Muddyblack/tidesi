@@ -38,6 +38,73 @@ class LocalSpendEnvelopeTest(unittest.TestCase):
             {"actual": {"costStatus": "unavailable"}, "estimated": {"costStatus": "unavailable"}},
         )
 
+    def test_unpriced_zed_threads_reach_usage_and_spend_as_token_only(self):
+        result = self.build(
+            [
+                {
+                    "provider": "zed",
+                    "source": "zed",
+                    "tokens": 1234,
+                    "costStatus": "unavailable",
+                    "lastActivityAt": 1_789_046_340,
+                }
+            ]
+        )
+
+        self.assertEqual(result["localSpend"]["usageOnly"]["providers"]["zed"]["tokens"], 1234)
+        self.assertEqual(
+            result["localSpend"]["usageOnly"]["providers"]["zed"]["dailyTokens"][0]["total"],
+            1234,
+        )
+        self.assertEqual(result["localSpend"]["actual"]["costStatus"], "unavailable")
+        self.assertEqual(result["localSpend"]["estimated"]["costStatus"], "unavailable")
+
+    def test_zed_usage_only_rolls_up_models_by_dynamic_provider(self):
+        result = self.build(
+            [
+                {
+                    "provider": "zed",
+                    "source": "zed",
+                    "billingProvider": "future-provider",
+                    "billingModel": "model/alpha-v1",
+                    "tokens": 1234,
+                    "costStatus": "unavailable",
+                    "lastActivityAt": 1_789_046_340,
+                },
+                {
+                    "provider": "zed",
+                    "source": "zed",
+                    "billingProvider": "another.provider",
+                    "billingModel": "model-beta-v2",
+                    "tokens": 4321,
+                    "costStatus": "unavailable",
+                    "lastActivityAt": 1_789_046_340,
+                },
+                {
+                    "provider": "zed",
+                    "source": "zed",
+                    "billingProvider": "future-provider",
+                    "billingModel": "model/gamma-v3",
+                    "tokens": 75,
+                    "costStatus": "unavailable",
+                    "lastActivityAt": 1_789_046_340,
+                },
+            ]
+        )
+
+        usage = result["localSpend"]["usageOnly"]["providers"]
+        self.assertEqual(len(usage), 2)
+        alpha = usage["future-provider::zed"]
+        beta = usage["another.provider::zed"]
+        self.assertEqual(alpha["tokens"], 1309)
+        self.assertEqual(alpha["provider"], "future-provider")
+        self.assertNotIn("model", alpha)
+        self.assertEqual(alpha["source"], "zed")
+        self.assertEqual(beta["tokens"], 4321)
+        self.assertNotIn("model", beta)
+        self.assertEqual(result["localSpend"]["actual"]["costStatus"], "unavailable")
+        self.assertEqual(result["localSpend"]["estimated"]["costStatus"], "unavailable")
+
     def test_exact_session_has_total_and_provider_rollup(self):
         result = self.build(
             [

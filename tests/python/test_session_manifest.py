@@ -93,6 +93,15 @@ class SessionManifestTraversalTest(unittest.TestCase):
             manifest = session_manifest._fingerprint("antigravity", records)
             self.assertEqual((manifest.mtime_ns, manifest.size), self._fingerprint(expected))
 
+    def test_zed_reader_version_is_part_of_source_fingerprint(self):
+        with mock.patch.object(session_manifest.zed_sessions, "discover_database_paths", return_value=[]):
+            with mock.patch.object(session_manifest, "_ZED_SESSION_READER_VERSION", 1):
+                previous = session_manifest._fingerprint("zed", session_manifest._zed_records())
+            with mock.patch.object(session_manifest, "_ZED_SESSION_READER_VERSION", 2):
+                current = session_manifest._fingerprint("zed", session_manifest._zed_records())
+
+        self.assertNotEqual((previous.mtime_ns, previous.size), (current.mtime_ns, current.size))
+
     def test_matching_files_walks_each_root_once(self):
         # Given a multi-directory matching-file tree
         # When metadata is collected

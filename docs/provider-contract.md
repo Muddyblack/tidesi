@@ -206,7 +206,16 @@ label with `via OpenCode` secondary metadata. These local rows are never
 included in provider/API spend and are not invoice totals. A mixed session
 contributes its two `costBreakdown` subtotals to the corresponding identity
 rollup. When no qualifying numeric rows exist, the aggregate contains only
-`costStatus: "unavailable"`.
+`costStatus: "unavailable"`. The optional `usageOnly` aggregate is separate
+from those dollar-cost groups: `providers` is normally keyed by local source
+and each entry contains `tokens` and `dailyTokens[]` (`date`, `total`). A source
+with a stored routed identity may use a qualified key; entries carry `provider`
+and `source` metadata. Positive token totals from rows without exact or partial
+costs are included, but never added to USD totals. Zed keys rows by its dynamic
+provider, percent-encoded saved model ID, and source (`provider::model::zed`);
+entries also carry the original `provider`, `model`, and `source`. Zed does not
+persist per-request provider/model attribution, so these are saved-thread
+model groupings, not exact historical request usage or model pricing.
 
 Session activity is locally observed data. The contract does not promise parsing
 formats that do not produce supported local records, and frontends must not
@@ -287,6 +296,7 @@ labels:
 | `mistral` | Mistral |
 | `cursor` | Cursor |
 | `junie` | Junie |
+| `zed` | Zed Editor |
 
 The command line accepts `--source <id[,id...]>` and
 `--source=<id[,id...]>`, only with `--sessions`. IDs are trimmed, validated
@@ -806,7 +816,24 @@ price even on subscription logins, so it is never presented as spend.
 
 `kilo` and `zed` make the vendor's own request with the vendor's own login (or
 an API key for `kilo`); `coderabbit` runs `coderabbit usage` and exposes only a
-review count in non-metered rows. `zed` carries `details.untested: true`.
+review count in non-metered rows. `zed` carries `details.untested: false` after
+live Linux quota verification. macOS and Windows credential access are implemented but
+not live-verified. Local Zed sessions remain
+available on all three platforms.
+Zed's additive `details.agentUsage` is sourced only from the account API. Its
+shape contains `available`, `source` (`account-api`), nullable `usedUSD` and
+`includedUSD`, `costStatus`, `periodStart`/`periodEnd` (epoch seconds), nullable
+`usageBasedBilling`, and API-reported `dailyUSD` entries when present. The
+current `/client/users/me` response has no billed model-usage field, so
+`available` is false and `usedUSD` is null; local tokens and public API rates
+are not substituted because they do not establish Zed's internal billing. The
+plan allowance is separate and derived from the account-reported plan plus
+Zed's published plan entitlements (Student $10, Pro $5, Free $0); Business and
+unknown plans remain null. No local session metadata is included. If
+account-reported consumption becomes available, the cumulative series starts at
+zero and changes color above a known allowance.
+The Zed account request is on-demand on Usage-tab activation or panel rotation
+to Zed; ordinary all-provider refreshes reuse its cached snapshot.
 `openrouter` adds `details.balanceUSD`, `creditsTotalUSD`, `creditsUsedUSD`,
 `usageDailyUSD`, `usageWeeklyUSD`, `usageMonthlyUSD` and `keyUnavailable`; any
 of them is `null` when OpenRouter did not report it.

@@ -317,7 +317,7 @@ ColumnLayout {
 
     // ── Usage chart ─────────────────────────────────────────────
     UsageChart {
-        extraVisible: !shell.showSettings && !shell.activeIsFeature && (!shell.activeHasStats || shell.activeSubTab === "usage") && shell.settings.showChart && shell.activeProvider() && (shell.activeProvider().error || "") === "" && shell.activeProvider().ok !== false && shell.activeProvider().summary.hasChart !== false
+        extraVisible: !shell.showSettings && !shell.activeIsFeature && shell.activeId !== "zed" && (!shell.activeHasStats || shell.activeSubTab === "usage") && shell.settings.showChart && shell.activeProvider() && (shell.activeProvider().error || "") === "" && shell.activeProvider().ok !== false && shell.activeProvider().summary.hasChart !== false
         shell: content.shell
         usageHistory: shell.usageHistory
         windows: shell.windowsForProvider(shell.activeId)
@@ -332,6 +332,13 @@ ColumnLayout {
         onAntigravityFilterSelected: function (filter) {
             shell.setSetting2("antigravityChartFilter", filter);
         }
+    }
+
+    ZedUsageChart {
+        visible: !shell.showSettings && !shell.activeIsFeature && shell.activeId === "zed" && (!shell.activeHasStats || shell.activeSubTab === "usage") && shell.settings.showChart && shell.activeProvider() !== null
+        Layout.fillWidth: true
+        shell: content.shell
+        usage: shell.activeProvider() ? ((shell.activeProvider().details || {}).agentUsage || ({})) : ({})
     }
 
     // ── Footer ──────────────────────────────────────────────────

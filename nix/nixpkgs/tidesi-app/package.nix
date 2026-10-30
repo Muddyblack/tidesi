@@ -15,6 +15,7 @@ let
   python = python3.withPackages (ps: [
     ps.pyside6
     ps.psutil
+    ps.zstandard
   ]);
 in
 stdenv.mkDerivation (finalAttrs: {
@@ -58,6 +59,9 @@ stdenv.mkDerivation (finalAttrs: {
 
     # Remote devices reuse Antigravity's Secret Service credential.
     substituteInPlace "$root/backend/tidesi/providers/antigravity_remote.py" \
+      --replace-fail 'SECRET_TOOL = "secret-tool"' \
+                     'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}"'
+    substituteInPlace "$root/backend/tidesi/providers/zed.py" \
       --replace-fail 'SECRET_TOOL = "secret-tool"' \
                      'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}"'
 

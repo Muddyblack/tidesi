@@ -33,14 +33,14 @@ function fixture() {
     return { root, calls, context };
 }
 
-test("opening Usage & Spend queries local activity without changing the Sessions selection", () => {
+test("opening Usage & Spend reconciles local activity without changing the Sessions selection", () => {
     const { root, calls, context } = fixture();
     const start = source.indexOf("    onSpendViewVisibleChanged:");
     assert.notEqual(start, -1);
     const end = source.indexOf("\n    }", start);
     const code = source.slice(start, end + 6).replace(/^\s*onSpendViewVisibleChanged:\s*/, "");
     vm.runInNewContext(code, context);
-    assert.deepEqual(calls, [["query", "existing search", 60, false, ["openai"]]]);
+    assert.deepEqual(calls, [["scan", "existing search", ["openai"]]]);
     assert.deepEqual(root.sessionsSourceIds, ["openai"]);
 });
 

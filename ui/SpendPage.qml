@@ -369,7 +369,7 @@ ColumnLayout {
                         }
                         Text {
                             visible: modelData.note !== ""
-                            text: modelData.usageOnly === true ? (typeof modelData.tokens === "number" ? shell.i18n("%1 tokens", UsageFormat.compactTokens(modelData.tokens)) + " · " : "") + shell.i18n("Cost unavailable") : shell.i18n(modelData.note)
+                            text: modelData.usageOnly === true ? (typeof modelData.tokens === "number" ? shell.i18n("%1 tokens", UsageFormat.compactTokens(modelData.tokens)) + " · " : "") + shell.i18n("Cost unavailable") + (modelData.note && modelData.note !== "Cost unavailable" ? " · " + shell.i18n(modelData.note) : "") : shell.i18n(modelData.note)
                             font.pixelSize: 10
                             opacity: 0.45
                             color: Tone.c(Appearance.Palette, "#f8fafc")

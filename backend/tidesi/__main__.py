@@ -23,8 +23,9 @@ from .session_index import SOURCE_REGISTRY
 USAGE = """usage: get-ai-usage [--all | --provider <id>[,<id>...] | --normalize | --sessions | --refresh-pricing | --pricing-table |
 --detect-providers | --initialize-provider-defaults | --last-snapshot | --shared-settings]
 
-  --all                 fetch every provider enabled in the shared settings file
-  --provider <ids>      fetch the named providers regardless of the toggles
+  --all                 refresh enabled providers; Zed account data uses its last
+                        on-demand result without another request
+  --provider <ids>      refresh named providers, including on-demand Zed account data
   --normalize           read one raw envelope on stdin, print the provider object
   --sessions            list recent local agent sessions (no paths or transcripts)
   --refresh-pricing     force one shared pricing catalog refresh
@@ -58,7 +59,7 @@ def _emit(obj):
     sys.stdout.flush()
 
 
-def snapshot(*, on_provider=None):
+def snapshot(*, on_provider=None, provider_ids=None):
     """The envelope `--all` prints, for an in-process caller (the Windows tray
     app, which has no shell to run this module through).
 
@@ -67,8 +68,16 @@ def snapshot(*, on_provider=None):
     user later clears would linger there."""
     cfg = config.load_settings()
     config.apply_widget_env(cfg)
-    selected = envelope.enabled(cfg)
-    result = envelope.build(selected) if on_provider is None else envelope.build(selected, on_provider=on_provider)
+    selected = envelope.enabled(cfg) if provider_ids is None else provider_ids
+    deferred = {"zed"} if provider_ids is None else set()
+    if not deferred and on_provider is None:
+        result = envelope.build(selected)
+    elif not deferred:
+        result = envelope.build(selected, on_provider=on_provider)
+    elif on_provider is None:
+        result = envelope.build(selected, deferred_provider_ids=deferred)
+    else:
+        result = envelope.build(selected, on_provider=on_provider, deferred_provider_ids=deferred)
     return finalize(result)
 
 
@@ -334,7 +343,19 @@ def main(argv):
     else:
         selected = envelope.enabled(cfg)
 
-    result = envelope.build(selected, on_provider=lambda provider: _emit(envelope.provider_update(provider))) if stream else envelope.build(selected)
+    deferred = {"zed"} if mode != "provider" else set()
+    if not deferred and stream:
+        result = envelope.build(selected, on_provider=lambda provider: _emit(envelope.provider_update(provider)))
+    elif not deferred:
+        result = envelope.build(selected)
+    elif stream:
+        result = envelope.build(
+            selected,
+            on_provider=lambda provider: _emit(envelope.provider_update(provider)),
+            deferred_provider_ids=deferred,
+        )
+    else:
+        result = envelope.build(selected, deferred_provider_ids=deferred)
     _emit(result)
     if save_snapshot:
         widget_state.save_snapshot(finalize(result))

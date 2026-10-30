@@ -103,6 +103,9 @@ jobs:
         with:
           args: "format --check backend/tidesi hosts scripts tests/python"
 
+      - name: install backend runtime dependencies
+        run: python3 -m pip install 'zstandard>=0.25,<1'
+
       - name: portable backend tests
         run: python3 -m unittest discover -s tests/python
 

@@ -34,7 +34,7 @@ Switch between tabs in the popup for each service:
 [*] [b]Pi / OMP[/b] — Local token activity and model breakdowns from the agents' session files
 [*] [b]Kilo[/b] — Prepaid credit balance and Kilo Pass usage via an API key or the kilo CLI login
 [*] [b]CodeRabbit[/b] — Review count and reset date from the CodeRabbit CLI
-[*] [b]Zed[/b] [i](untested, macOS)[/i] — Plan and edit-prediction usage via the editor's Keychain login
+[*] [b]Zed[/b] — Local Agent thread tokens on Linux, macOS and Windows; separate plan/edit-prediction quota via macOS Keychain, Linux Secret Service or Windows Credential Manager (live-verified on Linux only); thread cost is unavailable without per-request model attribution
 [*] [b]MiMo Code[/b] — Local token usage, model breakdowns, session history and recorded or estimated costs
 [*] [b]Ollama Cloud[/b] — Cloud usage windows, including weekly limits in the panel
 [*] [b]Local Models[/b] — Monitor Ollama, vLLM and llama.cpp servers, with automatic endpoint discovery and runtime or GPU metrics where available
@@ -48,7 +48,7 @@ Switch between tabs in the popup for each service:
 [*] [b]Period comparison[/b] — [i]"+12% vs last week"[/i] at the same point in the cycle
 [*] [b]Overview[/b] — see every enabled provider at a glance
 [*] [b]Usage & Spend[/b] — Provider-reported spend and local token-based cost estimates, with daily cost and token charts, expandable histories and 1-day / 7-day / 30-day / all-history timeframes. Labels distinguish actual costs, estimates, subscription-covered usage and free models
-[*] [b]Sessions[/b] — Recent local Claude Code, Codex, Grok CLI, Cline, OpenCode, MiMo Code, Junie, Antigravity, Mistral Vibe, Cursor and Muse activity, with search, pagination and source filters. Cached results remain visible during background refresh. View local title previews and resume supported sessions in your terminal (Muse has no resume command). Previews may contain sensitive text
+[*] [b]Sessions[/b] — Recent local Claude Code, Codex, Grok CLI, Cline, OpenCode, MiMo Code, Junie, Antigravity, Mistral Vibe, Cursor, Muse and Zed Editor activity, with search, pagination and source filters. Cached results remain visible during background refresh. View local title previews and resume supported sessions in your terminal (Muse and Zed are display-only). Previews may contain sensitive text
 [*] [b]Model pricing[/b] — Search cached model rates and refresh the pricing catalog from settings
 [*] [b]Provider detection[/b] — Automatically detects installed providers on fresh installs, with a manual detection button in settings
 [*] [b]Pick how each provider is read[/b] — Add providers from a search in Settings → Providers; each provider's page lists its sources (CLI, IDE, local server, API key) with a working indicator

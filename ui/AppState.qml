@@ -469,6 +469,12 @@ Item {
             return [PanelRotation.normalizeSelection(root.pinnedTabs, root.rotationProviderId)];
         return root.pinnedTabs;
     }
+    onPanelProviderIdsChanged: root.refreshRotatedZedUsage()
+
+    function refreshRotatedZedUsage() {
+        if (root.panelRotationEnabled && !root.popupVisible && root.panelProviderIds.indexOf("zed") >= 0)
+            root.refreshZedUsage();
+    }
 
     // What the panel pill shows: the active provider normally, or the last
     // real provider seen while a feature tab is active — never "no data".
@@ -666,6 +672,12 @@ Item {
         if (root.providerDefaultsReady && root.activeId !== "" && (root.settings || {}).lastTab !== root.activeId)
             root.setSetting2("lastTab", root.activeId);
         root.publishTray();
+        if (root.popupVisible && root.activeId === "zed")
+            root.refreshZedUsage();
+    }
+    onPopupVisibleChanged: {
+        if (root.popupVisible && !root.showSettings && root.activeId === "zed")
+            root.refreshZedUsage();
     }
 
     function selectChartWindow(id) {
@@ -798,6 +810,10 @@ Item {
                 root.providers = merged.sort(function (left, right) {
                     return order.indexOf(left.id) - order.indexOf(right.id);
                 });
+                if (data.recordHistory !== undefined && incoming.some(function (provider) {
+                    return provider.id === "zed";
+                }))
+                    root.zedUsageLoading = false;
             } else {
                 root.providers = incoming;
                 root.localSpend = data.localSpend || ({});
@@ -826,8 +842,15 @@ Item {
             root.nowTick = new Date().getTime();
             root.publishTray();
             // A replay is not a reading: no history point, no freshness.
-            if (replayed === true || data.partial === true)
+            if (replayed === true)
                 return;
+            if (data.partial === true) {
+                if (data.recordHistory === true) {
+                    root.errorText = "";
+                    root.recordHistory();
+                }
+                return;
+            }
             root.errorText = "";
             root.lastFetched = root.nowTick;
             root.recordHistory();
@@ -846,11 +869,31 @@ Item {
         backend.refresh();
     }
 
+    property double zedUsageLastRequested: 0
+    property bool zedUsageLoading: false
+
+    function refreshZedUsage() {
+        if (!root.providerDefaultsReady || root.providerDefaultsInitializing || root.zedUsageLoading)
+            return;
+        var now = Date.now();
+        if (now - root.zedUsageLastRequested < 60000)
+            return;
+        if (typeof backend.refreshProvider !== "function")
+            return;
+        root.zedUsageLastRequested = now;
+        root.zedUsageLoading = true;
+        backend.refreshProvider("zed");
+    }
+
     // A tab click only fetches when the data is over a minute old: every
     // refresh asks every provider, and clicking back and forth between tabs
     // would otherwise keep one running all the time.
     property double lastFetched: 0
     function refreshTab() {
+        if (root.activeId === "zed") {
+            root.refreshZedUsage();
+            return;
+        }
         if (new Date().getTime() - root.lastFetched > 60000)
             root.refresh();
     }
@@ -1050,7 +1093,7 @@ Item {
 
     onSpendViewVisibleChanged: {
         if (root.spendViewVisible && !root.sessionsLoading)
-            root.querySessions(root.sessionsQuery, root.sessionsOffset, false, root.sessionsSourceIds);
+            root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
     }
 
     // Load as soon as the view is shown, rather than at the next poll tick.
@@ -1414,6 +1457,7 @@ Item {
         }
 
         function onRefreshFailed(message) {
+            root.zedUsageLoading = false;
             root.errorText = message;
         }
 

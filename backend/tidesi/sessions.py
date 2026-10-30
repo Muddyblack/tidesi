@@ -35,7 +35,7 @@ from collections.abc import Sequence
 
 from . import billing, billing_mode, pricing
 from .contract import epoch_of, num
-from .providers import antigravity_sessions, antigravity_usage, cursor_sessions, junie, mimo, mistral_sessions, opencode
+from .providers import antigravity_sessions, antigravity_usage, cursor_sessions, junie, mimo, mistral_sessions, opencode, zed_sessions
 from .providers.cline import get_cline_session_records
 from .providers.grok import discover_sessions, grok_home
 from .providers.muse import sessions_root as muse_sessions_root
@@ -817,6 +817,44 @@ def _opencode_entries(*, include_all=False):
     return out
 
 
+def _resolve_zed_provider(model_provider: str, model_id: str) -> str:
+    provider = model_provider.strip().lower() if isinstance(model_provider, str) else ""
+    if provider == "open_ai":
+        provider = "openai"
+    if provider and provider not in ("zed", "zed.dev"):
+        return provider
+
+    catalog_provider = pricing.provider_for_model(model_id)
+    if catalog_provider:
+        return catalog_provider
+
+    return provider or "zed"
+
+
+def _zed_entries(*, include_all=False):
+    out = []
+    for record in zed_sessions.read_sessions(include_all=include_all):
+        provider = _resolve_zed_provider(record.model_provider, record.model_id)
+        entry = _entry(
+            "zed",
+            _clip_title(record.title) or "Zed session",
+            record.last_activity,
+            session_name="via Zed",
+            detail=record.workspace,
+            source="zed",
+        )
+        if entry is None:
+            continue
+
+        entry["tokens"] = record.tokens
+        if provider:
+            entry["billingProvider"] = provider
+        if record.model_id:
+            entry["billingModel"] = record.model_id
+        out.append(entry)
+    return out if include_all else out[:_MAX_SESSIONS]
+
+
 def _opencode_targets():
     return [
         {
@@ -1139,6 +1177,7 @@ SESSION_COLLECTORS = {
     "mistral": "_mistral_entries",
     "cursor": "_cursor_entries",
     "junie": "_junie_entries",
+    "zed": "_zed_entries",
 }
 
 

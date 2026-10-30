@@ -174,6 +174,7 @@ if HAS_PYSIDE:
     import app
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QGuiApplication
+    from PySide6.QtTest import QSignalSpy
 
 
 @unittest.skipUnless(HAS_PYSIDE, "PySide6 not installed")
@@ -251,6 +252,21 @@ class BackendThreadTest(unittest.TestCase):
             self.qt_app.processEvents()
         self.assertFalse(self.backend.busy)
         self.assertEqual(sum(event[0] == "snapshotReady" for event in self.events), 1)
+
+    def test_targeted_zed_refresh_collects_only_zed_and_publishes_partial(self):
+        response = {"updatedAt": 50, "providers": [{"id": "zed", "ok": True, "details": {"agentUsage": {"available": False}}}]}
+        updates = QSignalSpy(self.backend.providerReady)
+        with mock.patch("app.collect_snapshot", return_value=json.dumps(response)) as collect:
+            self.backend.refreshProvider("zed")
+            self.backend._pool.shutdown(wait=True)
+            self.assertTrue(updates.wait(5000) or updates.count() > 0)
+
+        collect.assert_called_once_with(provider_ids=["zed"])
+        self.assertEqual(updates.count(), 1)
+        payload = json.loads(updates.at(0)[0])
+        self.assertTrue(payload["partial"])
+        self.assertTrue(payload["recordHistory"])
+        self.assertEqual([provider["id"] for provider in payload["providers"]], ["zed"])
 
     def check_pricing_refresh(self, result=None, error=None):
         with mock.patch("app.refresh_pricing_json", return_value=result, side_effect=error) as refresh:

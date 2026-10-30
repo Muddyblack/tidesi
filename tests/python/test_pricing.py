@@ -96,6 +96,20 @@ class PricingTest(IsolatedHomeTest):
         self.assertEqual(tables["google"]["gemini-2.5-pro"], {"input": 1.25, "output": 10})
         self.assertEqual(tables["opencode"]["big-pickle"], {"input": 0, "output": 0})
 
+    def test_provider_for_model_uses_exact_catalog_matches_and_prefers_primary_rates(self):
+        rates = {
+            "openrouter": {"gpt-6-luna": {"input": 0.12, "output": 0.6}},
+            "openai": {"gpt-6-luna": {"input": 0.1, "output": 0.5}},
+            "future-provider": {"new-model": {"input": 1, "output": 2}},
+            "another-provider": {"ambiguous-model": {"input": 1, "output": 2}},
+            "yet-another-provider": {"ambiguous-model": {"input": 1, "output": 2}},
+        }
+        with mock.patch.object(pricing, "cached_catalog", return_value=rates):
+            self.assertEqual(pricing.provider_for_model("gpt-6-luna"), "openai")
+            self.assertEqual(pricing.provider_for_model("new-model"), "future-provider")
+            self.assertEqual(pricing.provider_for_model("ambiguous-model"), "")
+            self.assertEqual(pricing.provider_for_model("gpt-6"), "")
+
     def test_models_dev_parser_rejects_malformed_catalogs(self):
         for data in (None, [], {}, {"google": {"models": []}}):
             with self.subTest(data=data):

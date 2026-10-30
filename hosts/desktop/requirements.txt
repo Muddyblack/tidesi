@@ -1,5 +1,7 @@
-# Runtime for the Windows tray app (hosts/desktop/app.py). The backend itself stays
-# standard-library-only; psutil is only how Antigravity is found without /proc.
+# Runtime for the shared tray app (hosts/desktop/app.py). The backend uses the
+# standard library plus zstandard for Zed's compressed local thread database;
+# psutil is only how Antigravity is found without /proc.
 # 6.8+: the floating pill's tooltip is a popup window of its own (popupType).
 PySide6-Essentials>=6.8
 psutil>=5.9
+zstandard>=0.25,<1

@@ -83,7 +83,7 @@ for the full-size view, including the native menu bar or taskbar.
 - **Optional Plasma panel rotation** — Choose Off, 30 seconds, 1 minute, 2 minutes, 5 minutes, or 10 minutes in Appearance to show pinned providers one at a time in pin order; disabled by default
 - **History export / import** — Save and restore usage history as JSON; history is mirrored to disk so it survives reinstalls
 - **Robust refresh** — Poll interval from 1 to 30 minutes, respects `retry-after` headers, dims and shows the error inline when a fetch fails
-- **Optional Overview / Usage & Spend / Sessions tabs**, turn on in Settings → Views. Overview shows every enabled provider at a glance, Usage & Spend shows provider-reported spend and non-navigable local source rows, and Sessions lists recent local Claude Code / Codex / Grok CLI / Cline / OpenCode / MiMo Code / Junie / Antigravity / Muse activity, local title previews and recency; previews may contain sensitive text, with a ⧉ button to resume a session in your terminal (`get-ai-usage --sessions` / `--open-session <key>`; not available for Muse, which ships no resume command)
+- **Optional Overview / Usage & Spend / Sessions tabs**, turn on in Settings → Views. Overview shows every enabled provider at a glance, Usage & Spend shows provider-reported spend and non-navigable local source rows, and Sessions lists recent local Claude Code / Codex / Grok CLI / Cline / OpenCode / MiMo Code / Junie / Antigravity / Muse / Mistral Vibe / Cursor / Zed Editor activity, local title previews and recency; previews may contain sensitive text. Supported sessions can be resumed in your terminal (`get-ai-usage --sessions` / `--open-session <key>`); Muse and Zed are display-only
 
 ## Session costs and Usage & Spend
 
@@ -119,8 +119,22 @@ Antigravity reads model-attributed token usage from the CLI and IDE conversation
 SQLite databases. Exact cached model rates produce plan-covered API-equivalent
 estimates, not subscription charges. Unidentified models and missing rates stay
 unpriced; a mix of priced and unpriced usage is partial. Transcript-only and
-artifact-only sessions remain unavailable for cost. Other providers are not
-implied to have local session cost support.
+artifact-only sessions remain unavailable for cost. Zed local sessions appear
+as token-only rows grouped by upstream provider; no local dollar estimates are
+shown because Zed's internal hosted-model prices and billing adjustments are
+unknown to tideSI.
+Zed's Usage graph deliberately does not price these threads: its internal hosted
+model pricing and billing adjustments are not known to tideSI, so applying the
+public API-rate catalog could misstate actual included-credit consumption. The
+graph uses money only if Zed's account API reports it; the currently available
+`/client/users/me` response reports plan, edit-prediction and request-count data,
+but no billed model usage. The included allowance shown alongside the chart is
+derived from Zed's published entitlement for the API-reported plan; it is not a
+dollar amount returned by the endpoint. Consumed dollars are explicitly
+unavailable rather than estimated from local sessions. Other providers are not
+implied to have local session cost support. Zed's account endpoint is requested
+when its Usage view opens or panel rotation selects Zed; ordinary background
+provider polls reuse the last snapshot without another Zed request.
 
 Usage & Spend keeps provider-reported spend separate from non-navigable local
 source rows. Local actual and estimated rollups are merged by source, so an
@@ -138,7 +152,7 @@ For the full contract and provider details, see
 
 Session search is handled by the backend with `get-ai-usage --sessions --query <text>`. Empty, whitespace-only, and non-empty searches all return 60-session pages with exact totals and offer **Load more** when additional sessions exist. In the desktop sessions views, refresh shows the current cached page immediately while providers are scanned in the background, then shows the updated page once the scan finishes. The Sessions view offers a cache-backed source filter beside the search field. It uses `--source <id[,id...]>` or `--source=<id[,id...]>`; omitting it means All, and multiple sources are combined with OR semantics. The filter is view-local, resets pagination when changed, and is preserved by refresh and **Load more**. All appears only when more than one cached source is available.
 
-The backend returns the additive `sources` descriptor list with verified IDs and labels, in canonical order: Cline (`cline`), Muse (`muse`), Codex (`openai`), Grok (`grok`), Claude Code (`claude`), OpenCode (`opencode`), MiMo Code (`mimo`), Antigravity (`antigravity`), Mistral (`mistral`), Cursor (`cursor`), and Junie (`junie`). Only sources with cached parsed rows appear. Query-only searches read that cache and do not scan local stores. Non-empty searches check all underlying session records using only `provider`, `title`, `sessionName`, `state`, and `detail`; `fullTitle`, opaque resume keys, IDs, paths, and transcripts are not searchable or exposed. Claude titles are clipped opening-prompt previews; raw prompt text never leaves the backend. See the [provider contract](docs/provider-contract.md#session-search) for response, refresh, incomplete-cache, privacy, and cross-platform details.
+The backend returns the additive `sources` descriptor list with verified IDs and labels, in canonical order: Cline (`cline`), Muse (`muse`), Codex (`openai`), Grok (`grok`), Claude Code (`claude`), OpenCode (`opencode`), MiMo Code (`mimo`), Antigravity (`antigravity`), Mistral (`mistral`), Cursor (`cursor`), Junie (`junie`), and Zed Editor (`zed`). Only sources with cached parsed rows appear. Query-only searches read that cache and do not scan local stores. Non-empty searches check all underlying session records using only `provider`, `title`, `sessionName`, `state`, and `detail`; `fullTitle`, opaque resume keys, IDs, paths, and transcripts are not searchable or exposed. Claude titles are clipped opening-prompt previews; raw prompt text never leaves the backend. See the [provider contract](docs/provider-contract.md#session-search) for response, refresh, incomplete-cache, privacy, and cross-platform details.
 
 Also runs [on Hyprland](docs/hyprland.md), [on Windows](docs/windows.md), [on macOS](docs/macos.md) and [in a terminal](docs/cli.md) — every platform shows the same UI (`ui/`) on the same backend (`backend/`); only the panel, tray or menu bar item around it is per platform (`hosts/`). See [docs/architecture.md](docs/architecture.md).
 
@@ -171,7 +185,7 @@ Also runs [on Hyprland](docs/hyprland.md), [on Windows](docs/windows.md), [on ma
 | Pi / OMP | Local token activity, model breakdowns and workspaces from the agents' session files | Local files only; spend is not shown (see below) |
 | Kilo | Prepaid credit balance and Kilo Pass period usage, via an API key or the `kilo` CLI login | Request shape from Kilo's web API; not yet verified against a live account |
 | CodeRabbit | Review count and reset date from `coderabbit usage` | Supported where the CLI is signed in; CodeRabbit publishes a count, not a quota |
-| Zed | Plan and edit-prediction usage, via the editor's macOS Keychain login | Untested; macOS only |
+| Zed | Local Agent thread sessions on Linux, macOS, and Windows; separate plan/edit-prediction quota via macOS Keychain, Linux Secret Service or Windows Credential Manager | Sessions: token-only, no local dollar estimate because Zed's internal pricing and billing adjustments are unknown; account API reports no billed model usage |
 
 What each provider needs signed in, and what it reads, is in
 **[docs/providers.md](docs/providers.md)**.

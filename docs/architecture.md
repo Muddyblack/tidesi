@@ -3,7 +3,7 @@
 One backend, one UI, one thin host per platform.
 
 ```
-backend/                 Python (stdlib only) + sh launchers — every provider,
+backend/                 Python (stdlib plus zstandard for Zed sessions) + sh launchers — every provider,
   tidesi/               credential, HTTP call, normalisation, history, sessions
   sh/get-ai-usage        the CLI the process-based hosts run
 
