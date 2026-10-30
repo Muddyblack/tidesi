@@ -1,6 +1,6 @@
 """Claude Code sessions that have Remote Control (``/remote-control``, ``/rc``) on.
 
-Each running Claude Code writes ``~/.claude/sessions/<pid>.json``. One that has
+Each running Claude Code writes ``<config dir>/sessions/<pid>.json`` (``~/.claude`` unless ``CLAUDE_CONFIG_DIR`` is set). One that has
 been opened to other devices carries a ``bridgeSessionId``, which is also the
 last part of its claude.ai/code address. Only the sessions' own state is read;
 no conversation text is.
@@ -10,12 +10,13 @@ import json
 import os
 
 from ..pricing_lock import _is_process_alive
+from .claude_credentials import claude_config_dir
 
 URL = "https://claude.ai/code"
 
 
 def _sessions_dir():
-    return os.path.join(os.path.expanduser("~"), ".claude", "sessions")
+    return os.path.join(claude_config_dir(), "sessions")
 
 
 def remote_sessions(directory=None):
