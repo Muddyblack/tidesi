@@ -21,7 +21,9 @@
       };
     in {
       packages = forAllSystems (system:
-        let pkgs = nixpkgs.legacyPackages.${system};
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
         in {
           default = pkgs.stdenvNoCC.mkDerivation {
             pname = "tidesi";
@@ -60,9 +62,12 @@
               # rather than a silently unpatched script.
               substituteInPlace "$root/contents/backend/sh/python-interp.sh" \
                 --replace-fail 'PY_DEFAULT="python3"' \
-                               'PY_DEFAULT="${pkgs.python3}/bin/python3"'
+                               'PY_DEFAULT="${backendPython}/bin/python3"'
               # Remote devices reuse Antigravity's Secret Service credential.
               substituteInPlace "$root/contents/backend/tidesi/providers/antigravity_remote.py" \
+                --replace-fail 'SECRET_TOOL = "secret-tool"' \
+                               'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
+              substituteInPlace "$root/contents/backend/tidesi/providers/zed.py" \
                 --replace-fail 'SECRET_TOOL = "secret-tool"' \
                                'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
 
@@ -109,8 +114,11 @@
               find "$dest" \( -name '__pycache__' -o -name '*.pyc' \) -prune -exec rm -rf {} +
               substituteInPlace "$dest/backend/sh/python-interp.sh" \
                 --replace-fail 'PY_DEFAULT="python3"' \
-                               'PY_DEFAULT="${pkgs.python3}/bin/python3"'
+                               'PY_DEFAULT="${backendPython}/bin/python3"'
               substituteInPlace "$dest/backend/tidesi/providers/antigravity_remote.py" \
+                --replace-fail 'SECRET_TOOL = "secret-tool"' \
+                               'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
+              substituteInPlace "$dest/backend/tidesi/providers/zed.py" \
                 --replace-fail 'SECRET_TOOL = "secret-tool"' \
                                'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
               # The launchers resolve symlinks to find the tidesi package beside them.
@@ -154,8 +162,11 @@
               cp -r ../hosts ../ui ../backend ../assets ../translate ../shell.qml "$root/"
               substituteInPlace "$root/backend/sh/python-interp.sh" \
                 --replace-fail 'PY_DEFAULT="python3"' \
-                               'PY_DEFAULT="${pkgs.python3}/bin/python3"'
+                               'PY_DEFAULT="${backendPython}/bin/python3"'
               substituteInPlace "$root/backend/tidesi/providers/antigravity_remote.py" \
+                --replace-fail 'SECRET_TOOL = "secret-tool"' \
+                               'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
+              substituteInPlace "$root/backend/tidesi/providers/zed.py" \
                 --replace-fail 'SECRET_TOOL = "secret-tool"' \
                                'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
               # xdg-desktop-portal resolves this entry in the portal daemon's
@@ -190,7 +201,7 @@
           # Quickshell. It runs the backend in-process.
           desktop =
             let
-              python = pkgs.python3.withPackages (ps: [ ps.pyside6 ps.psutil ]);
+              python = pkgs.python3.withPackages (ps: [ ps.pyside6 ps.psutil ps.zstandard ]);
             in
             pkgs.stdenv.mkDerivation {
               pname = "tidesi-app";
@@ -213,6 +224,9 @@
                 cp -r ui backend assets translate "$root/"
                 find "$root" \( -name '__pycache__' -o -name '*.pyc' \) -prune -exec rm -rf {} +
                 substituteInPlace "$root/backend/tidesi/providers/antigravity_remote.py" \
+                  --replace-fail 'SECRET_TOOL = "secret-tool"' \
+                                 'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
+                substituteInPlace "$root/backend/tidesi/providers/zed.py" \
                   --replace-fail 'SECRET_TOOL = "secret-tool"' \
                                  'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
                 install -Dm644 assets/icons/org.muddyblack.tidesi.svg \
@@ -270,6 +284,7 @@
       apps = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
           quickshellDesktop = quickshellDesktopFor pkgs;
         in rec {
           view = {
@@ -310,7 +325,7 @@
             type = "app";
             program = toString (pkgs.writeShellScript "tidesi-cli" ''
               set -eu
-              export PATH=${pkgs.lib.makeBinPath [ pkgs.python3 pkgs.libsecret ]}:"$PATH"
+              export PATH=${pkgs.lib.makeBinPath [ backendPython pkgs.libsecret ]}:"$PATH"
               exec ${self}/backend/sh/tidesi-cli "$@"
             '');
           };
@@ -321,7 +336,7 @@
               export PATH=${pkgs.lib.makeBinPath [
                 pkgs.bash
                 pkgs.coreutils
-                pkgs.python3
+                backendPython
                 pkgs.libsecret
               ]}:"$PATH"
               # The repo root, not hosts/quickshell/ — Quickshell roots its QML sandbox at
@@ -345,7 +360,9 @@
         });
 
       devShells = forAllSystems (system:
-        let pkgs = nixpkgs.legacyPackages.${system};
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
         in rec {
           default = pkgs.mkShell {
             name = "tidesi-dev";
@@ -361,7 +378,7 @@
               gettext
               pre-commit
               zip
-              python3
+              backendPython
               libsecret
               ruff
               jq
@@ -390,7 +407,7 @@
             name = "tidesi-profiling";
             inputsFrom = [ default ];
             packages = with pkgs; [
-              (python3.withPackages (ps: [ ps.pyinstrument ps.memory-profiler ]))
+              (python3.withPackages (ps: [ ps.pyinstrument ps.memory-profiler ps.zstandard ]))
               perf
               hotspot
               heaptrack
@@ -407,7 +424,7 @@
           windows = pkgs.mkShell {
             name = "tidesi-windows";
             packages = [
-              (pkgs.python3.withPackages (ps: [ ps.pyside6 ps.psutil ]))
+              (pkgs.python3.withPackages (ps: [ ps.pyside6 ps.psutil ps.zstandard ]))
               pkgs.ruff
               pkgs.qt6.qtdeclarative
               pkgs.qt6.qtsvg

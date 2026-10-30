@@ -1,6 +1,6 @@
 # Dev-only lint/format config for the provider backend
-# (backend/tidesi). Nothing here is a runtime dependency —
-# the backend itself stays standard-library-only; see plan.md.
+# (backend/tidesi). Runtime dependencies are declared by each host; zstandard
+# is used to read Zed's compressed local session database.
 
 # The backend is imported as the top-level package `tidesi` with
 # backend on sys.path (the bash launcher exports PYTHONPATH;

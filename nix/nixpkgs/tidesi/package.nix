@@ -9,6 +9,9 @@
   nix-update-script,
 }:
 
+let
+  python = python3.withPackages (ps: [ ps.zstandard ]);
+in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "tidesi";
   version = "3.3.1";
@@ -50,11 +53,14 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # a build error instead of a silently unpatched script.
     substituteInPlace "$root/contents/backend/sh/python-interp.sh" \
       --replace-fail 'PY_DEFAULT="python3"' \
-                     'PY_DEFAULT="${lib.getExe python3}"'
+                     'PY_DEFAULT="${lib.getExe python}"'
     # Remote devices reuse Antigravity's Secret Service credential.
     substituteInPlace "$root/contents/backend/tidesi/providers/antigravity_remote.py" \
       --replace-fail 'SECRET_TOOL = "secret-tool"' \
-                     'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}"'
+                     'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}'
+    substituteInPlace "$root/contents/backend/tidesi/providers/zed.py" \
+      --replace-quiet 'SECRET_TOOL = "secret-tool"' \
+                      'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}'
 
     # Register the icon in the hicolor theme so the Widget Explorer finds it.
     install -Dm644 assets/icons/org.muddyblack.tidesi.svg \
