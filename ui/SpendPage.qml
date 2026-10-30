@@ -3,6 +3,7 @@ import "theme" as Appearance
 import QtQuick.Controls.Basic as QC
 import QtQuick.Layouts
 import "js/FeatureTabs.js" as FeatureTabs
+import "js/OpenCodeUsage.js" as UsageFormat
 import "js/Tone.js" as Tone
 
 ColumnLayout {
@@ -11,6 +12,25 @@ ColumnLayout {
 
     property var shell
     spacing: 12
+
+    Text {
+        visible: !page.ratesOpen
+        Layout.fillWidth: true
+        text: shell.i18n("Local costs are recorded values or catalog estimates, not invoices. Billing categories use current authentication. Day filters group whole-session values by last activity.")
+        color: Tone.c(Appearance.Palette, "#f8fafc")
+        opacity: 0.65
+        font.pixelSize: 11
+        wrapMode: Text.WordWrap
+    }
+
+    Text {
+        visible: shell.sessionsLoading || shell.sessionsError !== "" || shell.sessionsRefreshStatus === "incomplete" || shell.sessionsRefreshStatus === "failed"
+        Layout.fillWidth: true
+        text: shell.sessionsLoading ? shell.i18n("Refreshing local usage and cost…") : shell.sessionsError !== "" ? shell.sessionsError : shell.i18n("Local usage scan is incomplete. Totals may omit providers or show older data.")
+        color: shell.sessionsError !== "" || shell.sessionsRefreshStatus === "incomplete" || shell.sessionsRefreshStatus === "failed" ? shell.dangerColor : Tone.c(Appearance.Palette, "#f8fafc")
+        font.pixelSize: 11
+        wrapMode: Text.WordWrap
+    }
 
     // The timeframe every row and total is cut to: 1, 7 or 30 days, or 0 for
     // all of each provider's history. Remembered in the settings.
@@ -255,6 +275,17 @@ ColumnLayout {
         font.pixelSize: 11
     }
 
+    Text {
+        visible: !page.ratesOpen && page.rows.some(function (row) {
+            return row.costAvailable === false;
+        })
+        Layout.fillWidth: true
+        text: shell.i18n("Some costs are unavailable for this timeframe and are excluded from totals.")
+        wrapMode: Text.WordWrap
+        font.pixelSize: 11
+        color: shell.activeAccent
+    }
+
     Repeater {
         model: page.ratesOpen ? [] : page.rows
 
@@ -338,7 +369,7 @@ ColumnLayout {
                         }
                         Text {
                             visible: modelData.note !== ""
-                            text: shell.i18n(modelData.note)
+                            text: modelData.usageOnly === true ? (typeof modelData.tokens === "number" ? shell.i18n("%1 tokens", UsageFormat.compactTokens(modelData.tokens)) + " · " : "") + shell.i18n("Cost unavailable") : shell.i18n(modelData.note)
                             font.pixelSize: 10
                             opacity: 0.45
                             color: Tone.c(Appearance.Palette, "#f8fafc")
@@ -361,7 +392,7 @@ ColumnLayout {
 
                     Text {
                         Layout.alignment: Qt.AlignVCenter
-                        text: page.money(modelData.cost, modelData.currency || "USD")
+                        text: modelData.costAvailable === false ? "—" : page.money(modelData.cost, modelData.currency || "USD")
                         font.bold: true
                         // Fixed-width digits keep the two-decimal amounts in one
                         // column: every price ends in ".XX", so with equal digit

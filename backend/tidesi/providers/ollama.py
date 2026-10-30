@@ -57,7 +57,7 @@ def get_ollama_usage():
     if any(ord(ch) < 32 or ord(ch) == 127 for ch in key):
         return {"error": tr("Ollama Cloud: invalid API key characters")}
     result = fetch_json(
-        "https://ollama.com/api/usage",
+        "https://ollama.com/api/balance",
         headers={"Authorization": f"Bearer {key}"},
         timeout=10,
         fixture_path=os.environ.get("OLLAMA_RESPONSE_FILE"),
@@ -67,7 +67,7 @@ def get_ollama_usage():
             0: "offline",
             401: "Ollama Cloud: API key rejected",
             403: "Ollama Cloud: access denied",
-            404: "Ollama Cloud: usage endpoint unavailable (undocumented API)",
+            404: "Ollama Cloud: balance endpoint unavailable",
             429: "rate limited",
         }
         return {"error": messages.get(result.status, f"Ollama Cloud: HTTP {result.status}")}

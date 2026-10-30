@@ -192,6 +192,19 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 12
 
+        Text {
+            visible: shell.activeId === "opencode"
+            Layout.fillWidth: true
+            text: {
+                var provider = shell.activeProvider();
+                var mode = provider && provider.details ? provider.details.accountMode : "zen";
+                return mode === "go" ? shell.i18n("OpenCode Go account limits. Local statistics cover Zen/Go only; other routed providers appear in Usage & Spend. Local costs are recorded or catalog estimates, not invoices.") : shell.i18n("OpenCode Zen/Go local usage only. Other routed providers appear in Usage & Spend. Local costs are recorded or catalog estimates, not invoices.");
+            }
+            color: Tone.c(Appearance.Palette, "#94a3b8")
+            font.pixelSize: 11
+            wrapMode: Text.WordWrap
+        }
+
         UsageRows {
             visible: shell.activeId !== "mistral"
             Layout.fillWidth: true

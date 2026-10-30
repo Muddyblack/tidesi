@@ -1,0 +1,14 @@
+{
+  "id": "tidesi",
+  "name": "tideSI",
+  "description": "AI usage panel and popup using the shared Quickshell UI",
+  "version": "4.0.1",
+  "author": "Muddyblack",
+  "license": "MIT",
+  "type": "widget",
+  "capabilities": ["bar-widget"],
+  "component": "./TidesiPlugin.qml",
+  "permissions": ["process", "network"],
+  "requires": ["bash", "coreutils", "python3"],
+  "requires_dms": ">=1.5.0"
+}

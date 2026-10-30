@@ -35,7 +35,7 @@ from collections.abc import Sequence
 
 from . import billing, billing_mode, pricing
 from .contract import epoch_of, num
-from .providers import antigravity_sessions, cursor_sessions, junie, mimo, mistral_sessions, opencode
+from .providers import antigravity_sessions, antigravity_usage, cursor_sessions, junie, mimo, mistral_sessions, opencode
 from .providers.cline import get_cline_session_records
 from .providers.grok import discover_sessions, grok_home
 from .providers.muse import sessions_root as muse_sessions_root
@@ -129,6 +129,8 @@ def _with_usage_cost(entry, provider, buckets):
     catalog = pricing.cached_catalog()
     providers = {bucket.provider for bucket in buckets if bucket.provider}
     rates = {rate_provider: catalog.get(rate_provider, {}) for rate_provider in providers or {provider}}
+    if provider == "antigravity":
+        rates = antigravity_usage.with_price_aliases(rates, buckets)
     costed = {**entry, **billing.aggregate_session_usage(buckets, rates)}
     # Structured, not just baked into the detail string: the Spend view's
     # per-day token series is built from these, the same way its cost series
@@ -136,7 +138,7 @@ def _with_usage_cost(entry, provider, buckets):
     costed["tokens"] = billing.total_tokens(buckets)
     # What the figure means: money owed on a metered key, or the API-equivalent
     # of work a plan already covers. See billing_mode for why they never mix.
-    costed["costBilling"] = billing_mode.mode_for(entry.get("provider") or provider)
+    costed["costBilling"] = billing_mode.mode_for(entry.get("provider") or provider, entry.get("source") or "")
     return costed
 
 
@@ -767,7 +769,7 @@ def _opencode_records(reader, *, include_all=False):
     return records if include_all else records[:_MAX_SESSIONS]
 
 
-def _provider_costs(buckets):
+def _provider_costs(buckets, source=""):
     """Per-provider cost rollups for a multi-provider OpenCode session."""
     catalog = pricing.cached_catalog()
     by_provider = {}
@@ -777,6 +779,9 @@ def _provider_costs(buckets):
     for provider, provider_buckets in by_provider.items():
         result = billing.aggregate_session_usage(provider_buckets, {provider: catalog.get(provider, {})})
         if result.get("costStatus") != "unavailable":
+            result["tokens"] = billing.total_tokens(provider_buckets)
+            if source == "opencode":
+                result["costBilling"] = billing_mode.mode_for(provider, source)
             costs[provider] = result
     return costs
 
@@ -805,7 +810,7 @@ def _opencode_entries(*, include_all=False):
         if len(upstream) == 1:
             entry["billingProvider"] = provider
         else:
-            provider_costs = _provider_costs(record.usage)
+            provider_costs = _provider_costs(record.usage, "opencode")
             if provider_costs:
                 entry["providerCosts"] = provider_costs
         out.append(entry)
@@ -901,6 +906,11 @@ def _antigravity_entries(*, include_all=False):
             session_id=record.session_id,
         )
         if entry:
+            if record.usage:
+                entry = _with_usage_cost(entry, "antigravity", record.usage)
+                if not record.usage_complete and entry["costStatus"] == "exact":
+                    entry["costStatus"] = "partial"
+                entry["costBilling"] = "subscription"
             out.append(entry)
     return out
 

@@ -6,7 +6,7 @@ tidesi.cli. See docs/provider-contract.md for the shape produced here.
 """
 
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from . import config
 from .collect import collect
@@ -97,7 +97,17 @@ def crashed(id_, now, exc):
     return provider_error(id_, label, accent, now, message, {"status": status_summary(None, id_)})
 
 
-def build(selected, now=None):
+def provider_update(provider):
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "partial": True,
+        "updatedAt": provider.get("updatedAt", 0),
+        "active": provider["id"],
+        "providers": [provider],
+    }
+
+
+def build(selected, now=None, *, on_provider=None):
     """Fetch every id in `selected` concurrently and return a full envelope."""
     if now is None:
         now = time.time()
@@ -113,9 +123,18 @@ def build(selected, now=None):
         # from being cheaper, this keeps in-process callers on Windows from
         # blocking while ThreadPoolExecutor starts its first thread.
         providers = [fetch_one(selected[0])]
+        if on_provider is not None:
+            on_provider(providers[0])
     elif selected:
         with ThreadPoolExecutor(max_workers=len(selected)) as pool:
-            providers = list(pool.map(fetch_one, selected))
+            pending = {pool.submit(fetch_one, id_): index for index, id_ in enumerate(selected)}
+            completed = {}
+            for future in as_completed(pending):
+                provider = future.result()
+                completed[pending[future]] = provider
+                if on_provider is not None:
+                    on_provider(provider)
+            providers = [completed[index] for index in range(len(selected))]
     else:
         providers = []
 

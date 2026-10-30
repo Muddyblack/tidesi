@@ -580,7 +580,7 @@ class PricingTest(IsolatedHomeTest):
             for collector in (collect.collect_claude, collect.collect_openai):
                 self.assertEqual(collector(1_800_000_000)["inputs"]["pricing"], {})
             self.fetch.assert_not_called()
-            usage.return_value = HttpResult(200, '{"data": [{"model": "test"}]}')
+            usage.return_value = HttpResult(200, '{"data": [{"results": [{"model": "test"}]}]}')
             self.assertIn("claude-test", collect.collect_claude(1_800_000_000)["inputs"]["pricing"])
             self.assertIn("gpt-test", collect.collect_openai(1_800_000_000)["inputs"]["pricing"])
             self.assertEqual(self.fetch.call_count, 2)

@@ -58,14 +58,17 @@ class SessionManifestTraversalTest(unittest.TestCase):
             self.assertEqual((manifest.mtime_ns, manifest.size), self._fingerprint(expected))
 
     def test_antigravity_preserves_tree_specific_predicates_and_record_order(self):
-        # Given both Antigravity layouts and files that do/do not match
-        # When both metadata trees are collected
-        # Then the two legacy groups retain their directory-first records and fingerprints
+        # Given every Antigravity layout and files that do/do not match
+        # When the metadata trees are collected
+        # Then each group retains its directory-first records and fingerprints
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             cli = root / "antigravity-cli" / "brain"
+            ide = root / "antigravity-ide" / "brain"
             markdown = root / "antigravity" / "brain"
             (cli / "session" / ".system_generated" / "logs").mkdir(parents=True)
+            (ide / "session" / ".system_generated" / "logs").mkdir(parents=True)
+            (ide / "session" / ".system_generated" / "logs" / "transcript.jsonl").touch()
             (markdown / "workspace").mkdir(parents=True)
             (cli / "session" / ".system_generated" / "logs" / "transcript.jsonl").touch()
             (cli / "session" / "other.txt").touch()
@@ -73,12 +76,19 @@ class SessionManifestTraversalTest(unittest.TestCase):
             (markdown / "workspace" / "ignored.jsonl").touch()
             records = session_manifest._antigravity_records(str(root))
             dirs = [cli, cli / "session", cli / "session" / ".system_generated", cli / "session" / ".system_generated" / "logs"]
+            dirs += [ide, ide / "session", ide / "session" / ".system_generated", ide / "session" / ".system_generated" / "logs"]
             dirs += [markdown, markdown / "workspace"]
-            files = [cli / "session" / ".system_generated" / "logs" / "transcript.jsonl", markdown / "workspace" / "note.md"]
+            files = [
+                cli / "session" / ".system_generated" / "logs" / "transcript.jsonl",
+                ide / "session" / ".system_generated" / "logs" / "transcript.jsonl",
+                markdown / "workspace" / "note.md",
+            ]
             expected = [self._expected_record(path, "directory") for path in dirs[:4]]
             expected.append(self._expected_record(files[0], "file"))
-            expected.extend(self._expected_record(path, "directory") for path in dirs[4:])
+            expected.extend(self._expected_record(path, "directory") for path in dirs[4:8])
             expected.append(self._expected_record(files[1], "file"))
+            expected.extend(self._expected_record(path, "directory") for path in dirs[8:])
+            expected.append(self._expected_record(files[2], "file"))
             self.assertEqual(records, expected)
             manifest = session_manifest._fingerprint("antigravity", records)
             self.assertEqual((manifest.mtime_ns, manifest.size), self._fingerprint(expected))
@@ -97,17 +107,17 @@ class SessionManifestTraversalTest(unittest.TestCase):
             self.assertTrue(actual)
 
     def test_antigravity_walks_each_tree_once(self):
-        # Given both Antigravity directory trees
+        # Given every Antigravity directory tree
         # When metadata is collected
         # Then each filesystem root is traversed exactly once
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "antigravity-cli" / "brain").mkdir(parents=True)
-            (root / "antigravity" / "brain").mkdir(parents=True)
+            for client in ("antigravity-cli", "antigravity-ide", "antigravity"):
+                (root / client / "brain").mkdir(parents=True)
             walk = os.walk
             with mock.patch.object(session_manifest.os, "walk", wraps=walk) as counted_walk:
                 session_manifest._antigravity_records(str(root))
-            self.assertEqual(counted_walk.call_count, 2)
+            self.assertEqual(counted_walk.call_count, 3)
 
     def test_matching_files_keeps_symlink_and_stat_error_metadata(self):
         # Given a symlinked directory and a matching file whose stat fails

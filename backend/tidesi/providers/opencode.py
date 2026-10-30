@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .. import billing, paths
 from ..contract import finite_number
+from ..session_index import SkipSource
 
 _MAX_ROWS = 60
 _QUERY_TIMEOUT_SECONDS = 2.0
@@ -302,11 +303,15 @@ def _read_usage(
     session_id: str,
     *,
     import_tables=(),
+    require_complete: bool = False,
+    timeout_seconds: float | None = None,
 ) -> tuple[billing.UsageBucket, ...]:
     v1_message, v2_message, v1_part = _usage_schema(connection)
     if not (v1_message or v2_message):
+        if require_complete and (_table_columns(connection, "message") or _table_columns(connection, "session_message")):
+            raise SkipSource("OpenCode usage scan incomplete: unsupported usage schema")
         return ()
-    deadline = time.monotonic() + _QUERY_TIMEOUT_SECONDS
+    deadline = time.monotonic() + (_QUERY_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds)
 
     def query(sql: str) -> tuple[bool, list]:
         if import_tables:
@@ -314,10 +319,14 @@ def _read_usage(
             predicate = _native_message_filter(connection, alias, import_tables)
             sql = sql.replace("\nGROUP BY", f" AND ({predicate})\nGROUP BY")
         if time.monotonic() >= deadline:
+            if require_complete:
+                raise SkipSource("OpenCode usage scan incomplete: query deadline exceeded")
             return False, []
         try:
             return True, connection.execute(sql, (session_id,)).fetchall()
-        except sqlite3.Error:
+        except sqlite3.Error as error:
+            if require_complete:
+                raise SkipSource("OpenCode usage scan incomplete: query did not complete") from error
             return False, []
 
     connection.set_progress_handler(lambda: int(time.monotonic() >= deadline), 1000)
@@ -364,8 +373,12 @@ def _read_database(database_path: str, *, include_all: bool = False, import_tabl
             else:
                 rows = connection.execute(query + " LIMIT ?", (_MAX_ROWS,)).fetchall()
             usage_by_session = {}
+            if include_all:
+                from .opencode_usage_cache import read_usage
+
+                usage_by_session = read_usage(connection, database_path, [_text(row[0]) for row in rows], import_tables)
             enrich_deadline = time.monotonic() + _ENRICH_TIMEOUT_SECONDS
-            for row in rows:
+            for row in () if include_all else rows:
                 if time.monotonic() >= enrich_deadline:
                     break
                 session_id = _text(row[0])

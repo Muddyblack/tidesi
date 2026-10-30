@@ -58,6 +58,10 @@ if os.environ.get("FAKE_CODEX_MODE") == "closed":
 if os.environ.get("FAKE_CODEX_MODE") == "error":
     print(json.dumps({"id": 2, "error": {"code": -32601, "message": "method not found"}}), flush=True)
     sys.exit(0)
+if os.environ.get("FAKE_CODEX_MODE") == "expired":
+    error = {"code": -32603, "message": "Provided authentication token is expired: token_expired fixture-secret"}
+    print(json.dumps({"id": 2, "error": error}), flush=True)
+    sys.exit(0)
 if os.environ.get("FAKE_CODEX_MODE") == "empty":
     print(json.dumps({"id": 2, "result": {}}), flush=True)
     sys.exit(0)
@@ -110,7 +114,7 @@ class CodexRateLimitsTest(unittest.TestCase):
         result = self.call("silent")
         self.assertEqual(result.pop("_codexSource"), "unavailable")
         self.assertIsNone(result.pop("_codexAge"))
-        self.assertEqual(result, {})
+        self.assertIn("rate-limit", result["_codexError"])
         self.assertLess(time.monotonic() - started, 15)
 
     def test_no_codex_on_path(self):
@@ -119,6 +123,11 @@ class CodexRateLimitsTest(unittest.TestCase):
         self.assertEqual(result.pop("_codexSource"), "unavailable")
         self.assertIsNone(result.pop("_codexAge"))
         self.assertEqual(result, {})
+
+    def test_expired_token_error_is_safe_and_not_discarded(self):
+        result = self.call("expired")
+        self.assertEqual(result["_codexError"], "token expired")
+        self.assertNotIn("fixture-secret", json.dumps(result))
 
     def test_a_server_that_exits_without_limits_returns_empty(self):
         result = self.call("closed")
@@ -319,6 +328,16 @@ class CodexCollectFallbackTest(IsolatedHomeTest):
         ):
             raw = collect.collect_openai(1_800_000_000)
         fetch.assert_not_called()
+        self.assertEqual(raw["inputs"]["codex"], {})
+
+    def test_expired_rpc_auth_is_not_masked_by_a_second_http_failure(self):
+        with (
+            mock.patch.object(collect, "get_codex_rate_limits", return_value={"_codexError": "token expired"}),
+            mock.patch.object(collect, "fetch_json") as fetch,
+        ):
+            raw = collect.collect_openai(1_800_000_000)
+        fetch.assert_not_called()
+        self.assertEqual(raw["inputs"]["codexError"], "token expired")
         self.assertEqual(raw["inputs"]["codex"], {})
 
 

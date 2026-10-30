@@ -45,7 +45,7 @@ def normalize_mistral(raw):
     r["ok"] = valid
     r["account"] = account(
         details["vibe"]["activeModel"] or "Mistral Vibe",
-        [chip(tr("CONNECTED"), "plan")] if valid else [],
+        [chip(tr("CONNECTED"), "good")] if valid else [],
     )
     r["summary"] = {
         "pct": pct,

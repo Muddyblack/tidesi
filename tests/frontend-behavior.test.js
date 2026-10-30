@@ -271,7 +271,7 @@ test("session response metadata exposes safe freshness and source-removal status
 
     assert.match(cache, /"cacheStatus"/);
     assert.match(cache, /"cacheAgeSeconds"/);
-    assert.match(cache, /\["refreshStatus"\] = self\.refresh_status/);
+    assert.match(cache, /\["refreshStatus"\] = "incomplete" if incomplete else self\.refresh_status/);
     assert.match(cache, /\["removedSourceCount"\] = self\.removed_sources/);
     assert.match(state, /cacheStatus/);
     assert.match(state, /cacheAgeSeconds/);
@@ -437,7 +437,7 @@ test("local spend rows merge actual and estimated costs by source", () => {
             provenance: "estimated",
             costStatus: "exact",
             costBreakdown: { actualUSD: 0, estimatedUSD: 1 },
-            note: "local CLI logs · estimated · exact",
+            note: "local CLI logs · estimate · complete",
         },
     ]);
 
@@ -472,9 +472,23 @@ test("OpenCode local rows retain separate upstream billing providers", () => {
         source: row.source,
         note: row.note,
     })))), [
-        { id: "local-opencode-openai", label: "OpenAI", cost: 0.13, source: "opencode", note: "via OpenCode · actual · exact" },
-        { id: "local-opencode-anthropic", label: "Anthropic", cost: 0.42, source: "opencode", note: "via OpenCode · estimated · exact" },
+        { id: "local-opencode-openai", label: "OpenAI", cost: 0.13, source: "opencode", note: "via OpenCode · recorded · complete" },
+        { id: "local-opencode-anthropic", label: "Anthropic", cost: 0.42, source: "opencode", note: "via OpenCode · estimate · complete" },
     ]);
+});
+
+test("OpenCode Zen/Go card does not suppress other providers routed through OpenCode", () => {
+    const entry = (cost) => ({ costUSD: cost, costStatus: "exact", source: "opencode", dailyUSD: [{ date: "2026-10-24", usd: cost }] });
+    const ledger = { actual: { costStatus: "exact", totalUSD: 15, providers: {
+        "opencode::opencode": entry(1), "opencode-go::opencode": entry(2),
+        "openai::opencode": entry(5), "ollama-cloud::opencode": entry(7),
+    } } };
+    const providers = [{ id: "opencode", details: { stats: { totalCostUSD: 3 } } }];
+    const providerRows = FeatureTabs.spendProviderRows(providers, ledger);
+    const localRows = FeatureTabs.localSpendRows(ledger, providerRows, providers);
+    assert.deepEqual(Array.from(localRows, row => [row.label, row.cost]), [["OpenAI", 5], ["Ollama Cloud", 7]]);
+    assert.equal(FeatureTabs.spendAllTotal([...providerRows, ...localRows], "USD"), 15);
+    assert.equal(providerRows[0].dailyCost.reduce((sum, point) => sum + point.usd, 0), 3);
 });
 
 test("OpenCode usage chart range selects matching daily data and period summary", () => {
@@ -858,12 +872,14 @@ test("spend timeframe filtering recomputes bounded rows and preserves ALL", () =
     assert.strictEqual(all, rows);
 });
 
-test("spend timeframe filtering zeroes out rows without bounded history instead of dropping them", () => {
+test("spend timeframe filtering marks missing daily costs unavailable rather than inventing zero spend", () => {
     const rows = [{ id: "legacy", cost: 4, currency: "USD", dailyCost: [], dailyTokens: [] }];
 
     const sevenDays = FeatureTabs.spendRowsForWindow(rows, 7);
     assert.equal(sevenDays.length, 1);
-    assert.equal(sevenDays[0].cost, 0);
+    assert.equal(sevenDays[0].cost, null);
+    assert.equal(sevenDays[0].costAvailable, false);
+    assert.equal(FeatureTabs.spendMeteredTotal(sevenDays, "USD"), 0);
     assert.equal(FeatureTabs.spendRowsForWindow(rows, 0)[0].cost, 4);
 });
 
@@ -969,22 +985,22 @@ test("spend summary computes metered, plan-covered and all-inclusive totals", ()
     assert.equal(Math.round(FeatureTabs.spendMeteredTotal(rows, "USD") * 100) / 100, 4.47);
     assert.equal(Math.round(FeatureTabs.spendPlanTotal(rows, "USD") * 100) / 100, 5423.99);
     assert.equal(Math.round(FeatureTabs.spendAllTotal(rows, "USD") * 100) / 100, 5428.46);
-    assert.equal(FeatureTabs.spendSummaryText(rows, "USD"), "Metered: $4.47 · Incl. plan: $5428.46");
+    assert.equal(FeatureTabs.spendSummaryText(rows, "USD"), "API $4.47 · Plan ≈ $5423.99");
 
     // Only plan-covered
-    assert.equal(FeatureTabs.spendSummaryText([rows[2]], "USD"), "Incl. plan: $3966.35");
+    assert.equal(FeatureTabs.spendSummaryText([rows[2]], "USD"), "Plan ≈ $3966.35");
 
     // Only metered
-    assert.equal(FeatureTabs.spendSummaryText([rows[0], rows[1]], "USD"), "Metered: $4.47");
+    assert.equal(FeatureTabs.spendSummaryText([rows[0], rows[1]], "USD"), "API $4.47");
 
     // Empty
     assert.equal(FeatureTabs.spendSummaryText([], "USD"), "");
 
     // Tooltip breakdown
     const tooltip = FeatureTabs.spendSummaryTooltip(rows, "USD");
-    assert.match(tooltip, /Metered \(out-of-pocket\): \$4\.47/);
-    assert.match(tooltip, /Covered by plan \(subscription\): \$5423\.99/);
-    assert.match(tooltip, /Total including plan: \$5428\.46/);
+    assert.match(tooltip, /API and local logs, not a bill: \$4\.47/);
+    assert.match(tooltip, /Covered by plan, at API prices: \$5423\.99/);
+    assert.match(tooltip, /Together: \$5428\.46/);
 });
 
 test("a plan-covered row's daily cost adds up to the total shown on it", () => {

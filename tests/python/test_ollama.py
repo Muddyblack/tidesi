@@ -43,8 +43,8 @@ class OllamaTest(IsolatedHomeTest):
     def test_no_inference_call_and_status_error(self):
         os.environ["OLLAMA_API_KEY"] = "test-key"
         with mock.patch("tidesi.providers.ollama.fetch_json", return_value=HttpResult(404, "")) as fetch:
-            self.assertIn("undocumented", get_ollama_usage()["error"])
-            self.assertEqual(fetch.call_args.args[0], "https://ollama.com/api/usage")
+            self.assertIn("unavailable", get_ollama_usage()["error"])
+            self.assertEqual(fetch.call_args.args[0], "https://ollama.com/api/balance")
             self.assertIsNone(fetch.call_args.kwargs.get("data"))
         for status, expected in ((0, "offline"), (429, "rate limited")):
             with self.subTest(status=status), mock.patch("tidesi.providers.ollama.fetch_json", return_value=HttpResult(status, "")):
@@ -93,6 +93,39 @@ class OllamaTest(IsolatedHomeTest):
 
     def test_unknown_shape_is_unavailable_not_zero(self):
         result = normalize_ollama({"now": 100, "inputs": {"usage": {"limits": {"monthly": {"credits": 10}}}}})
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["quotaWindows"], [])
+
+    def test_balance_legacy_remaining_percent_becomes_used_percent_with_resets(self):
+        balance = {
+            "included": {
+                "session": {"remaining_percent": 75, "resets_at": "2026-10-23T07:00:00Z"},
+                "weekly": {"remaining_percent": 40, "resets_at": "2026-10-25T00:00:00Z"},
+            },
+            "purchased": {"balance_usd": 25},
+        }
+        result = normalize_ollama({"now": 100, "inputs": {"usage": balance}})
+        self.assertTrue(result["ok"])
+        self.assertEqual([w["pct"] for w in result["quotaWindows"][:2]], [25, 60])
+        self.assertTrue(all(w["resetAt"] > 0 for w in result["quotaWindows"][:2]))
+        self.assertFalse(result["details"]["resetUnavailable"])
+        self.assertEqual(result["historyValues"], {"ollama_session": 25, "ollama_weekly": 60})
+        self.assertFalse(result["quotaWindows"][-1]["showMeter"])
+
+    def test_balance_included_credits_use_the_actual_allowance_and_reset(self):
+        balance = {
+            "included": {"balance_usd": 72.5, "allowance_usd": 100, "period": {"until": "2026-10-25T00:00:00Z"}},
+            "purchased": {"balance_usd": 25},
+        }
+        result = normalize_ollama({"now": 100, "inputs": {"usage": balance}})
+        self.assertTrue(result["ok"])
+        self.assertAlmostEqual(result["summary"]["pct"], 27.5)
+        self.assertEqual(result["quotaWindows"][0]["label"], "Included credits")
+        self.assertIn("72.50", result["quotaWindows"][0]["detail"])
+        self.assertGreater(result["quotaWindows"][0]["resetAt"], 0)
+
+    def test_activity_totals_are_not_invented_quota_limits(self):
+        result = normalize_ollama({"now": 100, "inputs": {"usage": {"totals": {"request_count": 15}, "buckets": []}}})
         self.assertFalse(result["ok"])
         self.assertEqual(result["quotaWindows"], [])
 

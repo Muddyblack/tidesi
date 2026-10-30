@@ -44,7 +44,7 @@ FROZEN = getattr(sys, "frozen", False)
 ROOT = Path(getattr(sys, "_MEIPASS", "")) if FROZEN else Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
 
-from tidesi import config, detect, history, historyio, paths, snapshot_export, widget_state  # noqa: E402
+from tidesi import config, detect, envelope, history, historyio, paths, snapshot_export, widget_state  # noqa: E402
 from tidesi.__main__ import _refresh_pricing, snapshot  # noqa: E402
 from tidesi.sessions import collect_sessions, open_session, refresh_sessions  # noqa: E402
 
@@ -158,17 +158,17 @@ def open_session_json(key):
             _restore_environ(saved)
 
 
-def collect_snapshot():
+def collect_snapshot(*, on_provider=None):
     if _DEMO_ENVELOPE is not None:
         return _DEMO_ENVELOPE
     with _env_lock:
         saved = dict(os.environ)
         try:
-            envelope = snapshot()
+            result = snapshot() if on_provider is None else snapshot(on_provider=on_provider)
             # The last good answer, replayed (marked stale) on the next start.
             with contextlib.suppress(OSError, ValueError):
-                widget_state.save_snapshot(envelope)
-            return json.dumps(envelope, separators=(",", ":"), ensure_ascii=False)
+                widget_state.save_snapshot(result)
+            return json.dumps(result, separators=(",", ":"), ensure_ascii=False)
         finally:
             _restore_environ(saved)
 
@@ -484,6 +484,7 @@ class Backend(QObject):
     with a signal, which Qt delivers on the GUI thread."""
 
     snapshotReady = Signal(str)
+    providerReady = Signal(str)
     sessionsReady = Signal(str, str, int)
     openSessionFinished = Signal(str)
     refreshFailed = Signal(str)
@@ -517,6 +518,7 @@ class Backend(QObject):
     # Workers only emit these private signals. Public QML signals and property
     # notifications are published by slots on this object's GUI thread.
     _refreshCompleted = Signal(str, str)
+    _providerCompleted = Signal(str)
     _sessionsCompleted = Signal(str, str, str, int)
     _openSessionCompleted = Signal(str)
     _historyCompleted = Signal(str, str)
@@ -536,6 +538,7 @@ class Backend(QObject):
         self._first_run = first_run
         self._tray_labels = {}
         self._refreshCompleted.connect(self._finish_refresh, Qt.QueuedConnection)
+        self._providerCompleted.connect(self.providerReady, Qt.QueuedConnection)
         self._sessionsCompleted.connect(self._finish_sessions, Qt.QueuedConnection)
         self._openSessionCompleted.connect(self.openSessionFinished, Qt.QueuedConnection)
         self._historyCompleted.connect(self._finish_history, Qt.QueuedConnection)
@@ -564,7 +567,11 @@ class Backend(QObject):
 
     def _refresh(self):
         try:
-            result = collect_snapshot()
+            result = collect_snapshot(
+                on_provider=lambda provider: self._providerCompleted.emit(
+                    json.dumps(envelope.provider_update(provider), separators=(",", ":"), ensure_ascii=False)
+                )
+            )
         except Exception as exc:  # the popup shows it; nothing else would
             self._refreshCompleted.emit("", f"usage backend failed: {exc}")
         else:
@@ -720,7 +727,15 @@ class Backend(QObject):
     @Slot(str, str)
     def history(self, op, payload):
         """Run one history-io command; the answer arrives as historyFinished."""
-        self._pool.submit(lambda: self._historyCompleted.emit(op, historyio.run(op, payload)))
+        self._pool.submit(self._run_history, op, payload)
+
+    def _run_history(self, op, payload):
+        # Always answer: the popup holds autosaves until a clear or prune reports back.
+        try:
+            result = historyio.run(op, payload)
+        except Exception as exc:
+            result = json.dumps({"error": f"history {op} failed: {exc}"}, ensure_ascii=False)
+        self._historyCompleted.emit(op, result)
 
     @Slot(str, str, result=str)
     def flushHistory(self, op, payload):

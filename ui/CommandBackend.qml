@@ -18,7 +18,7 @@ import QtQuick
 //               defaultTrayStyle, autostartAvailable, autostart
 //   signals     settingsLoaded(text), catalogLoaded(text), languagesLoaded(json),
 //               providerDefaultsLoaded(text), providersDetected(text),
-//               snapshotReady(text), refreshFailed(message),
+//               snapshotReady(text), providerReady(text), refreshFailed(message),
 //               sessionsReady(text, query, requestId), openSessionFinished(text),
 //               pricingRefreshFinished(text), pricingRefreshFailed(message),
 //               ratesReady(text), historyFinished(op, result),
@@ -67,14 +67,27 @@ QtObject {
 
     property bool busy: false
     property bool pricingBusy: false
+    property bool refreshPending: false
+    property bool settingsSaveBlocked: false
+    property QtObject settingsQueue: ProcessQueue {
+        runner: root.runner
+        onIdle: if (root.refreshPending)
+            root.refresh()
+    }
+    property QtObject historyQueue: ProcessQueue {
+        runner: root.runner
+    }
 
     signal settingsLoaded(string text)
+    signal settingsSaved
+    signal settingsSaveFailed(string reason)
     signal lastSnapshotLoaded(string text)
     signal catalogLoaded(string text)
     signal languagesLoaded(string text)
     signal providerDefaultsLoaded(string text)
     signal providersDetected(string text)
     signal snapshotReady(string text)
+    signal providerReady(string text)
     signal refreshFailed(string message)
     signal sessionsReady(string text, string query, int requestId)
     signal openSessionFinished(string text)
@@ -92,8 +105,8 @@ QtObject {
     // stay intact. An empty $PYTHON3 reads as unset in python-interp.sh.
     // Always braced: in sh, "$10" is "$1" followed by "0", not argument ten.
     function tool(name, args, env) {
-        var script = "PYTHON3=\"$1\"";
-        var argv = ["sh", "-c", "", "tidesi", root.pythonPath || ""];
+        var script = "PYTHON3=\"$1\" AI_USAGE_CONFIG=\"$2\"";
+        var argv = ["sh", "-c", "", "tidesi", root.pythonPath || "", root.configPath];
         var keys = Object.keys(env || {});
         for (var i = 0; i < keys.length; i++) {
             argv.push(String(env[keys[i]]));
@@ -135,7 +148,17 @@ QtObject {
     function saveSettings(text) {
         // Written beside the target and renamed over it, so a reader never sees
         // a half-written file.
-        root.runner.run(["sh", "-c", "mkdir -p \"$(dirname \"$2\")\" && printf '%s' \"$1\" > \"$2.tmp.$$\" && mv -f \"$2.tmp.$$\" \"$2\"", "tidesi", text, root.configPath], function () {});
+        root.settingsQueue.run(["sh", "-c", "umask 077; tmp=\"$2.tmp.$$\"; trap 'rm -f \"$tmp\"' EXIT; mkdir -p \"$(dirname \"$2\")\" && printf '%s' \"$1\" > \"$tmp\" && mv -f \"$tmp\" \"$2\"", "tidesi", text, root.configPath], function (out, err, code) {
+            root.settingsSaveBlocked = code !== 0;
+            // Only a known OS reason is passed on: stderr itself is never shown,
+            // since a failing command could echo the settings text and its keys.
+            if (root.settingsSaveBlocked)
+                root.settingsSaveFailed(["Permission denied", "No space left on device", "Read-only file system", "Disk quota exceeded"].find(function (reason) {
+                    return (err || "").indexOf(reason) !== -1;
+                }) || "");
+            else
+                root.settingsSaved();
+        });
     }
 
     function requestCatalog(language) {
@@ -168,16 +191,43 @@ QtObject {
 
     // ── Usage ────────────────────────────────────────────────────────────────
     function refresh() {
-        if (root.busy)
+        if (root.busy || root.settingsQueue.busy || root.settingsSaveBlocked) {
+            root.refreshPending = true;
             return;
+        }
+        root.refreshPending = false;
         root.busy = true;
+        var finalText = "";
+        function consume(line, progressive) {
+            var data;
+            try {
+                data = JSON.parse(line);
+            } catch (e) {
+                return;
+            }
+            if (!data || !Array.isArray(data.providers))
+                return;
+            if (data.partial === true) {
+                if (progressive)
+                    root.providerReady(line);
+            } else {
+                finalText = line;
+            }
+        }
         // --save-snapshot keeps the last good answer for the next start.
-        root.runner.run(root.backendArgs(["--all", "--save-snapshot"]), function (out, err, code) {
-            if ((out || "").trim() !== "")
-                root.snapshotReady(out);
+        root.runner.run(root.backendArgs(["--all", "--stream", "--save-snapshot"]), function (out, err, code) {
+            (out || "").split("\n").forEach(function (line) {
+                consume(line, false);
+            });
+            if (code === 0 && finalText !== "")
+                root.snapshotReady(finalText);
             else
                 root.refreshFailed(root.firstLine(err) || "usage backend failed");
             root.busy = false;
+            if (root.refreshPending)
+                root.refresh();
+        }, function (line) {
+            consume(line, true);
         });
     }
 
@@ -255,7 +305,7 @@ QtObject {
         var env = payload !== "" ? {
             WIDGET_HISTORY_JSON: payload
         } : {};
-        root.runner.run(root.tool("history-io", [op], env), function (out) {
+        root.historyQueue.run(root.tool("history-io", [op], env), function (out) {
             root.historyFinished(op, out || "");
         });
     }
@@ -263,7 +313,10 @@ QtObject {
     // No synchronous process here: the write is started and left to finish,
     // which it does — the tool does not depend on this process staying alive.
     function flushHistory(op, payload) {
-        root.history(op, payload);
+        var env = payload !== "" ? {
+            WIDGET_HISTORY_JSON: payload
+        } : {};
+        root.runner.run(root.tool("history-io", [op], env), function () {});
         return "";
     }
 

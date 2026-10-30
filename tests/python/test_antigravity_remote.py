@@ -54,7 +54,7 @@ class RemoteControlTest(unittest.TestCase):
         result = normalize_antigravity({"now": 1, "inputs": {"usage": usage}})
         remote = result["details"]["remote"]
         self.assertEqual((remote["state"], remote["url"]), ("online", "https://antigravity.google.com/"))
-        self.assertEqual([c["text"] for c in result["account"]["chips"]], ["Starter"])
+        self.assertEqual([c["text"] for c in result["account"]["chips"]], ["STARTER"])
 
     def test_no_log_means_no_remote_tab(self):
         result = normalize_antigravity({"now": 1, "inputs": {"usage": {"models": [], "planType": "Starter"}}})

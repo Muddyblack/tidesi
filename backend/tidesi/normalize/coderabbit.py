@@ -1,4 +1,4 @@
-from ..contract import account, chip, fact, facts_section, flat_window, note_section, num, provider_base, provider_error, sections
+from ..contract import account, fact, facts_section, flat_window, note_section, num, plan_chip, provider_base, provider_error, sections
 from ..messages import lines, tr
 
 ACCENT = "#ff7a3d"
@@ -19,7 +19,7 @@ def normalize_coderabbit(raw):
     plan = res.get("plan") or ""
     billing = res.get("billing") or ""
     r = provider_base("coderabbit", "CodeRabbit", ACCENT, now)
-    r["account"] = account(res.get("organization") or res.get("user") or "", [chip(plan, "plan")] if plan else [])
+    r["account"] = account(res.get("organization") or res.get("user") or "", [plan_chip(plan)])
     count_text = str(reviews) if isinstance(reviews, int) else "—"
     r["summary"] = {"pct": 0, "text": count_text, "detail": tr("reviews this period"), "hasChart": False}
     r["quotaWindows"] = [flat_window("coderabbit_reviews", tr("Your reviews"), 0, reset_at, count_text, False)]

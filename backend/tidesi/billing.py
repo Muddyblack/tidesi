@@ -43,7 +43,11 @@ def _bucket_tokens(bucket):
 
 def total_tokens(buckets):
     """Sum of input/output/cache tokens across a set of usage buckets."""
-    return sum(sum(_bucket_tokens(bucket)[key] for key in ("input", "output", "cache_read", "cache_write")) for bucket in buckets)
+    return sum(
+        sum(_bucket_tokens(bucket)[key] for key in ("input", "output", "cache_read", "cache_write"))
+        + (_token_count(bucket.reasoning_tokens) if bucket.source == "antigravity" else 0)
+        for bucket in buckets
+    )
 
 
 def _bucket_cost(bucket, price):
@@ -66,7 +70,8 @@ def _bucket_cost(bucket, price):
     # this once did, made a cache-heavy Claude session priced at a fraction
     # of its real cost — the bulk of its tokens vanished from the bill.
     cached = tokens["cache_read"]
-    inside_input = min(cached, tokens["input"])
+    # Antigravity's generation ledger records new input separately from its cached prefix.
+    inside_input = 0 if bucket.source == "antigravity" else min(cached, tokens["input"])
     uncached = tokens["input"] - inside_input + tokens["cache_write"]
     output = tokens["output"] + tokens["reasoning"]
     cost = (uncached / 1_000_000) * input_rate

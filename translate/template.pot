@@ -54,6 +54,10 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: ui/AppState.qml
+msgid "Check file permissions and free disk space."
+msgstr ""
+
+#: ui/AppState.qml
 msgid "Using %1"
 msgstr ""
 
@@ -218,7 +222,7 @@ msgid_plural "%1 sessions"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/MistralUsage.qml ui/StatsSection.qml ui/UsageChart.qml
+#: ui/MistralUsage.qml ui/SpendPage.qml ui/StatsSection.qml ui/UsageChart.qml
 msgid "%1 tokens"
 msgstr ""
 
@@ -276,6 +280,19 @@ msgid "Remote"
 msgstr ""
 
 #: ui/PopupContent.qml
+msgid ""
+"OpenCode Go account limits. Local statistics cover Zen/Go only; other routed "
+"providers appear in Usage & Spend. Local costs are recorded or catalog "
+"estimates, not invoices."
+msgstr ""
+
+#: ui/PopupContent.qml
+msgid ""
+"OpenCode Zen/Go local usage only. Other routed providers appear in Usage & "
+"Spend. Local costs are recorded or catalog estimates, not invoices."
+msgstr ""
+
+#: ui/PopupContent.qml
 #, no-javascript-format
 msgid "Used: %1%"
 msgstr ""
@@ -322,6 +339,10 @@ msgstr ""
 
 #: ui/PopupContent.qml
 msgid "updated %1"
+msgstr ""
+
+#: ui/PopupHeader.qml
+msgid "Settings not saved"
 msgstr ""
 
 #: ui/PopupHeader.qml
@@ -590,7 +611,7 @@ msgid_plural "%1 d ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/SessionsPage.qml
+#: ui/SessionsPage.qml ui/SpendPage.qml
 msgid "Cost unavailable"
 msgstr ""
 
@@ -1241,6 +1262,22 @@ msgid "The first source below that works"
 msgstr ""
 
 #: ui/SpendPage.qml
+msgid ""
+"Local costs are recorded values or catalog estimates, not invoices. Billing "
+"categories use current authentication. Day filters group whole-session "
+"values by last activity."
+msgstr ""
+
+#: ui/SpendPage.qml
+msgid "Refreshing local usage and cost…"
+msgstr ""
+
+#: ui/SpendPage.qml
+msgid ""
+"Local usage scan is incomplete. Totals may omit providers or show older data."
+msgstr ""
+
+#: ui/SpendPage.qml
 msgid "Could not read model pricing."
 msgstr ""
 
@@ -1267,6 +1304,11 @@ msgstr ""
 msgid ""
 "No cost figures yet. Enable providers that report spend, or use them until "
 "local logs appear."
+msgstr ""
+
+#: ui/SpendPage.qml
+msgid ""
+"Some costs are unavailable for this timeframe and are excluded from totals."
 msgstr ""
 
 #: ui/SpendPage.qml
@@ -1722,6 +1764,48 @@ msgid ""
 "OpenAI, Grok, Kiro, OpenRouter & Mistral)"
 msgstr ""
 
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage returned an invalid response."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage: network error."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid ""
+"OpenAI organization usage: access denied (HTTP 403); check organization "
+"usage permissions."
+msgstr ""
+
+#: backend/tidesi/collect.py
+msgid "OpenAI organization usage request failed (HTTP %1)."
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "minimal"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "low"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "medium"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "high"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "effort: %1"
+msgstr ""
+
+#: backend/tidesi/contract.py
+msgid "Reasoning effort: %1"
+msgstr ""
+
 #: backend/tidesi/contract.py
 msgid "unavailable"
 msgstr ""
@@ -1892,31 +1976,11 @@ msgid "free"
 msgstr ""
 
 #: backend/tidesi/normalize/claude.py
-msgid "high"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py
-msgid "low"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py
-msgid "medium"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py
 msgid "%1…"
 msgstr ""
 
 #: backend/tidesi/normalize/claude.py
 msgid "Claude Code User"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py backend/tidesi/normalize/openai.py
-msgid "effort: %1"
-msgstr ""
-
-#: backend/tidesi/normalize/claude.py
-msgid "Thinking budget: %1"
 msgstr ""
 
 #: backend/tidesi/normalize/claude.py
@@ -2446,6 +2510,14 @@ msgid "Ollama Cloud: usage response has no limit data"
 msgstr ""
 
 #: backend/tidesi/normalize/ollama.py
+msgid "Included credits"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
+msgid "%1 of %2 USD remaining"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
 msgid "Ollama Cloud: no recognized usage limits in response"
 msgstr ""
 
@@ -2453,12 +2525,16 @@ msgstr ""
 msgid "%1: %2%"
 msgstr ""
 
-#: backend/tidesi/normalize/openai.py
-msgid "Codex / ChatGPT User"
+#: backend/tidesi/normalize/ollama.py
+msgid "Purchased credits"
+msgstr ""
+
+#: backend/tidesi/normalize/ollama.py
+msgid "%1 USD remaining"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
-msgid "Reasoning effort: %1"
+msgid "Codex / ChatGPT User"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
@@ -2494,11 +2570,23 @@ msgid "%1 · weekly"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
+msgid "Organization usage unavailable"
+msgstr ""
+
+#: backend/tidesi/normalize/openai.py
 msgid "Codex 5h: %1% left"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
 msgid "Codex weekly: %1% left"
+msgstr ""
+
+#: backend/tidesi/normalize/openai.py
+msgid "Codex login expired. Run codex login to sign in again."
+msgstr ""
+
+#: backend/tidesi/normalize/openai.py
+msgid "OpenAI usage refresh failed: %1"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
@@ -2510,7 +2598,7 @@ msgid "API key configured"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
-msgid "API credentials"
+msgid "Codex signed in; no organization API key"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
@@ -2518,7 +2606,7 @@ msgid "Organization usage available"
 msgstr ""
 
 #: backend/tidesi/normalize/openai.py
-msgid "Codex signed in; no organization API key"
+msgid "API credentials"
 msgstr ""
 
 #: backend/tidesi/normalize/opencode.py

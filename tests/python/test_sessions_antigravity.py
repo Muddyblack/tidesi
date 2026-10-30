@@ -97,6 +97,18 @@ class AntigravityDiscoveryTest(unittest.TestCase):
         ide = next(record for record in records if record.session_id == _IDE_ID)
         self.assertEqual(ide.title, "Fix the installer")
 
+    def test_reads_the_antigravity_ide_store_like_the_cli(self):
+        transcript = json.dumps({"step_index": 0, "type": "USER_INPUT", "content": "From the IDE store"})
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(_write_cli(root, _IDE_ID, transcript))
+            ide_path = Path(root) / "antigravity-ide" / path.relative_to(Path(root) / "antigravity-cli")
+            ide_path.parent.mkdir(parents=True)
+            path.rename(ide_path)
+            with mock.patch.dict(os.environ, {"ANTIGRAVITY_HOME": root}, clear=True):
+                records = antigravity_sessions.read_recent_sessions()
+
+        self.assertEqual([(record.session_id, record.title) for record in records], [(_IDE_ID, "From the IDE store")])
+
     def test_deduplicates_cli_and_ide_copies_by_newest_activity(self):
         transcript = json.dumps(
             {

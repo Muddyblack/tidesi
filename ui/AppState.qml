@@ -141,6 +141,17 @@ Item {
             language: ""
         })
     property bool settingsLoaded: false
+    property string settingsSaveError: ""
+    Connections {
+        target: root.backend
+        ignoreUnknownSignals: true
+        function onSettingsSaveFailed(reason) {
+            root.settingsSaveError = reason || root.i18n("Check file permissions and free disk space.");
+        }
+        function onSettingsSaved() {
+            root.settingsSaveError = "";
+        }
+    }
     property bool showSettings: false
     // How wide the popup is: the settings studio brings a sidebar, which needs
     // the room. Each host binds its window to this.
@@ -155,7 +166,11 @@ Item {
             showSettings = false;
     }
     readonly property int popupWidth: showSettings ? 760 : 460
-    onSettingsChanged: root.publishTray()
+    onSettingsChanged: {
+        if (root.settingsLoaded)
+            root.dropDisabledProviders();
+        root.publishTray();
+    }
     readonly property string antigravityChartFilter: root.settings.antigravityChartFilter || "both"
 
     function normalizeSettings(d) {
@@ -192,6 +207,12 @@ Item {
         } catch (e) {}
         root.settings = root.normalizeSettings(d);
         root.settingsLoaded = true;
+        root.dropDisabledProviders();
+        if (root.pendingLastSnapshot !== "") {
+            var pending = root.pendingLastSnapshot;
+            root.pendingLastSnapshot = "";
+            root.applyLastSnapshot(pending);
+        }
         backend.requestCatalog(root.language);
         // The first start (no settings file yet): write one now, so whatever
         // a host does only on a first start happens once.
@@ -247,6 +268,14 @@ Item {
 
     function providerEnabled(id) {
         return ProviderRegistry.enabled(root.settings, id);
+    }
+
+    // Snapshots (cached or live) can still carry a provider the user has since
+    // turned off; keep only the configured ones.
+    function dropDisabledProviders() {
+        root.providers = root.providers.filter(function (provider) {
+            return root.providerEnabled(provider.id);
+        });
     }
 
     // ── Provider sources ─────────────────────────────────────────────────────
@@ -712,10 +741,16 @@ Item {
     // arrives after a live answer is dropped.
     property bool replaying: false
     property bool liveSnapshotSeen: false
+    property bool incrementalSnapshot: false
+    property string pendingLastSnapshot: ""
 
     function applyLastSnapshot(text) {
-        if (root.liveSnapshotSeen)
+        if (root.liveSnapshotSeen && !root.incrementalSnapshot)
             return;
+        if (!root.settingsLoaded) {
+            root.pendingLastSnapshot = text;
+            return;
+        }
         var data;
         try {
             data = JSON.parse((text || "").trim() || "{}");
@@ -724,6 +759,14 @@ Item {
         }
         if (!data || !Array.isArray(data.providers) || data.providers.length === 0)
             return;
+        if (root.liveSnapshotSeen) {
+            data.providers = data.providers.filter(function (provider) {
+                return !root.providerById(provider.id);
+            });
+            data.partial = true;
+            root.applySnapshot(JSON.stringify(data));
+            return;
+        }
         root.replaying = true;
         root.applySnapshot(text, true);
     }
@@ -735,14 +778,39 @@ Item {
         }
         try {
             var data = JSON.parse((text || "").trim());
-            root.providers = data.providers || [];
-            root.localSpend = data.localSpend || ({});
-            root.updatedAt = data.updatedAt || 0;
+            if (replayed !== true)
+                root.incrementalSnapshot = data.partial === true;
+            var incoming = data.providers || [];
+            if (data.partial === true) {
+                var merged = root.providers.slice();
+                incoming.forEach(function (provider) {
+                    var index = merged.findIndex(function (previous) {
+                        return previous.id === provider.id;
+                    });
+                    if (index === -1)
+                        merged.push(provider);
+                    else
+                        merged[index] = provider;
+                });
+                var order = root.allProviders.map(function (provider) {
+                    return provider.id;
+                });
+                root.providers = merged.sort(function (left, right) {
+                    return order.indexOf(left.id) - order.indexOf(right.id);
+                });
+            } else {
+                root.providers = incoming;
+                root.localSpend = data.localSpend || ({});
+                root.updatedAt = data.updatedAt || 0;
+            }
+            if (root.settingsLoaded)
+                root.dropDisabledProviders();
+            var fallback = root.providerById(data.active) ? data.active : (root.providers[0] || {}).id || "";
             // Seed (or heal, if the remembered one got disabled) the pill's
             // fallback provider — needed even before the user ever leaves a
             // feature tab, since Sessions is the default-enabled one.
             if (!root.providerById(root.lastProviderId))
-                root.lastProviderId = data.active || (root.providers[0] || {}).id || "";
+                root.lastProviderId = fallback;
             // Keep the active tab if it's still present; otherwise reopen the
             // tab used last time, else the backend's suggestion or the first
             // provider — never a feature tab by default, so the pill mirrors a
@@ -753,12 +821,12 @@ Item {
             };
             if (!isOpenable(root.activeId)) {
                 var last = (root.settings || {}).lastTab || "";
-                root.activeId = isOpenable(last) ? last : (data.active || (root.providers[0] || {}).id || "");
+                root.activeId = isOpenable(last) ? last : fallback;
             }
             root.nowTick = new Date().getTime();
             root.publishTray();
             // A replay is not a reading: no history point, no freshness.
-            if (replayed === true)
+            if (replayed === true || data.partial === true)
                 return;
             root.errorText = "";
             root.lastFetched = root.nowTick;
@@ -768,9 +836,13 @@ Item {
         }
     }
 
-    function refresh() {
+    function refresh(forceScan) {
         if (!root.providerDefaultsReady || root.providerDefaultsInitializing)
             return;
+        if (root.settingsSaveError)
+            root.saveSettings();
+        if (forceScan === true && root.spendViewVisible && !root.sessionsLoading)
+            root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
         backend.refresh();
     }
 
@@ -974,6 +1046,12 @@ Item {
     property int sessionsActiveOffset: 0
     property double previousSessionClockMs: Date.now()
     readonly property bool sessionsViewVisible: root.popupVisible && !root.showSettings && root.activeId === "sessions"
+    readonly property bool spendViewVisible: root.popupVisible && !root.showSettings && root.activeId === "spend"
+
+    onSpendViewVisibleChanged: {
+        if (root.spendViewVisible && !root.sessionsLoading)
+            root.querySessions(root.sessionsQuery, root.sessionsOffset, false, root.sessionsSourceIds);
+    }
 
     // Load as soon as the view is shown, rather than at the next poll tick.
     onSessionsViewVisibleChanged: {
@@ -1103,10 +1181,14 @@ Item {
                 // An expired cache starts one scan, but a scan that just failed
                 // waits for the reconcile timer instead of retrying in a loop.
                 var lastScanFailed = root.sessionsRefreshStatus === "failed" || root.sessionsRefreshStatus === "incomplete";
-                if (root.sessionsActiveRefresh)
+                if (root.sessionsActiveRefresh) {
                     root.sessionsLastReconcile = Date.now();
-                else if (root.sessionsViewVisible && !lastScanFailed && SessionRefreshPolicy.cacheExpired(root.sessionsCacheAgeSeconds))
+                    if (root.spendViewVisible)
+                        root.refresh();
+                } else if ((root.sessionsViewVisible || root.spendViewVisible) && ((!lastScanFailed && (root.sessionsCacheStatus === "no-cache" || SessionRefreshPolicy.cacheExpired(root.sessionsCacheAgeSeconds))) || (root.sessionsRefreshStatus === "incomplete" && SessionRefreshPolicy.incompleteRetryDue(root.sessionsLastReconcile, Date.now()))))
                     root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
+                else if (root.spendViewVisible)
+                    root.refresh();
             }
         } catch (e) {
             root.sessionsError = root.i18n("Could not load sessions.");
@@ -1133,6 +1215,7 @@ Item {
     readonly property int historyLimit: 10000
     property var historyStore: UsageHistory.newStore(root.historyLimit)
     property bool historySaving: false
+    property int historyChangesPending: 0
     property string historyMsg: ""
     // The prune in flight is the automatic one at startup: no message for it.
     property bool historyAutoPrune: false
@@ -1159,7 +1242,7 @@ Item {
     }
 
     function sendHistory() {
-        if (root.historySaving)
+        if (root.historySaving || root.historyChangesPending > 0)
             return;
         var batch = UsageHistory.take(root.historyStore);
         if (!batch)
@@ -1171,6 +1254,8 @@ Item {
 
     function flushHistory() {
         historyDebounceTimer.stop();
+        if (root.historyChangesPending > 0)
+            return;
         var batch = UsageHistory.takeForExit(root.historyStore);
         if (!batch)
             return;
@@ -1203,11 +1288,15 @@ Item {
 
     // Delete the whole recorded history.
     function clearHistory() {
+        root.historyChangesPending += 1;
+        historyDebounceTimer.stop();
         backend.history("clear", "");
     }
 
     // Keep the last `days` days of history and delete the rest.
     function pruneHistory(days) {
+        root.historyChangesPending += 1;
+        historyDebounceTimer.stop();
         backend.history("prune", String(days));
     }
 
@@ -1255,7 +1344,7 @@ Item {
     Timer {
         id: sessionsReconcileTimer
         interval: SessionRefreshPolicy.refreshDelayMs(root.sessionsCacheAgeSeconds, root.sessionsRefreshStatus)
-        running: root.sessionsViewVisible
+        running: root.sessionsViewVisible || root.spendViewVisible
         onTriggered: {
             if (!root.sessionsLoading)
                 root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
@@ -1269,7 +1358,7 @@ Item {
         repeat: true
         onTriggered: {
             var now = Date.now();
-            if (root.sessionsViewVisible && SessionRefreshPolicy.resumed(root.previousSessionClockMs, now) && !root.sessionsLoading)
+            if ((root.sessionsViewVisible || root.spendViewVisible) && SessionRefreshPolicy.resumed(root.previousSessionClockMs, now) && !root.sessionsLoading)
                 root.reconcileSessions(root.sessionsQuery, root.sessionsSourceIds);
             root.previousSessionClockMs = now;
             root.nowTick = now;
@@ -1317,6 +1406,10 @@ Item {
         }
 
         function onSnapshotReady(text) {
+            root.applySnapshot(text);
+        }
+
+        function onProviderReady(text) {
             root.applySnapshot(text);
         }
 
@@ -1385,6 +1478,7 @@ Item {
                     root.pruneHistory(keepDays);
                 }
             } else if (op === "clear" || op === "prune") {
+                root.historyChangesPending = Math.max(0, root.historyChangesPending - 1);
                 try {
                     var c = JSON.parse(result);
                     if (c.error) {

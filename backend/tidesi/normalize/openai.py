@@ -2,8 +2,11 @@ from ..billing import empty_org_usage, price_models
 from ..contract import (
     account,
     chip,
+    effort_chip,
+    flat_window,
     jround,
     money,
+    plan_chip,
     provider_base,
     provider_error,
     quota_window,
@@ -93,15 +96,13 @@ def codex_normalize(p):
 def openai_account(creds, plan, stats):
     """Codex / ChatGPT identity: the account, the live model and reasoning
     effort of the newest rollout, the plan."""
-    effort = (stats or {}).get("effortLevel") or ""
     model = (stats or {}).get("model") or ""
-    effort_tone = "danger" if effort in ("xhigh", "high") else "good" if effort in ("low", "minimal") else "warn"
     return account(
         creds.get("email") or creds.get("accountId") or tr("Codex / ChatGPT User"),
         [
             chip(short_model_name(model), "accent") if model else None,
-            chip(tr("effort: %1", effort), effort_tone, tr("Reasoning effort: %1", effort)) if effort else None,
-            chip(plan.upper(), "muted" if plan == "free" else "plan") if plan else None,
+            effort_chip((stats or {}).get("effortLevel")),
+            plan_chip(plan),
         ],
     )
 
@@ -115,6 +116,8 @@ def normalize_openai(raw):
     codex = codex_normalize(inp.get("codex") or {})
     codex_available = codex["session"]["available"] or codex["weekly"]["available"]
     stats = codex_stats(inp.get("stats"), now)
+    org_error = inp.get("orgUsageError") or ""
+    org_available = isinstance(inp.get("orgUsage"), dict) and isinstance(inp["orgUsage"].get("data"), list)
     if inp.get("orgUsage") is not None:
         entries = [item for r in (inp["orgUsage"].get("data") or []) for item in (r.get("results") or [])]
         org = price_models(entries, inp.get("pricing") or {})
@@ -138,6 +141,8 @@ def normalize_openai(raw):
             "additional": codex["additional"],
         },
         "organizationUsage": org,
+        "organizationUsageAvailable": org_available,
+        "organizationUsageError": org_error,
         "stats": stats,
     }
 
@@ -176,6 +181,8 @@ def normalize_openai(raw):
             if a["weekly"]["available"]:
                 quota_windows.append(quota_window("additional", tr("%1 · weekly", a["name"]), a["weekly"], ""))
         r["quotaWindows"] = quota_windows
+        if org_error:
+            r["quotaWindows"].append(flat_window("openai_org_usage", tr("Organization usage unavailable"), 0, 0, org_error, False))
         r["slots"] = []
         if session_on:
             r["slots"].append(
@@ -217,7 +224,15 @@ def normalize_openai(raw):
     r = provider_base("openai", "OpenAI", "#10a37f", now)
     if logged_in:
         r["account"] = openai_account(creds, plan, stats)
-    r["stale"] = (inp.get("codexError") or "") != ""
+    r["stale"] = bool(inp.get("codexError") or org_error)
+    if inp.get("codexError"):
+        r["error"] = (
+            tr("Codex login expired. Run codex login to sign in again.")
+            if inp.get("codexError") == "token expired"
+            else tr("OpenAI usage refresh failed: %1", inp["codexError"])
+        )
+    elif org_error:
+        r["error"] = org_error
     email = creds.get("email") or ""
     total_cost_text = money(org["totalCostUSD"], "USD") if org["totalCostUSD"] > 0 else tr("API")
     r["summary"] = {
@@ -226,6 +241,11 @@ def normalize_openai(raw):
         "detail": email if email != "" else tr("API key configured"),
         "hasChart": False,
     }
+    org_detail = tr("Codex signed in; no organization API key")
+    if has_key:
+        org_detail = tr("Organization usage available") if org_available else tr("Organization usage unavailable")
+    if org_error:
+        org_detail = org_error
     r["quotaWindows"] = [
         {
             "key": "account",
@@ -234,7 +254,7 @@ def normalize_openai(raw):
             "available": True,
             "resetAt": 0,
             "resetText": "",
-            "detail": tr("Organization usage available") if has_key else tr("Codex signed in; no organization API key"),
+            "detail": org_detail,
             "showMeter": False,
         }
     ]

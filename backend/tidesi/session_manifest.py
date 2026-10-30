@@ -104,7 +104,7 @@ def _opencode_records() -> list[tuple[str, str, int, int, int]]:
     if explicit:
         resolved = opencode.explicit_database_path(explicit)
         if resolved:
-            records.append(_stat_record(resolved, "file"))
+            records.extend(_stat_record(resolved + suffix, "file") for suffix in ("", "-wal"))
     for base in paths.data_home_dirs():
         for directory in (base, os.path.join(base, "opencode")):
             records.append(_stat_record(directory, "directory"))
@@ -113,7 +113,10 @@ def _opencode_records() -> list[tuple[str, str, int, int, int]]:
             except OSError:
                 continue
             records.extend(
-                _stat_record(os.path.join(directory, name), "file") for name in entries if name.startswith("opencode") and name.endswith(".db")
+                _stat_record(os.path.join(directory, name) + suffix, "file")
+                for name in entries
+                if name.startswith("opencode") and name.endswith(".db")
+                for suffix in ("", "-wal")
             )
     return records
 
@@ -129,8 +132,21 @@ def _mimo_records():
 
 def _antigravity_records(root: str) -> list[tuple[str, str, int, int, int]]:
     records: list[tuple[str, str, int, int, int]] = []
+    for client in ("antigravity-cli", "antigravity-ide", "antigravity"):
+        directory = os.path.join(root, client, "conversations")
+        if not os.path.isdir(directory):
+            continue
+        records.append(_stat_record(directory, "directory"))
+        try:
+            names = sorted(os.listdir(directory))
+        except OSError:
+            continue
+        records.extend(
+            _stat_record(os.path.join(directory, name) + suffix, "file") for name in names if name.endswith(".db") for suffix in ("", "-wal")
+        )
     for tree, predicate in (
         (os.path.join(root, "antigravity-cli", "brain"), lambda path: path.endswith(os.path.join(".system_generated", "logs", "transcript.jsonl"))),
+        (os.path.join(root, "antigravity-ide", "brain"), lambda path: path.endswith(os.path.join(".system_generated", "logs", "transcript.jsonl"))),
         (os.path.join(root, "antigravity", "brain"), lambda path: path.endswith(".md")),
     ):
         directories_by_parent: dict[str, list[tuple[str, str, int, int, int]]] = {}

@@ -34,6 +34,8 @@ USAGE = """usage: get-ai-usage [--all | --provider <id>[,<id>...] | --normalize 
   --initialize-provider-defaults
                         apply shared provider defaults once and print settings
   --save-snapshot       with --all/--provider: keep the envelope as the last good one
+  --stream              emit each completed provider as a partial JSON line,
+                        followed by the complete envelope (with --all/--provider)
   --last-snapshot       print the last good envelope ({} when there is none)
   --shared-settings     merge the JSON object in $WIDGET_SHARED_PATCH into the
                         settings shared by all Plasma widget instances, print them
@@ -53,9 +55,10 @@ providers: """ + " ".join(config.ALL_PROVIDERS)
 
 def _emit(obj):
     sys.stdout.write(json.dumps(finalize(obj), separators=(",", ":"), ensure_ascii=False) + "\n")
+    sys.stdout.flush()
 
 
-def snapshot():
+def snapshot(*, on_provider=None):
     """The envelope `--all` prints, for an in-process caller (the Windows tray
     app, which has no shell to run this module through).
 
@@ -64,7 +67,9 @@ def snapshot():
     user later clears would linger there."""
     cfg = config.load_settings()
     config.apply_widget_env(cfg)
-    return finalize(envelope.build(envelope.enabled(cfg)))
+    selected = envelope.enabled(cfg)
+    result = envelope.build(selected) if on_provider is None else envelope.build(selected, on_provider=on_provider)
+    return finalize(result)
 
 
 def _refresh_pricing():
@@ -98,6 +103,7 @@ def main(argv):
     query_only = False
     refresh = False
     save_snapshot = False
+    stream = False
     source_ids = None
 
     i = 0
@@ -130,6 +136,8 @@ def main(argv):
             mode = "shared-settings"
         elif arg == "--save-snapshot":
             save_snapshot = True
+        elif arg == "--stream":
+            stream = True
         elif arg == "--query-only":
             query_only = True
         elif arg == "--refresh":
@@ -210,6 +218,10 @@ def main(argv):
             sys.stderr.write(USAGE + "\n")
             return 2
         i += 1
+
+    if stream and mode not in ("", "all", "provider"):
+        sys.stderr.write("get-ai-usage: --stream requires --all or --provider\n")
+        return 2
 
     if query_only and refresh:
         sys.stderr.write("get-ai-usage: --query-only and --refresh cannot be used together\n")
@@ -322,7 +334,7 @@ def main(argv):
     else:
         selected = envelope.enabled(cfg)
 
-    result = envelope.build(selected)
+    result = envelope.build(selected, on_provider=lambda provider: _emit(envelope.provider_update(provider))) if stream else envelope.build(selected)
     _emit(result)
     if save_snapshot:
         widget_state.save_snapshot(finalize(result))

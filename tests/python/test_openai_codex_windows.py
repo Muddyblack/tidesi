@@ -19,6 +19,14 @@ def envelope(*limits):
 
 
 class CodexWindowsTest(unittest.TestCase):
+    def test_expired_login_is_visible_instead_of_silent_stale_credentials(self):
+        raw = envelope()
+        raw["inputs"]["codexError"] = "token expired"
+        provider = normalize(raw)
+        self.assertTrue(provider["stale"])
+        self.assertIn("expired", provider["error"])
+        self.assertIn("codex login", provider["error"])
+
     def test_weekly_only_plan(self):
         p = normalize(envelope(("primary", 92, 10080)))
         self.assertEqual([w["key"] for w in p["quotaWindows"] if w["key"].startswith("codex")], ["codex_weekly"])

@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
+from ..billing import UsageBucket
 from ..contract import epoch_of
+from . import antigravity_usage
 
 _MAX_SESSIONS = 60
 _MAX_TRANSCRIPT_LINES = 20_000
@@ -24,6 +26,8 @@ class AntigravitySession:
     title: str
     last_activity: int
     source_path: str
+    usage: tuple[UsageBucket, ...] = ()
+    usage_complete: bool = True
 
 
 def _home() -> Path:
@@ -132,17 +136,28 @@ def _read_editor(session_id: str, conversation: Path) -> AntigravitySession | No
 def _discover(*, include_all: bool = False) -> list[AntigravitySession]:
     root = _home()
     selected: dict[str, AntigravitySession] = {}
-    cli_root = root / "antigravity-cli" / "brain"
-    for session_id, conversation in _session_dirs(cli_root):
-        record = _read_cli(session_id, conversation / ".system_generated" / "logs" / "transcript.jsonl")
-        if record is not None:
-            selected[session_id] = record
+    # The IDE's newer store (antigravity-ide) keeps the same transcript layout as the CLI.
+    for client in ("antigravity-cli", "antigravity-ide"):
+        for session_id, conversation in _session_dirs(root / client / "brain"):
+            record = _read_cli(session_id, conversation / ".system_generated" / "logs" / "transcript.jsonl")
+            if record is not None:
+                selected[session_id] = record
     editor_root = root / "antigravity" / "brain"
     for session_id, conversation in _session_dirs(editor_root):
         record = _read_editor(session_id, conversation)
         previous = selected.get(session_id)
         if record is not None and (previous is None or record.last_activity > previous.last_activity):
             selected[session_id] = record
+    for native in antigravity_usage.read_usage(root):
+        previous = selected.get(native.session_id)
+        if previous is None:
+            selected[native.session_id] = AntigravitySession(
+                native.session_id, "Antigravity", native.last_activity, native.source_path, native.usage, native.usage_complete
+            )
+        else:
+            selected[native.session_id] = replace(
+                previous, last_activity=max(previous.last_activity, native.last_activity), usage=native.usage, usage_complete=native.usage_complete
+            )
     records = sorted(selected.values(), key=lambda record: (-record.last_activity, record.session_id))
     return records if include_all else records[:_MAX_SESSIONS]
 

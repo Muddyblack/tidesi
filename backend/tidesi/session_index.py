@@ -262,7 +262,10 @@ def _local_contributions(session, provenance):
         for provider, cost_row in provider_costs.items():
             if not isinstance(cost_row, dict):
                 continue
-            contributions.extend(_local_contributions({**cost_row, "provider": provider, "source": session.get("source")}, provenance))
+            child = {**cost_row, "provider": provider, "source": session.get("source")}
+            if child.get("costBilling") not in ("subscription", "api"):
+                child["costBilling"] = _billing_mode(session)
+            contributions.extend(_local_contributions(child, provenance))
         return contributions
 
     session_provenance = session.get("costProvenance")
@@ -299,7 +302,7 @@ def _local_contributions(session, provenance):
         session.get("source"),
         billing_provider=session.get("billingProvider"),
     )
-    return [contribution] if contribution is not None else []
+    return [(_billing_mode(session), *contribution, finite_number(session.get("tokens"), minimum=0))] if contribution is not None else []
 
 
 def _billing_mode(session):
@@ -331,19 +334,24 @@ def _row_cost_groups(row, provenance=None):
     provenance's contributions, so a multi-provider session never counts its
     tokens once per upstream provider.
     """
-    billing = _billing_mode(row)
     day = _session_date(row)
     tokens = finite_number(row.get("tokens"), minimum=0) or 0
-    groups = []
+    contributions = []
     for prov in ("actual", "estimated"):
+        contributions.extend((prov, *item) for item in _local_contributions(row, prov))
+    counts = {}
+    token_values = {}
+    for _, _, rollup, _, _, component_tokens in contributions:
+        counts[rollup] = counts.get(rollup, 0) + 1
+        token_values[rollup] = component_tokens
+    has_component_tokens = all(value is not None for value in token_values.values())
+    has_component_tokens = has_component_tokens and sum(token_values.values()) <= tokens
+    groups = []
+    for prov, billing, rollup, cost, status, _ in contributions:
         if provenance is not None and prov != provenance:
             continue
-        contributions = _local_contributions(row, prov)
-        if not contributions:
-            continue
-        share = tokens / len(contributions) if day and tokens else 0
-        for rollup, cost, status in contributions:
-            groups.append((billing, prov, rollup, cost, status, day, share))
+        share = token_values[rollup] / counts[rollup] if has_component_tokens else tokens / len(contributions)
+        groups.append((billing, prov, rollup, cost, status, day, share if day else 0))
     return groups
 
 
@@ -520,6 +528,13 @@ class SessionIndex:
 
             for (key, source_order, source), rows in _parse_sources(parser, to_parse):
                 if rows is None:
+                    with connection:
+                        connection.execute(
+                            "INSERT INTO source_meta (source_key, mtime_ns, size, source_order) "
+                            "VALUES (?, -1, -1, ?) ON CONFLICT(source_key) DO UPDATE SET mtime_ns = -1, size = -1",
+                            (key, source_order),
+                        )
+                    mutated = True
                     continue
 
                 with connection:
