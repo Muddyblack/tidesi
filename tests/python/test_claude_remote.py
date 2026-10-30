@@ -35,6 +35,15 @@ class ClaudeRemoteTest(unittest.TestCase):
     def test_missing_directory_is_empty(self):
         self.assertEqual(claude_remote.remote_sessions(os.path.join(self.tmp.name, "nope")), [])
 
+    def test_sessions_follow_the_config_dir(self):
+        os.mkdir(os.path.join(self.tmp.name, "sessions"))
+        with open(os.path.join(self.tmp.name, "sessions", "1.json"), "w", encoding="utf-8") as f:
+            json.dump({"pid": 1, "name": "a", "cwd": "/work/demo", "status": "idle", "bridgeSessionId": "session_AAA"}, f)
+        with mock.patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": self.tmp.name}):
+            with mock.patch.object(claude_remote, "_is_process_alive", lambda pid: True):
+                rows = claude_remote.remote_sessions()
+        self.assertEqual([r["name"] for r in rows], ["a"])
+
     def test_tab_only_when_a_session_is_open(self):
         self.assertIsNone(_remote([]))
         self.assertIsNone(_remote(None))
