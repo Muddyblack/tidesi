@@ -5,6 +5,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from _e2e_harness import ChildProcess, LoopbackHTTPServer, LoopbackResponse, scrub
@@ -22,7 +23,10 @@ class HttpProviderE2ETest(unittest.TestCase):
                 return LoopbackResponse(status=404)
 
             with LoopbackHTTPServer(response) as server:
-                child = ChildProcess(home, http_base=server.base_url, extra_env=extra_env)
+                child_env = dict(extra_env or {})
+                if provider == "cursor":
+                    child_env["CURSOR_AUTH_PATH"] = str(home / "xdg-config" / "cursor" / "auth.json")
+                child = ChildProcess(home, http_base=server.base_url, extra_env=child_env or None)
                 Path(child.env["TIDESI_CONFIG"]).write_text(json.dumps({"providers": {provider: True}}), encoding="utf-8")
                 if setup is not None:
                     setup(home)
@@ -102,6 +106,7 @@ class HttpProviderE2ETest(unittest.TestCase):
         self.assertEqual(provider["details"]["availableBalance"], 7.5)
         self.assertEqual(requests[0].path, "/https/api.moonshot.ai/v1/users/me/balance")
 
+    @unittest.skipIf(sys.platform == "darwin", "the isolated E2E child cannot read the native Claude Keychain")
     def test_claude_oauth_token_reaches_usage_api_and_envelope(self):
         def setup(home):
             config = home / ".claude"
@@ -121,10 +126,16 @@ class HttpProviderE2ETest(unittest.TestCase):
         self.assertTrue(provider["ok"])
 
     def test_openai_organization_key_reaches_usage_api_and_envelope(self):
+        def setup(home):
+            codex_home = home / ".codex"
+            codex_home.mkdir()
+            (codex_home / "auth.json").write_text("{}", encoding="utf-8")
+
         provider, requests = self.run_provider(
             "openai",
             "E2E_OPENAI_SECRET",
             {"/https/api.openai.com/v1/organization/usage/completions": {"data": []}},
+            setup=setup,
             extra_env={"OPENAI_API_KEY": "E2E_OPENAI_SECRET"},
         )
         self.assertTrue(any(request.path.startswith("/https/api.openai.com/v1/organization/usage/completions") for request in requests))
@@ -207,7 +218,7 @@ class HttpProviderE2ETest(unittest.TestCase):
         def setup(home):
             database = home / "xdg-data" / "kiro-cli" / "data.sqlite3"
             database.parent.mkdir(parents=True)
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection, connection:
                 connection.execute("CREATE TABLE auth_kv (key TEXT, value TEXT)")
                 connection.execute("CREATE TABLE state (key TEXT, value TEXT)")
                 connection.execute(
@@ -217,7 +228,6 @@ class HttpProviderE2ETest(unittest.TestCase):
                         json.dumps({"access_token": "E2E_KIRO_SECRET", "profile_arn": "arn:aws:codewhisperer:us-east-1:123:profile/demo"}),
                     ),
                 )
-            connection.close()
 
         provider, requests = self.run_provider(
             "kiro",
