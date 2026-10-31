@@ -1656,7 +1656,16 @@ class CosmicHost:
             logo = QUrl(logo).toLocalFile()
         # The tile versions would fill the whole pill icon; the desktop tray
         # swaps in the tile-less ones too.
-        logo = os.path.join(os.path.dirname(logo), {"antigravity-color.svg": "antigravity-symbolic.svg", "kiro.svg": "kiro-symbolic.svg"}.get(os.path.basename(logo), os.path.basename(logo))) if logo else logo
+        logo = (
+            os.path.join(
+                os.path.dirname(logo),
+                {"antigravity-color.svg": "antigravity-symbolic.svg", "kiro.svg": "kiro-symbolic.svg"}.get(
+                    os.path.basename(logo), os.path.basename(logo)
+                ),
+            )
+            if logo
+            else logo
+        )
         shown = {
             "slots": [s for s in state.get("slots") or [] if isinstance(s, dict)],
             "icon": logo or str(ICON_PATH),
@@ -2048,7 +2057,7 @@ def _single_start_lock():
         import fcntl
 
         path = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or paths.cache_dir(), "tidesi-start.lock")
-        _START_LOCK = open(path, "w")
+        _START_LOCK = open(path, "w", encoding="utf-8")
         fcntl.flock(_START_LOCK, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except ImportError:
         return True
