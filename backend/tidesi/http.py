@@ -100,6 +100,53 @@ def http_error_json(label, status, auth_message=None):
     return error_json(tr("%1 HTTP %2", label, status))
 
 
+def route_e2e_url(url):
+    """Route an upstream URL to the explicitly configured loopback test server.
+
+    The hook is inert unless TIDESI_E2E_HTTP_BASE is set. Restricting that base
+    to an IP-literal loopback HTTP address makes accidental production use fail
+    closed rather than forwarding credentials to an arbitrary remote host.
+    """
+    base = os.environ.get("TIDESI_E2E_HTTP_BASE")
+    if not base:
+        return url
+
+    import ipaddress
+    from urllib.parse import urlsplit, urlunsplit
+
+    target = urlsplit(url)
+    destination = urlsplit(base)
+    try:
+        destination_ip = ipaddress.ip_address(destination.hostname or "")
+        destination_port = destination.port
+    except ValueError as exc:
+        raise ValueError("TIDESI_E2E_HTTP_BASE must use an IP-literal loopback address") from exc
+
+    if (
+        destination.scheme != "http"
+        or not destination_ip.is_loopback
+        or not destination_port
+        or destination.username is not None
+        or destination.password is not None
+        or destination.path not in ("", "/")
+        or destination.query
+        or destination.fragment
+    ):
+        raise ValueError("TIDESI_E2E_HTTP_BASE must be a plain loopback HTTP origin")
+    if target.scheme not in ("http", "https") or not target.hostname or target.username is not None or target.password is not None:
+        raise ValueError("E2E HTTP routing requires an absolute HTTP(S) URL without user info")
+
+    try:
+        target_is_loopback = ipaddress.ip_address(target.hostname).is_loopback
+    except ValueError:
+        target_is_loopback = target.hostname.casefold() == "localhost"
+    if target_is_loopback:
+        return url
+
+    routed_path = f"/{target.scheme}/{target.netloc}{target.path or '/'}"
+    return urlunsplit((destination.scheme, destination.netloc, routed_path, target.query, ""))
+
+
 def fetch_json(url, headers=None, timeout=10, fixture_path=None, data=None):
     """Returns an HttpResult. `fixture_path` replays a recorded response as a
     200 so tests never touch the network — the *_RESPONSE_FILE hooks. `data`
@@ -114,6 +161,7 @@ def fetch_json(url, headers=None, timeout=10, fixture_path=None, data=None):
     import urllib.error
     import urllib.request
 
+    url = route_e2e_url(url)
     req = urllib.request.Request(url, data=data, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:

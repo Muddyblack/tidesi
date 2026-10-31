@@ -1413,6 +1413,10 @@ msgstr ""
 "totaux."
 
 #: ui/SpendPage.qml
+msgid "Unavailable"
+msgstr "Indisponible"
+
+#: ui/SpendPage.qml
 msgid "Filter by provider or model…"
 msgstr "Filtrer par fournisseur ou modèle…"
 

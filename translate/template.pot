@@ -1312,6 +1312,10 @@ msgid ""
 msgstr ""
 
 #: ui/SpendPage.qml
+msgid "Unavailable"
+msgstr ""
+
+#: ui/SpendPage.qml
 msgid "Filter by provider or model…"
 msgstr ""
 
