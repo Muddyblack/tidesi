@@ -47,6 +47,20 @@ in
       };
     };
 
+    cosmic = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Install the COSMIC panel applet (and the tray app it opens as its popup). Then add tideSI under Settings → Desktop → Panel → Applets.";
+      };
+      package = lib.mkOption {
+        type = lib.types.package;
+        default = self.packages.${system}.cosmic;
+        defaultText = lib.literalExpression "inputs.tidesi.packages.\${system}.cosmic";
+        description = "The COSMIC applet package.";
+      };
+    };
+
     hyprland = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -65,7 +79,8 @@ in
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [ cfg.package ]
       ++ lib.optional cfg.cli.enable cfg.cli.package
-      ++ lib.optional cfg.desktop.enable cfg.desktop.package
+      ++ lib.optional (cfg.desktop.enable || cfg.cosmic.enable) cfg.desktop.package
+      ++ lib.optional cfg.cosmic.enable cfg.cosmic.package
       ++ lib.optional cfg.hyprland.enable cfg.hyprland.package;
   };
 }

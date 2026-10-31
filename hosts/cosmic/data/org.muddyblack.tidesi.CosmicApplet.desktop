@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=tideSI
+Comment=AI provider usage in the panel
+Type=Application
+Exec=tidesi-cosmic-applet
+Terminal=false
+Categories=COSMIC;
+Keywords=COSMIC;Applet;AI;usage;quota;
+Icon=org.muddyblack.tidesi
+StartupNotify=true
+NoDisplay=true
+X-CosmicApplet=true
+X-HostWaylandDisplay=true
+X-OverflowPriority=10
+X-OverflowMinSize=1

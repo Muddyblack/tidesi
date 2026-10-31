@@ -1,0 +1,20 @@
+[package]
+name = "tidesi-cosmic-applet"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "COSMIC panel applet for tideSI: the panel pill, drawn natively"
+
+[[bin]]
+name = "tidesi-cosmic-applet"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dependencies.libcosmic]
+git = "https://github.com/pop-os/libcosmic"
+rev = "758c13723fc35b1d82d7fa4f35859c9f7f3c1b0c"
+default-features = false
+features = ["applet", "applet-token", "dbus-config", "multi-window", "tokio", "wayland", "desktop-systemd-scope", "winit"]

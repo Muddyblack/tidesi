@@ -10,6 +10,10 @@ It runs on Linux too, which is how it is developed: `nix develop .#windows`
 brings PySide6 (or `make run-windows`), else `pip install -r hosts/desktop/requirements.txt`.
 
   python hosts/desktop/app.py                  start (a second start toggles the popup)
+  python hosts/desktop/app.py --cosmic         no tray icon; feed the COSMIC panel applet (hosts/cosmic)
+                                         instead — chosen automatically under COSMIC
+  python hosts/desktop/app.py --background     start only if not running; never toggles the popup
+  python hosts/desktop/app.py --open           show the popup once started
   python hosts/desktop/app.py --selftest       load the QML headless, open every settings
                                          section once, exit 1 on any QML warning
   python hosts/desktop/app.py --screenshot F [--settings]
@@ -109,6 +113,8 @@ def _server_name():
 SERVER_NAME = _server_name()
 ICON_PATH = ROOT / "assets" / "icons" / "org.muddyblack.tidesi.svg"
 MAIN_QML = ROOT / "hosts" / "desktop" / "qml" / "Main.qml"
+# COSMIC: what the native panel applet (hosts/cosmic) draws; see CosmicHost.
+COSMIC_STATE = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or paths.cache_dir(), "tidesi", "cosmic-pill.json")
 # The settings studio's sections, in sidebar order (ui/SettingsPage.qml).
 SETTINGS_SECTIONS = ("providers", "local", "panel", "appearance", "data", "advanced", "info")
 
@@ -1579,6 +1585,125 @@ class TrayApp:
         self.window.setY(clamp(y, area.top() + gap, area.bottom() - h - gap))
 
 
+class CosmicHost:
+    """COSMIC: the panel pill is a native applet (hosts/cosmic), so there is no
+    tray icon and no floating pill here. This publishes what the pill shows to
+    a small file the applet watches, and shows the popup as an ordinary window
+    when the applet (or a second `tidesi`) asks for it."""
+
+    REOPEN_GRACE = TrayApp.REOPEN_GRACE
+
+    def __init__(self, app, engine, backend):
+        self.app = app
+        self.backend = backend
+        self.window = engine.rootObjects()[0]
+        self._hidden_at = 0.0
+        backend.trayStateChanged.connect(self._publish)
+        self.window.activeChanged.connect(lambda: QTimer.singleShot(150, self._hide_if_left))
+        # Under the pill, top right, like the other hosts' popups — or where the
+        # user last dragged it.
+        self._syncing = False
+        self._moved = self._load_position()
+        self.window.widthChanged.connect(self._place)
+        self.window.xChanged.connect(self._on_moved)
+        self.window.yChanged.connect(self._on_moved)
+
+    POSITION_FILE = "cosmic-popup-position.json"
+
+    def _load_position(self):
+        try:
+            with open(os.path.join(paths.cache_dir(), self.POSITION_FILE), encoding="utf-8") as fh:
+                x, y = json.load(fh)
+            return (int(x), int(y))
+        except (OSError, ValueError, TypeError):
+            return None
+
+    def _on_moved(self):
+        if self._syncing or not self.window.isVisible():
+            return
+        self._moved = (self.window.x(), self.window.y())
+        with contextlib.suppress(OSError):
+            os.makedirs(paths.cache_dir(), exist_ok=True)
+            with open(os.path.join(paths.cache_dir(), self.POSITION_FILE), "w", encoding="utf-8") as fh:
+                json.dump(self._moved, fh)
+
+    def _place(self):
+        if QGuiApplication.platformName() != "xcb":
+            return  # Wayland: the compositor decides
+        self._syncing = True
+        try:
+            w, h = self.window.width(), self.window.height()
+            if self._moved and any(sc.geometry().intersects(QRect(self._moved[0], self._moved[1], w, h)) for sc in QGuiApplication.screens()):
+                self.window.setPosition(*self._moved)
+                return
+            screen = QGuiApplication.primaryScreen()
+            area = screen.availableGeometry()
+            # XWayland does not see the panel in the available area: leave room for it.
+            top = area.top() + (0 if area.top() > screen.geometry().top() else 56)
+            self.window.setPosition(area.right() - w - 8, top)
+        finally:
+            self._syncing = False
+
+    def _publish(self, text):
+        try:
+            state = json.loads(text)
+        except ValueError:
+            return
+        # The applet colours and sizes the numbers itself; it needs the values,
+        # the logo to tint, and the tooltip.
+        logo = state.get("icon") or ""
+        if logo.startswith("file://"):
+            logo = QUrl(logo).toLocalFile()
+        # The tile versions would fill the whole pill icon; the desktop tray
+        # swaps in the tile-less ones too.
+        logo = (
+            os.path.join(
+                os.path.dirname(logo),
+                {"antigravity-color.svg": "antigravity-symbolic.svg", "kiro.svg": "kiro-symbolic.svg"}.get(
+                    os.path.basename(logo), os.path.basename(logo)
+                ),
+            )
+            if logo
+            else logo
+        )
+        shown = {
+            "slots": [s for s in state.get("slots") or [] if isinstance(s, dict)],
+            "icon": logo or str(ICON_PATH),
+            "tooltip": state.get("tooltip") or APP_NAME,
+        }
+        with contextlib.suppress(OSError):
+            os.makedirs(os.path.dirname(COSMIC_STATE), exist_ok=True)
+            tmp = COSMIC_STATE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(shown, fh, separators=(",", ":"), ensure_ascii=False)
+            os.replace(tmp, COSMIC_STATE)
+
+    def toggle(self):
+        if self.window.isVisible():
+            self.hide()
+        elif time.monotonic() - self._hidden_at > self.REOPEN_GRACE:
+            self.show()
+
+    def show(self):
+        self._place()
+        self.window.show()
+        self.window.raise_()
+        self.window.requestActivate()
+
+    def hide(self):
+        self._hidden_at = time.monotonic()
+        self.window.hide()
+
+    def open_settings(self):
+        self.window.setProperty("showSettings", True)
+        if not self.window.isVisible():
+            self.show()
+
+    def _hide_if_left(self):
+        if self.window.isVisible() and not self.window.isActive():
+            self.hide()
+
+
 # ── KDE Plasma under Wayland ────────────────────────────────────────────────
 # Wayland lets no ordinary window keep itself above others, stay out of the
 # taskbar or choose where it goes: on a Linux desktop the floating pill sank
@@ -1921,12 +2046,36 @@ def _run_headless(app, engine, backend, warnings, screenshot, settings):
     os._exit(1 if warnings and not screenshot else 0)
 
 
-def _hand_off_to_running_instance():
-    """True when another instance is already up; it is asked to toggle its popup."""
+_START_LOCK = None
+
+
+def _single_start_lock():
+    """True for the one process that holds the start lock (Linux; elsewhere
+    every start is the only one). The lock lasts as long as the process."""
+    global _START_LOCK
+    try:
+        import fcntl
+
+        path = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or paths.cache_dir(), "tidesi-start.lock")
+        _START_LOCK = open(path, "w", encoding="utf-8")
+        fcntl.flock(_START_LOCK, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except ImportError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _hand_off_to_running_instance(background=False):
+    """True when another instance is already up; it is asked to toggle its popup
+    (--background only checks: the COSMIC applet starts the app this way)."""
     socket = QLocalSocket()
     socket.connectToServer(SERVER_NAME)
     if not socket.waitForConnected(300):
         return False
+    if background:
+        socket.disconnectFromServer()
+        return True
     if paths.IS_WINDOWS:
         # The user just started this process, so Windows lets it bring a
         # window to the front; hand that on to the running copy. Without it
@@ -2013,6 +2162,12 @@ def main(argv):
     screenshot = argv[argv.index("--screenshot") + 1] if "--screenshot" in argv else ""
     if (selftest or screenshot) and not os.environ.get("QT_QPA_PLATFORM"):
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
+    cosmic = "--cosmic" in argv or "COSMIC" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper().split(":")
+    if cosmic and not os.environ.get("QT_QPA_PLATFORM") and os.environ.get("DISPLAY"):
+        # Wayland lets a window choose neither its place nor to stay put; the
+        # popup has to open under the pill, so it runs through XWayland, where
+        # it can (CosmicHost._place).
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
     # The shared QML styles every control itself on top of Basic; the native
     # Windows style would fight it.
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
@@ -2063,7 +2218,11 @@ def main(argv):
         statusitem.accessory_app()
 
     headless = selftest or screenshot
-    if not headless and _hand_off_to_running_instance():
+    if "--background" in argv and not headless and not _single_start_lock():
+        # Several applet instances (one per panel) start the app together,
+        # before any of them is listening: the first takes the lock.
+        return 0
+    if not headless and _hand_off_to_running_instance("--background" in argv):
         return 0
     if FROZEN:
         # Headless as well: CI runs the built .exe with --selftest and prints
@@ -2094,8 +2253,10 @@ def main(argv):
     if headless:
         return _run_headless(app, engine, backend, warnings, screenshot, "--settings" in argv)
 
-    tray = TrayApp(app, engine, backend)
+    tray = CosmicHost(app, engine, backend) if cosmic else TrayApp(app, engine, backend)
     tour = argv[argv.index("--tour") + 1] if "--tour" in argv else ""
+    if "--open" in argv:
+        QTimer.singleShot(1500, tray.show)
     if first_run or "--demo" in argv or tour:
         # Windows 11 puts a new tray icon out of sight, behind the ^ overflow:
         # the popup opening by itself shows the app is there, the first time.
