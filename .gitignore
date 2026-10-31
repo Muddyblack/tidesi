@@ -105,3 +105,6 @@ docs/readme/screenshots/*
 !docs/readme/screenshots/popup-claude-remote.png
 !docs/readme/screenshots/popup-antigravity-remote.png
 !docs/readme/screenshots/settings-00-providers.png
+
+# Rust (hosts/cosmic)
+target/

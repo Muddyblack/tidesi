@@ -1,4 +1,4 @@
-.PHONY: readme-screenshots new-language test-install format help view view-h view-hyprland hyprland install pack tag test test-py test-e2e translations check-translations lint-py run-desktop run-windows macos
+.PHONY: readme-screenshots new-language test-install format help view view-h view-hyprland hyprland install pack tag test test-py test-e2e translations check-translations lint-py run-desktop run-windows cosmic macos
 .DEFAULT_GOAL := help
 
 help: ## list targets
@@ -56,6 +56,9 @@ run-desktop: ## run the desktop tray app (Windows/macOS host) on this machine (P
 	fi
 
 run-windows: run-desktop
+
+cosmic: ## build (low priority) and install the COSMIC panel applet, and add it to the panel
+	@hosts/cosmic/install.sh
 
 macos: ## build Tidesi.app (macOS only; needs hosts/macos/build-requirements.txt)
 	@hosts/macos/build-app.sh

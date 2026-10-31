@@ -19,6 +19,7 @@ hosts/                   only what differs per platform: the panel, tray or
   kde/                   menu bar item around the UI, and how it is packaged
   quickshell/            Hyprland / Caelestia / any wlroots panel (+ C++ tray helper)
   desktop/               PySide6 tray app (Windows, macOS; any Linux tray too)
+  cosmic/                Rust/libcosmic panel applet for COSMIC (popup = the desktop app)
   windows/               installer, PyInstaller spec, Scoop/WinGet manifests
   macos/                 native NSStatusItem (PyObjC), .app spec, .dmg
 
@@ -49,5 +50,6 @@ shell can host QtQuick.
 |---|---|---|
 | KDE Plasma | `make pack` → `scripts/build-kde-package.sh` | `.plasmoid` (KDE Store): `hosts/kde` + `ui/` + `backend/` + assets |
 | Quickshell | `nix run .#hyprland` | runs from the checkout (`shell.qml` at the root) |
+| COSMIC | `nix build .#cosmic`, `cosmic.yml` | applet binary; release tarball `tideSI-cosmic-*.tar.gz` ([docs/cosmic.md](cosmic.md)) |
 | Windows | `hosts/windows/tidesi.spec` + Inno Setup | installer, portable zip, Scoop/WinGet |
 | macOS | `hosts/macos/build-app.sh` | `Tidesi.app`, `.dmg` |
