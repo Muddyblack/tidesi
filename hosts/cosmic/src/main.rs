@@ -61,8 +61,14 @@ fn state_path() -> PathBuf {
     dir.join("tidesi").join("cosmic-pill.json")
 }
 
+/// The panel's PATH rarely has ~/.local/bin, where `make cosmic` puts `tidesi`.
 fn tidesi_command() -> String {
-    env::var("TIDESI_COMMAND").unwrap_or_else(|_| "tidesi".into())
+    env::var("TIDESI_COMMAND").unwrap_or_else(|_| {
+        env::var_os("HOME")
+            .map(|h| PathBuf::from(h).join(".local/bin/tidesi"))
+            .filter(|p| p.exists())
+            .map_or_else(|| "tidesi".into(), |p| p.to_string_lossy().into_owned())
+    })
 }
 
 fn spawn_tidesi(args: &[&str]) {

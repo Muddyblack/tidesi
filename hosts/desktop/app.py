@@ -1990,6 +1990,26 @@ def _run_headless(app, engine, backend, warnings, screenshot, settings):
     os._exit(1 if warnings and not screenshot else 0)
 
 
+_START_LOCK = None
+
+
+def _single_start_lock():
+    """True for the one process that holds the start lock (Linux; elsewhere
+    every start is the only one). The lock lasts as long as the process."""
+    global _START_LOCK
+    try:
+        import fcntl
+
+        path = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or paths.cache_dir(), "tidesi-start.lock")
+        _START_LOCK = open(path, "w")
+        fcntl.flock(_START_LOCK, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except ImportError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
 def _hand_off_to_running_instance(background=False):
     """True when another instance is already up; it is asked to toggle its popup
     (--background only checks: the COSMIC applet starts the app this way)."""
@@ -2136,6 +2156,10 @@ def main(argv):
         statusitem.accessory_app()
 
     headless = selftest or screenshot
+    if "--background" in argv and not headless and not _single_start_lock():
+        # Several applet instances (one per panel) start the app together,
+        # before any of them is listening: the first takes the lock.
+        return 0
     if not headless and _hand_off_to_running_instance("--background" in argv):
         return 0
     if FROZEN:
