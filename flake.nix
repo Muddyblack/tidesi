@@ -269,6 +269,41 @@
                 mainProgram = "tidesi";
               };
             };
+
+          # The COSMIC panel applet (hosts/cosmic): the native pill. It needs the
+          # tray app (`desktop`) for the popup, which the modules install with it.
+          # libcosmicAppHook wraps the binary with the Wayland/GL libraries it loads.
+          cosmic = pkgs.rustPlatform.buildRustPackage {
+            pname = "tidesi-cosmic";
+            version = metadata.KPlugin.Version;
+            src = pkgs.lib.fileset.toSource {
+              root = ./hosts/cosmic;
+              fileset = pkgs.lib.fileset.unions [
+                ./hosts/cosmic/Cargo.toml
+                ./hosts/cosmic/Cargo.lock
+                ./hosts/cosmic/src
+                ./hosts/cosmic/data
+              ];
+            };
+            cargoLock = {
+              lockFile = ./hosts/cosmic/Cargo.lock;
+              # libcosmic and its forks are git dependencies, pinned by rev in the lock.
+              allowBuiltinFetchGit = true;
+            };
+            nativeBuildInputs = [ pkgs.libcosmicAppHook ];
+            postInstall = ''
+              install -Dm644 data/org.muddyblack.tidesi.CosmicApplet.desktop \
+                "$out/share/applications/org.muddyblack.tidesi.CosmicApplet.desktop"
+              install -Dm644 ${./assets/icons/org.muddyblack.tidesi.svg} \
+                "$out/share/icons/hicolor/scalable/apps/org.muddyblack.tidesi.svg"
+            '';
+            meta = {
+              description = "COSMIC panel applet for Tidesi: the usage pill, drawn natively";
+              license = pkgs.lib.licenses.mit;
+              platforms = pkgs.lib.platforms.linux;
+              mainProgram = "tidesi-cosmic-applet";
+            };
+          };
         });
 
       overlays.default = final: prev: {

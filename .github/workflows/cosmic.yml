@@ -1,0 +1,61 @@
+name: COSMIC
+
+# The COSMIC panel applet (hosts/cosmic, Rust + libcosmic): built on every
+# change to it, and — called from release.yml — packed as a tarball so nobody
+# needs a Rust toolchain. The tarball unpacks to a folder with the binary, the
+# .desktop entry, the icon and install-prebuilt.sh.
+
+on:
+  pull_request:
+    paths: ['hosts/cosmic/**', '.github/workflows/cosmic.yml']
+  push:
+    branches: [main]
+    paths: ['hosts/cosmic/**', '.github/workflows/cosmic.yml']
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: The release's version, for the tarball's name
+        type: string
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libegl1-mesa-dev \
+            libvulkan-dev libfontconfig1-dev libfreetype-dev libexpat1-dev \
+            libinput-dev libudev-dev libssl-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: hosts/cosmic
+
+      - name: Build
+        run: cargo build --release --locked --manifest-path hosts/cosmic/Cargo.toml
+
+      - name: Pack
+        if: inputs.version != ''
+        run: |
+          dir="tideSI-cosmic-${{ inputs.version }}-x86_64"
+          mkdir "$dir"
+          cp hosts/cosmic/target/release/tidesi-cosmic-applet "$dir/"
+          cp hosts/cosmic/data/org.muddyblack.tidesi.CosmicApplet.desktop assets/icons/org.muddyblack.tidesi.svg \
+             hosts/cosmic/add-to-panel.py hosts/cosmic/install-prebuilt.sh "$dir/"
+          mv "$dir/install-prebuilt.sh" "$dir/install.sh"
+          sed -i 's|install-prebuilt.sh|install.sh|' "$dir/install.sh"
+          tar czf "$dir.tar.gz" "$dir"
+
+      - uses: actions/upload-artifact@v4
+        if: inputs.version != ''
+        with:
+          name: tidesi-cosmic
+          path: tideSI-cosmic-*.tar.gz

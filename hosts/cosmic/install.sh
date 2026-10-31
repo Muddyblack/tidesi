@@ -32,20 +32,5 @@ env=$(nix develop "git+file://$root#windows" --command sh -c \
 } > "$bin/tidesi"
 chmod +x "$bin/tidesi"
 
-# Add the applet to the right side of the top panel (not the dock), once. cosmic-panel reloads
-# its config files as they change, so nothing needs restarting.
-python3 - "$id" <<'PY'
-import glob, os, sys
-applet = sys.argv[1]
-for path in glob.glob(os.path.expanduser("~/.config/cosmic/com.system76.CosmicPanel.Panel/v1/plugins_wings")):
-    text = open(path).read()
-    if applet in text:
-        continue
-    # Some(( [left...], [right...] )): first entry of the right list.
-    head, sep, right = text.rpartition("[")
-    if not sep:
-        continue
-    open(path, "w").write(head + "[\n        \"" + applet + "\",\n" + right.lstrip("\n"))
-    print("Added to", path)
-PY
+"$root/hosts/cosmic/add-to-panel.py"
 echo "Done: tideSI is in the panel."
