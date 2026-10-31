@@ -442,6 +442,20 @@
               export QT_PLUGIN_PATH="${pkgs.qt6.qtsvg}/lib/qt-6/plugins"
             '';
           };
+
+          # The COSMIC panel applet (hosts/cosmic, Rust + libcosmic): `nix develop .#cosmic`,
+          # then `make cosmic` (or `cargo build --release` in hosts/cosmic).
+          cosmic = pkgs.mkShell {
+            name = "tidesi-cosmic";
+            nativeBuildInputs = with pkgs; [ cargo rustc rustfmt clippy pkg-config ];
+            buildInputs = with pkgs; [
+              libxkbcommon wayland libglvnd vulkan-loader fontconfig freetype expat
+              libinput udev openssl
+            ];
+            shellHook = ''
+              export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath (with pkgs; [ libxkbcommon wayland libglvnd vulkan-loader ])}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            '';
+          };
         });
     };
 }
