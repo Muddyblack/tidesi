@@ -137,9 +137,10 @@ impl Applet {
         } else {
             slot.text.clone()
         };
-        let size = self.core.applet.suggested_size(false).0 as f32;
+        // Smaller than a stock applet icon: the pill sits among text.
+        let size = self.core.applet.suggested_size(false).0 as f32 * 0.7;
 
-        let mut label = widget::text(text).size(self.core.applet.suggested_size(false).1 as f32 * 0.7);
+        let mut label = widget::text(text).size(self.core.applet.suggested_size(false).1 as f32 * 0.55);
         if let Some(color) = number_color {
             label = label.class(cosmic::theme::Text::Color(color));
         }
@@ -156,7 +157,7 @@ impl Applet {
         if self.vertical() {
             widget::column::with_children(vec![logo.into(), label.into()]).align_x(Alignment::Center).spacing(2).into()
         } else {
-            widget::row::with_children(vec![logo.into(), label.into()]).align_y(Alignment::Center).spacing(4).into()
+            widget::row::with_children(vec![logo.into(), label.into()]).align_y(Alignment::Center).spacing(3).into()
         }
     }
 
@@ -223,7 +224,7 @@ impl cosmic::Application for Applet {
         } else {
             widget::row::with_children(self.pill.slots.iter().map(|s| self.slot_view(s)))
                 .align_y(Alignment::Center)
-                .spacing(10)
+                .spacing(6)
                 .into()
         };
 

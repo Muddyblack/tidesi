@@ -1600,6 +1600,49 @@ class CosmicHost:
         self._hidden_at = 0.0
         backend.trayStateChanged.connect(self._publish)
         self.window.activeChanged.connect(lambda: QTimer.singleShot(150, self._hide_if_left))
+        # Under the pill, top right, like the other hosts' popups — or where the
+        # user last dragged it.
+        self._syncing = False
+        self._moved = self._load_position()
+        self.window.widthChanged.connect(self._place)
+        self.window.xChanged.connect(self._on_moved)
+        self.window.yChanged.connect(self._on_moved)
+
+    POSITION_FILE = "cosmic-popup-position.json"
+
+    def _load_position(self):
+        try:
+            with open(os.path.join(paths.cache_dir(), self.POSITION_FILE), encoding="utf-8") as fh:
+                x, y = json.load(fh)
+            return (int(x), int(y))
+        except (OSError, ValueError, TypeError):
+            return None
+
+    def _on_moved(self):
+        if self._syncing or not self.window.isVisible():
+            return
+        self._moved = (self.window.x(), self.window.y())
+        with contextlib.suppress(OSError):
+            os.makedirs(paths.cache_dir(), exist_ok=True)
+            with open(os.path.join(paths.cache_dir(), self.POSITION_FILE), "w", encoding="utf-8") as fh:
+                json.dump(self._moved, fh)
+
+    def _place(self):
+        if QGuiApplication.platformName() != "xcb":
+            return  # Wayland: the compositor decides
+        self._syncing = True
+        try:
+            w, h = self.window.width(), self.window.height()
+            if self._moved and any(sc.geometry().intersects(QRect(self._moved[0], self._moved[1], w, h)) for sc in QGuiApplication.screens()):
+                self.window.setPosition(*self._moved)
+                return
+            screen = QGuiApplication.primaryScreen()
+            area = screen.availableGeometry()
+            # XWayland does not see the panel in the available area: leave room for it.
+            top = area.top() + (0 if area.top() > screen.geometry().top() else 56)
+            self.window.setPosition(area.right() - w - 8, top)
+        finally:
+            self._syncing = False
 
     def _publish(self, text):
         try:
@@ -1611,6 +1654,9 @@ class CosmicHost:
         logo = state.get("icon") or ""
         if logo.startswith("file://"):
             logo = QUrl(logo).toLocalFile()
+        # The tile versions would fill the whole pill icon; the desktop tray
+        # swaps in the tile-less ones too.
+        logo = os.path.join(os.path.dirname(logo), {"antigravity-color.svg": "antigravity-symbolic.svg", "kiro.svg": "kiro-symbolic.svg"}.get(os.path.basename(logo), os.path.basename(logo))) if logo else logo
         shown = {
             "slots": [s for s in state.get("slots") or [] if isinstance(s, dict)],
             "icon": logo or str(ICON_PATH),
@@ -1630,6 +1676,7 @@ class CosmicHost:
             self.show()
 
     def show(self):
+        self._place()
         self.window.show()
         self.window.raise_()
         self.window.requestActivate()
@@ -2106,6 +2153,12 @@ def main(argv):
     screenshot = argv[argv.index("--screenshot") + 1] if "--screenshot" in argv else ""
     if (selftest or screenshot) and not os.environ.get("QT_QPA_PLATFORM"):
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
+    cosmic = "--cosmic" in argv or "COSMIC" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper().split(":")
+    if cosmic and not os.environ.get("QT_QPA_PLATFORM") and os.environ.get("DISPLAY"):
+        # Wayland lets a window choose neither its place nor to stay put; the
+        # popup has to open under the pill, so it runs through XWayland, where
+        # it can (CosmicHost._place).
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
     # The shared QML styles every control itself on top of Basic; the native
     # Windows style would fight it.
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
@@ -2191,7 +2244,6 @@ def main(argv):
     if headless:
         return _run_headless(app, engine, backend, warnings, screenshot, "--settings" in argv)
 
-    cosmic = "--cosmic" in argv or "COSMIC" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper().split(":")
     tray = CosmicHost(app, engine, backend) if cosmic else TrayApp(app, engine, backend)
     tour = argv[argv.index("--tour") + 1] if "--tour" in argv else ""
     if "--open" in argv:

@@ -32,12 +32,12 @@ env=$(nix develop "git+file://$root#windows" --command sh -c \
 } > "$bin/tidesi"
 chmod +x "$bin/tidesi"
 
-# Add the applet to the right side of every panel, once. cosmic-panel reloads
+# Add the applet to the right side of the top panel (not the dock), once. cosmic-panel reloads
 # its config files as they change, so nothing needs restarting.
 python3 - "$id" <<'PY'
 import glob, os, sys
 applet = sys.argv[1]
-for path in glob.glob(os.path.expanduser("~/.config/cosmic/com.system76.CosmicPanel.*/v1/plugins_wings")):
+for path in glob.glob(os.path.expanduser("~/.config/cosmic/com.system76.CosmicPanel.Panel/v1/plugins_wings")):
     text = open(path).read()
     if applet in text:
         continue
