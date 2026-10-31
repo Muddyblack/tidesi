@@ -100,20 +100,21 @@ make view-h    # horizontal
 make test
 ```
 
-`make test` includes the portable Python suite, which discovers the hermetic E2E
-tests as well as the unit tests. To run only the provider E2Es:
+`make test` includes the portable Python suite, which also discovers the hermetic E2E
+tests. To run only those:
 
 ```bash
 make test-e2e
 ```
 
-The portable E2Es in `tests/python/test_e2e_*.py` run the real CLI/backend in
-isolated subprocesses, using loopback HTTP servers, temporary provider data, and
-fake executables instead of live vendor services. They cover at least one path
-for each of the 25 providers, every selectable source mode, the OpenAI Codex plan
-path, Zed's Linux Secret Service credential path, and Zed's local Sessions
-database source. Native macOS Keychain and Windows Credential Manager access are
-not exercised by these hermetic tests.
+The E2Es in `tests/python/test_e2e_*.py` run the real CLI in a throwaway `HOME`,
+with every upstream HTTP(S) call routed to a loopback server
+(`TIDESI_E2E_HTTP_BASE`) and fake executables on `PATH`. No live vendor service is
+contacted. `_e2e.py` holds the shared helpers; the suites are split by topic:
+`test_e2e_http.py` (API-backed providers), `test_e2e_local.py` (session files,
+SQLite databases, local executables) and `test_e2e_sources.py` (each selectable
+source of the multi-source providers). Every provider has at least one test.
+Native macOS Keychain and Windows Credential Manager access are not exercised.
 
 `tests/python/test_fixtures.py` replays the provider envelopes in `tests/fixtures/` through
 the in-process normalizers — success, missing credentials, malformed responses,
