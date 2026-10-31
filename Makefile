@@ -1,4 +1,4 @@
-.PHONY: readme-screenshots new-language test-install format help view view-h view-hyprland hyprland install pack tag test test-py translations check-translations lint-py run-desktop run-windows cosmic macos
+.PHONY: readme-screenshots new-language test-install format help view view-h view-hyprland hyprland install pack tag test test-py test-e2e translations check-translations lint-py run-desktop run-windows cosmic macos
 .DEFAULT_GOAL := help
 
 help: ## list targets
@@ -44,6 +44,9 @@ test: ## run the provider backend contract tests
 
 test-py: ## run the portable unittest suites (also what CI runs on Windows)
 	@python3 -m unittest discover -s tests/python
+
+test-e2e: ## run the hermetic provider E2E suites
+	@python3 -m unittest discover -s tests/python -p "test_e2e_*.py" -v
 
 run-desktop: ## run the desktop tray app (Windows/macOS host) on this machine (PySide6 via 'nix develop .#windows')
 	@if command -v nix >/dev/null 2>&1 && [ -f flake.nix ]; then \

@@ -13,6 +13,21 @@ from tidesi.providers import zed
 
 
 class ZedLinuxCredentialsTest(unittest.TestCase):
+    def test_response_fixture_does_not_read_platform_credentials(self):
+        with tempfile.TemporaryDirectory() as directory:
+            response = Path(directory) / "zed-response.json"
+            response.write_text(
+                json.dumps({"plan": {"plan_v3": "zed_pro", "usage": {"edit_predictions": {"used": 1, "limit": 10}}}}),
+                encoding="utf-8",
+            )
+            with (
+                mock.patch.dict("os.environ", {"ZED_USAGE_RESPONSE_FILE": str(response)}),
+                mock.patch.object(zed, "_credential_store_login", side_effect=AssertionError("credential store was queried")),
+            ):
+                result = zed.get_zed_usage()
+
+        self.assertEqual(result["used"], 1)
+
     def test_deferred_account_read_uses_no_credentials_or_network(self):
         with (
             mock.patch.object(zed, "_settings", side_effect=AssertionError("deferred refresh read settings")),

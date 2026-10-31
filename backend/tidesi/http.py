@@ -100,6 +100,38 @@ def http_error_json(label, status, auth_message=None):
     return error_json(tr("%1 HTTP %2", label, status))
 
 
+def route_e2e_url(url):
+    """Send an upstream URL to the loopback test server named by TIDESI_E2E_HTTP_BASE.
+
+    Inert when unset. The base must be a plain http://127.0.0.1:<port> origin, so
+    a stray value cannot forward credentials to a remote host. The original
+    scheme and host travel in the path: /<scheme>/<host>/<path>.
+    """
+    base = os.environ.get("TIDESI_E2E_HTTP_BASE")
+    if not base:
+        return url
+
+    from urllib.parse import urlsplit, urlunsplit
+
+    origin = urlsplit(base)
+    try:
+        plain = (
+            origin.scheme == "http"
+            and origin.hostname == "127.0.0.1"
+            and origin.port
+            and not (origin.path.strip("/") or origin.query or origin.username)
+        )
+    except ValueError:
+        plain = False
+    if not plain:
+        raise ValueError("TIDESI_E2E_HTTP_BASE must be a plain http://127.0.0.1:<port> loopback origin")
+
+    target = urlsplit(url)
+    if target.hostname in ("127.0.0.1", "localhost", "::1"):
+        return url
+    return urlunsplit((origin.scheme, origin.netloc, f"/{target.scheme}/{target.netloc}{target.path or '/'}", target.query, ""))
+
+
 def fetch_json(url, headers=None, timeout=10, fixture_path=None, data=None):
     """Returns an HttpResult. `fixture_path` replays a recorded response as a
     200 so tests never touch the network — the *_RESPONSE_FILE hooks. `data`
@@ -114,6 +146,7 @@ def fetch_json(url, headers=None, timeout=10, fixture_path=None, data=None):
     import urllib.error
     import urllib.request
 
+    url = route_e2e_url(url)
     req = urllib.request.Request(url, data=data, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:

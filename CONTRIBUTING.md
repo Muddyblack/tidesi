@@ -100,11 +100,27 @@ make view-h    # horizontal
 make test
 ```
 
+`make test` includes the portable Python suite, which also discovers the hermetic E2E
+tests. To run only those:
+
+```bash
+make test-e2e
+```
+
+The E2Es in `tests/python/test_e2e_*.py` run the real CLI in a throwaway `HOME`,
+with every upstream HTTP(S) call routed to a loopback server
+(`TIDESI_E2E_HTTP_BASE`) and fake executables on `PATH`. No live vendor service is
+contacted. `_e2e.py` holds the shared helpers; the suites are split by topic:
+`test_e2e_http.py` (API-backed providers), `test_e2e_local.py` (session files,
+SQLite databases, local executables) and `test_e2e_sources.py` (each selectable
+source of the multi-source providers). Every provider has at least one test.
+Native macOS Keychain and Windows Credential Manager access are not exercised.
+
 `tests/python/test_fixtures.py` replays the provider envelopes in `tests/fixtures/` through
 the in-process normalizers — success, missing credentials, malformed responses,
 offline and rate-limited states for every provider. `test_cli.py` renders those
 same fixtures through the terminal frontend. No network access is needed, and
-the same provider coverage runs on Windows CI.
+the fixture tests run on Windows CI.
 `test_provider_values.py` pins provider-specific calculations; `test_collect.py`
 and `test_muse.py` exercise real file/SQLite readers and response-file hooks.
 Recorded API bodies use `*-response.json` in `tests/fixtures/`; tests create

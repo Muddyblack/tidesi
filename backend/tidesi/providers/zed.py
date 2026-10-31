@@ -216,8 +216,8 @@ def get_zed_usage(*, refresh=True):
     url = _api_url(server)
     if not url:
         return {"error": "custom server must use https"}
-    user_id, token = _credential_store_login(server)
     fixture = os.environ.get("ZED_USAGE_RESPONSE_FILE")
+    user_id, token = _credential_store_login(server) if not fixture else ("", "")
     if not fixture and not (user_id and token):
         return {}
     result = fetch_json(
