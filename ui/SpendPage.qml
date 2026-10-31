@@ -392,7 +392,7 @@ ColumnLayout {
 
                     Text {
                         Layout.alignment: Qt.AlignVCenter
-                        text: modelData.costAvailable === false ? shell.i18n("Unavailable") : page.money(modelData.cost, modelData.currency || "USD")
+                        text: modelData.costAvailable === false ? "—" : page.money(modelData.cost, modelData.currency || "USD")
                         font.bold: true
                         // Fixed-width digits keep the two-decimal amounts in one
                         // column: every price ends in ".XX", so with equal digit
