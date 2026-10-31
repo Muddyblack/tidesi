@@ -1,4 +1,4 @@
-.PHONY: readme-screenshots new-language test-install format help view view-h view-hyprland hyprland install pack tag test test-py translations check-translations lint-py run-desktop run-windows macos
+.PHONY: readme-screenshots new-language test-install format help view view-h view-hyprland hyprland install pack tag test test-py translations check-translations lint-py run-desktop run-windows cosmic macos
 .DEFAULT_GOAL := help
 
 help: ## list targets
@@ -53,6 +53,15 @@ run-desktop: ## run the desktop tray app (Windows/macOS host) on this machine (P
 	fi
 
 run-windows: run-desktop
+
+cosmic: ## build and install the COSMIC panel applet + a `tidesi` launcher into ~/.local, then add "tideSI" in Settings → Panel
+	@nix develop 'path:.#cosmic' --command cargo build --release --manifest-path hosts/cosmic/Cargo.toml
+	@install -Dm755 hosts/cosmic/target/release/tidesi-cosmic-applet $(HOME)/.local/bin/tidesi-cosmic-applet
+	@install -Dm644 hosts/cosmic/data/org.muddyblack.tidesi.CosmicApplet.desktop $(HOME)/.local/share/applications/org.muddyblack.tidesi.CosmicApplet.desktop
+	@install -Dm644 assets/icons/org.muddyblack.tidesi.svg $(HOME)/.local/share/icons/hicolor/scalable/apps/org.muddyblack.tidesi.svg
+	@printf '#!/bin/sh\nexec nix develop "path:%s#windows" --command python3 %s/hosts/desktop/app.py "$$@"\n' "$(CURDIR)" "$(CURDIR)" > $(HOME)/.local/bin/tidesi
+	@chmod +x $(HOME)/.local/bin/tidesi
+	@echo "Installed. Add tideSI under Settings → Desktop → Panel → Applets (log out/in or 'pkill cosmic-panel' if it is not listed)."
 
 macos: ## build Tidesi.app (macOS only; needs hosts/macos/build-requirements.txt)
 	@hosts/macos/build-app.sh
