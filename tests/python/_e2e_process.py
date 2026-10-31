@@ -12,6 +12,7 @@ containment API calls are not interruptible by the execution timeout.
 
 import ctypes
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -121,6 +122,35 @@ class _WindowsJob:
         return os.read(pipe.fileno(), min(available.value, _READ_SIZE))
 
 
+def _kill_process_group_members(group_id):
+    executable = shutil.which("ps")
+    if executable is None:
+        raise FileNotFoundError("ps is required to enumerate a denied process group")
+    result = subprocess.run(
+        [executable, "-axo", "pid=,pgid="],
+        capture_output=True,
+        text=True,
+        timeout=_REAP_TIMEOUT,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ChildProcessError("unable to enumerate denied E2E process group")
+    for line in result.stdout.splitlines():
+        fields = line.split()
+        if len(fields) != 2:
+            continue
+        try:
+            member_pid, member_group = map(int, fields)
+        except ValueError:
+            continue
+        if member_group != group_id or member_pid == os.getpid():
+            continue
+        try:
+            os.kill(member_pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
 def _terminate(process, job):
     try:
         if job is not None:
@@ -130,6 +160,8 @@ def _terminate(process, job):
                 os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
+            except PermissionError:
+                _kill_process_group_members(process.pid)
     finally:
         # Also handles failure to assign the Windows child to its job.
         if process is not None and process.poll() is None:

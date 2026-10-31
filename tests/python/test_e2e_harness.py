@@ -260,6 +260,11 @@ if {wait_for_timeout!r}:
     def test_normal_exit_terminates_background_processes(self):
         self._background_child(wait_for_timeout=False)
 
+    @unittest.skipIf(sys.platform == "win32", "POSIX process-group fallback")
+    def test_process_group_permission_failure_terminates_descendant(self):
+        with mock.patch("_e2e_process.os.killpg", side_effect=PermissionError("group signal denied")):
+            self._background_child(wait_for_timeout=False)
+
 
 if __name__ == "__main__":
     unittest.main()
