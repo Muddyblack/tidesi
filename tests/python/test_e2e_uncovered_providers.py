@@ -4,6 +4,7 @@ import sys
 import tempfile
 import time
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from _e2e_harness import ChildProcess, LoopbackHTTPServer, LoopbackResponse, install_fake_cli
@@ -24,6 +25,7 @@ class RemainingProviderE2ETest(unittest.TestCase):
         self.assertTrue(row["ok"], row["error"])
         return row
 
+    @unittest.skipUnless(sys.platform == "linux", "Antigravity account lookup uses the host credential store")
     def test_antigravity_fake_agy_report_reaches_envelope(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
@@ -56,13 +58,6 @@ class RemainingProviderE2ETest(unittest.TestCase):
     def test_selfhosted_ollama_probe_uses_loopback_and_no_generation(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
-            bindir = home / "bin"
-            marker = home / "gpu-queried"
-            install_fake_cli(
-                bindir,
-                "nvidia-smi",
-                f"import pathlib\npathlib.Path({str(marker)!r}).write_text('yes')\nprint('Fixture GPU, 10, 100, 20, 50')",
-            )
 
             def response(request):
                 if request.path == "/api/version":
@@ -72,14 +67,14 @@ class RemainingProviderE2ETest(unittest.TestCase):
                 return LoopbackResponse(status=404)
 
             with LoopbackHTTPServer(response) as server:
+                endpoint = server.base_url.replace("127.0.0.1", "localhost.")
                 child = self.configured_child(
                     home,
                     "selfhosted",
                     {
-                        "WIDGET_SELFHOSTED_ENDPOINT": server.base_url,
+                        "WIDGET_SELFHOSTED_ENDPOINT": endpoint,
                         "WIDGET_SELFHOSTED_ENGINE": "ollama",
                     },
-                    bindir,
                 )
                 row = self.assert_provider_result(child.run([sys.executable, "-m", "tidesi", "--provider", "selfhosted"]), "selfhosted")
             self.assertEqual([request.path for request in server.requests], ["/api/version", "/api/ps"])
@@ -90,7 +85,7 @@ class RemainingProviderE2ETest(unittest.TestCase):
             home = Path(directory)
             database = home / "opencode.db"
             now_ms = int(time.time() * 1000)
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection, connection:
                 connection.executescript(
                     "CREATE TABLE session (id TEXT PRIMARY KEY, title TEXT, directory TEXT, time_created INTEGER, time_updated INTEGER);"
                     "CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT, data TEXT);"

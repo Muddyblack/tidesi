@@ -26,6 +26,7 @@ class ProviderSourceModeE2ETest(unittest.TestCase):
         self.assertEqual(row["sources"]["active"], source)
         return row
 
+    @unittest.skipUnless(sys.platform == "linux", "Antigravity account lookup uses the host credential store")
     def test_antigravity_aiu_cli_reaches_envelope(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
@@ -42,6 +43,7 @@ class ProviderSourceModeE2ETest(unittest.TestCase):
             row = self.assert_source_envelope(child, "antigravity", "aiu")
         self.assertEqual(row["details"]["models"]["gemini"]["usedPct"], 25)
 
+    @unittest.skipUnless(sys.platform == "linux", "Antigravity account lookup uses the host credential store")
     def test_antigravity_server_reaches_envelope_over_loopback(self):
         if not os.path.isdir("/proc/self") and importlib.util.find_spec("psutil") is None:
             self.skipTest("Antigravity process discovery needs /proc or optional psutil")

@@ -3,6 +3,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from _e2e_harness import ChildProcess, LoopbackHTTPServer, LoopbackResponse, install_fake_cli
@@ -29,7 +30,7 @@ class SourceModesE2ETest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
             database = home / "cursor.vscdb"
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection, connection:
                 connection.execute("CREATE TABLE ItemTable (key TEXT, value BLOB)")
                 connection.execute("INSERT INTO ItemTable VALUES (?, ?)", ("cursorAuth/accessToken", secret))
             responses = {
@@ -60,7 +61,7 @@ class SourceModesE2ETest(unittest.TestCase):
             home = Path(directory)
             database = home / "kiro.vscdb"
             snapshot = {"usageBreakdowns": [{"currentUsage": 3, "usageLimit": 10, "percentageUsed": 30}], "timestamp": 1780000000}
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection, connection:
                 connection.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value BLOB)")
                 connection.execute("INSERT INTO ItemTable VALUES (?, ?)", ("kiro.resourceNotifications.usageState", json.dumps(snapshot)))
             child = ChildProcess(
