@@ -28,7 +28,7 @@ programs.tidesi = {
 };
 ```
 
-The NixOS module takes the same options, minus `plasmoid.enable` (Plasma finds the widget under `/run/current-system/sw/share/plasma/plasmoids`).
+The NixOS module takes the same options, minus `plasmoid.enable` (Plasma finds the widget under `/run/current-system/sw/share/plasma/plasmoids`) and `dms` (DankMaterialShell is configured from Home Manager).
 
 ## DankMaterialShell
 
