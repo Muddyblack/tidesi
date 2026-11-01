@@ -5,11 +5,25 @@ from __future__ import annotations
 import functools
 import hashlib
 import os
+import re
 import sqlite3
 from pathlib import Path
 from typing import Final
 
 _BUSY_TIMEOUT_MS: Final = 5_000
+
+# Nix substitutes absolute store paths into a couple of provider modules (the
+# libsecret `secret-tool` pin). Those paths move whenever nixpkgs does, so a
+# raw byte hash would invalidate the whole cache on a redeploy that changed no
+# parser at all. The fingerprint describes the code, so a store executable
+# collapses to the bare command it was before packaging.
+_STORE_EXE_RE: Final = re.compile(rb"/nix/store/[a-z0-9]{32}-[^/\s\"']+/bin/([A-Za-z0-9_.+-]+)")
+_STORE_PATH_RE: Final = re.compile(rb"/nix/store/[a-z0-9]{32}-[^/\s\"']+")
+
+
+def _normalized_source(data: bytes) -> bytes:
+    return _STORE_PATH_RE.sub(b"<store>", _STORE_EXE_RE.sub(rb"\1", data))
+
 
 # Cached rows are the *product* of the code that parsed and priced them, so
 # they have to be discarded whenever that code changes — a better title or a
@@ -44,7 +58,7 @@ def _schema_version() -> int:
         paths.extend(sorted((here / package).glob("*.py")))
     for path in paths:
         try:
-            digest.update(path.read_bytes())
+            digest.update(_normalized_source(path.read_bytes()))
         except OSError:
             # A module that cannot be read is simply not part of the key;
             # a failure here must never stop the index from opening.
