@@ -310,6 +310,8 @@ Manager module as well; the option has no effect without it.
     inputs.tidesi.homeManagerModules.default
   ];
 
+  programs.dank-material-shell.enable = true;
+
   programs.tidesi = {
     enable = true;
     plasmoid.enable = false; # DMS only, no Plasma widget

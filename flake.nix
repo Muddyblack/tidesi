@@ -19,14 +19,12 @@
         noDisplay = true;
         categories = [ "Utility" ];
       };
-    in
-    {
+    in {
       packages = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
           backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
-        in
-        {
+        in {
           default = pkgs.stdenvNoCC.mkDerivation {
             pname = "tidesi";
             version = metadata.KPlugin.Version;
@@ -144,7 +142,7 @@
           # The DankMaterialShell (DMS) plugin: the shared UI, assets, catalogs
           # and backend assembled into the one directory the DMS plugin loader
           # expects. The PluginComponent host itself lives in
-          # hosts/quickshell/plugin/ and is copied in unchanged; this package is
+          # hosts/quickshell/plugin/ and is copied in; this package is
           # what `programs.dank-material-shell.plugins.tidesi.src` points at.
           dms = pkgs.stdenvNoCC.mkDerivation {
             pname = "tidesi-dms";
@@ -192,6 +190,11 @@
               substituteInPlace "$root/backend/tidesi/providers/zed.py" \
                 --replace-fail 'SECRET_TOOL = "secret-tool"' \
                                'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
+              # With Python pinned, this package no longer needs it on PATH; a
+              # manually assembled plugin still does, so only this copy changes.
+              substituteInPlace "$root/plugin.json" \
+                --replace-fail '"requires": ["bash", "coreutils", "python3"]' \
+                               '"requires": ["bash", "coreutils"]'
               runHook postInstall
             '';
 
@@ -396,8 +399,7 @@
           pkgs = nixpkgs.legacyPackages.${system};
           backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
           quickshellDesktop = quickshellDesktopFor pkgs;
-        in
-        rec {
+        in rec {
           view = {
             type = "app";
             program = toString (pkgs.writeShellScript "view" ''
@@ -474,8 +476,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
-        in
-        rec {
+        in rec {
           default = pkgs.mkShell {
             name = "tidesi-dev";
             packages = with pkgs; [
@@ -561,16 +562,8 @@
             name = "tidesi-cosmic";
             nativeBuildInputs = with pkgs; [ cargo rustc rustfmt clippy pkg-config ];
             buildInputs = with pkgs; [
-              libxkbcommon
-              wayland
-              libglvnd
-              vulkan-loader
-              fontconfig
-              freetype
-              expat
-              libinput
-              udev
-              openssl
+              libxkbcommon wayland libglvnd vulkan-loader fontconfig freetype expat
+              libinput udev openssl
             ];
             shellHook = ''
               export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath (with pkgs; [ libxkbcommon wayland libglvnd vulkan-loader ])}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"

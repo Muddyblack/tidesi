@@ -112,6 +112,9 @@ in
 
   config = lib.mkIf cfg.enable (lib.mkMerge [
     {
+      warnings = lib.optional (cfg.dms.enable && !(options ? programs.dank-material-shell.plugins))
+        "programs.tidesi.dms.enable has no effect: DankMaterialShell's Home Manager module is not imported.";
+
       home.packages = lib.optional cfg.plasmoid.enable cfg.package
         ++ lib.optional cfg.cli.enable cfg.cli.package
         ++ lib.optional (cfg.desktop.enable || cfg.cosmic.enable) cfg.desktop.package

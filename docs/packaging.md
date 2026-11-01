@@ -42,6 +42,8 @@ imports = [
   tidesi.homeManagerModules.default
 ];
 
+programs.dank-material-shell.enable = true;
+
 programs.tidesi = {
   enable = true;
   plasmoid.enable = false; # DMS only, no Plasma widget
