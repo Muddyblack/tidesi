@@ -10,7 +10,8 @@ The flake builds from the working tree and exports:
 | `packages.cli` | `tidesi-cli` and `get-ai-usage`, no Qt, no plasmoid |
 | `packages.desktop` | `tidesi`: the tray app with the floating pill, for any desktop with a tray (GNOME, Sway, XFCE, ...) |
 | `packages.hyprland` | the Quickshell panel and tray helper, started with `tidesi-hyprland` |
-| `overlays.default` | `tidesi`, `tidesi-cli`, `tidesi-hyprland` |
+| `packages.dms` | the DankMaterialShell plugin: shared `ui/`, backend, assets and translations in one plugin directory |
+| `overlays.default` | `tidesi`, `tidesi-cli`, `tidesi-hyprland`, `tidesi-dms` |
 | `nixosModules.default` | `programs.tidesi` for NixOS |
 | `homeManagerModules.default` | `programs.tidesi` for Home Manager |
 
@@ -27,7 +28,34 @@ programs.tidesi = {
 };
 ```
 
-The NixOS module takes the same options, minus `plasmoid.enable` (Plasma finds the widget under `/run/current-system/sw/share/plasma/plasmoids`).
+The NixOS module takes the same options, minus `plasmoid.enable` (Plasma finds the widget under `/run/current-system/sw/share/plasma/plasmoids`) and `dms` (DankMaterialShell is configured from Home Manager).
+
+## DankMaterialShell
+
+`programs.tidesi.dms.enable` registers `packages.dms` with
+`programs.dank-material-shell.plugins.tidesi`. Import DMS's Home Manager module as
+well; without it the option has no effect:
+
+```nix
+imports = [
+  inputs.dank-material-shell.homeModules.dank-material-shell
+  tidesi.homeManagerModules.default
+];
+
+programs.dank-material-shell.enable = true;
+
+programs.tidesi = {
+  enable = true;
+  plasmoid.enable = false; # DMS only, no Plasma widget
+  dms.enable = true;
+};
+```
+
+The package copies upstream's `hosts/quickshell/plugin/` host, `ProcessRunner.qml`,
+`ui/`, `backend/`, `assets/` and `translate/` into one directory, with Python and
+`secret-tool` pinned to store paths. No local assembly or patching is required.
+It is also available directly as `packages.dms` for hosts that would rather set
+`programs.dank-material-shell.plugins.tidesi.src` themselves.
 
 ## nixpkgs-style packages
 
@@ -62,5 +90,5 @@ The nixpkgs bot (r-ryantm) notices a new tag, runs the packages' `passthru.updat
 
 ## Notes
 
-- None of the nixpkgs packages contain the Hyprland panel, the Windows app or the macOS app; the flake builds the panel.
+- None of the nixpkgs packages contain the Hyprland panel, the DMS plugin, the Windows app or the macOS app; the flake builds the panel and the DMS plugin.
 - The flake and the modules build from the working tree; `nix/nixpkgs/` is only for nixpkgs.
