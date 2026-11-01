@@ -39,7 +39,7 @@ Manager module:
 ```nix
 programs.dank-material-shell.plugins.tidesi = {
   enable = true;
-  src = tidesi.packages.${pkgs.system}.dms;
+  src = tidesi.packages.${pkgs.stdenv.hostPlatform.system}.dms;
 };
 ```
 
