@@ -74,6 +74,9 @@ jobs:
       - name: KDE package assembles
         run: nix develop --command ./scripts/build-kde-package.sh
 
+      - name: DMS plugin package assembles
+        run: nix build .#dms --no-link
+
       - name: i18n catalogs complete
         run: nix develop --command ./translate/check.sh
 

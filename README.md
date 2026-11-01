@@ -294,7 +294,20 @@ brew install --cask muddyblack/tidesi/tidesi
 
 Home Manager has the same module (`tidesi.homeManagerModules.default`), which also links
 the widget into `~/.local/share/plasma/plasmoids`. Packages can be used directly too:
-`tidesi.packages.${pkgs.system}.{default,cli,hyprland}`. See
+`tidesi.packages.${pkgs.system}.{default,cli,hyprland,desktop,cosmic,dms}`.
+
+For **DankMaterialShell**, use the assembled plugin package:
+
+```nix
+programs.dank-material-shell.plugins.tidesi = {
+  enable = true;
+  src = tidesi.packages.${pkgs.system}.dms;
+};
+```
+
+The `dms` package already contains the shared UI, backend, assets and translations;
+DMS only needs `bash`, `coreutils` and a working Python interpreter on the service
+`PATH` (the package pins Python and `secret-tool` itself). See
 [docs/packaging.md](docs/packaging.md).
 
 </details>

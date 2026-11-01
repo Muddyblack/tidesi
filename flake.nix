@@ -1,5 +1,5 @@
 {
-  description = "Tidesi: AI usage limits for KDE Plasma 6 and Hyprland/Quickshell";
+  description = "Tidesi: AI usage limits for KDE Plasma 6, Hyprland/Quickshell, DankMaterialShell, COSMIC, the desktop tray and the CLI";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -19,12 +19,14 @@
         noDisplay = true;
         categories = [ "Utility" ];
       };
-    in {
+    in
+    {
       packages = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
           backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
-        in {
+        in
+        {
           default = pkgs.stdenvNoCC.mkDerivation {
             pname = "tidesi";
             version = metadata.KPlugin.Version;
@@ -136,6 +138,78 @@
               license = pkgs.lib.licenses.mit;
               platforms = pkgs.lib.platforms.linux;
               mainProgram = "tidesi-cli";
+            };
+          };
+
+          # The DankMaterialShell (DMS) plugin: the shared UI, assets, catalogs
+          # and backend assembled into the one directory the DMS plugin loader
+          # expects. The PluginComponent host itself lives in
+          # hosts/quickshell/plugin/ and is copied in unchanged; this package is
+          # what `programs.dank-material-shell.plugins.tidesi.src` points at.
+          dms = pkgs.stdenvNoCC.mkDerivation {
+            pname = "tidesi-dms";
+            version = metadata.KPlugin.Version;
+            src = pkgs.lib.fileset.toSource {
+              root = ./.;
+              fileset = pkgs.lib.fileset.unions [
+                ./hosts/quickshell/plugin
+                ./hosts/quickshell/ProcessRunner.qml
+                ./ui
+                ./backend
+                ./assets
+                ./translate
+                ./LICENSE
+              ];
+            };
+            buildInputs = [ pkgs.bash ];
+            strictDeps = true;
+            dontConfigure = true;
+            dontBuild = true;
+
+            installPhase = ''
+              runHook preInstall
+              root=$out
+              mkdir -p "$root"
+              cp hosts/quickshell/plugin/TidesiPlugin.qml \
+                 hosts/quickshell/plugin/PluginAppState.qml \
+                 hosts/quickshell/plugin/plugin.json \
+                 hosts/quickshell/ProcessRunner.qml \
+                 LICENSE "$root/"
+              cp -r ui assets translate backend "$root/"
+              find "$root" \( -name '__pycache__' -o -name '*.pyc' \) -prune -exec rm -rf {} +
+
+              # DMS starts the plugin from its own service PATH, which on NixOS has
+              # no Python and no secret-tool. Pin both so the plugin is
+              # self-contained, the same way the Plasma, CLI and Hyprland packages
+              # do. $PYTHON3 still wins at runtime, and --replace-fail turns a
+              # drifted line into a build error instead of a silent regression.
+              substituteInPlace "$root/backend/sh/python-interp.sh" \
+                --replace-fail 'PY_DEFAULT="python3"' \
+                               'PY_DEFAULT="${backendPython}/bin/python3"'
+              substituteInPlace "$root/backend/tidesi/providers/antigravity_remote.py" \
+                --replace-fail 'SECRET_TOOL = "secret-tool"' \
+                               'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
+              substituteInPlace "$root/backend/tidesi/providers/zed.py" \
+                --replace-fail 'SECRET_TOOL = "secret-tool"' \
+                               'SECRET_TOOL = "${pkgs.libsecret}/bin/secret-tool"'
+              runHook postInstall
+            '';
+
+            doInstallCheck = true;
+            installCheckPhase = ''
+              runHook preInstallCheck
+              test -f "$out/plugin.json"
+              test -f "$out/TidesiPlugin.qml"
+              test -f "$out/ui/AppState.qml"
+              test -x "$out/backend/sh/tidesi-cli"
+              "$out/backend/sh/tidesi-cli" --help > /dev/null
+              runHook postInstallCheck
+            '';
+
+            meta = {
+              description = "DankMaterialShell plugin of Tidesi: the shared bar pill and popup";
+              license = pkgs.lib.licenses.mit;
+              platforms = pkgs.lib.platforms.linux;
             };
           };
 
@@ -311,6 +385,7 @@
         tidesi = self.packages.${final.stdenv.hostPlatform.system}.default;
         tidesi-cli = self.packages.${final.stdenv.hostPlatform.system}.cli;
         tidesi-hyprland = self.packages.${final.stdenv.hostPlatform.system}.hyprland;
+        tidesi-dms = self.packages.${final.stdenv.hostPlatform.system}.dms;
       };
       nixosModules.default = import ./nix/nixos-module.nix self;
       homeManagerModules.default = import ./nix/home-manager-module.nix self;
@@ -321,7 +396,8 @@
           pkgs = nixpkgs.legacyPackages.${system};
           backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
           quickshellDesktop = quickshellDesktopFor pkgs;
-        in rec {
+        in
+        rec {
           view = {
             type = "app";
             program = toString (pkgs.writeShellScript "view" ''
@@ -398,7 +474,8 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           backendPython = pkgs.python3.withPackages (ps: [ ps.zstandard ]);
-        in rec {
+        in
+        rec {
           default = pkgs.mkShell {
             name = "tidesi-dev";
             packages = with pkgs; [
@@ -484,8 +561,16 @@
             name = "tidesi-cosmic";
             nativeBuildInputs = with pkgs; [ cargo rustc rustfmt clippy pkg-config ];
             buildInputs = with pkgs; [
-              libxkbcommon wayland libglvnd vulkan-loader fontconfig freetype expat
-              libinput udev openssl
+              libxkbcommon
+              wayland
+              libglvnd
+              vulkan-loader
+              fontconfig
+              freetype
+              expat
+              libinput
+              udev
+              openssl
             ];
             shellHook = ''
               export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath (with pkgs; [ libxkbcommon wayland libglvnd vulkan-loader ])}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
