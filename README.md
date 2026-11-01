@@ -298,19 +298,23 @@ the widget into `~/.local/share/plasma/plasmoids`. Packages can be used directly
 
 ### DankMaterialShell
 
-The flake exports `packages.dms`, the plugin directory DMS's plugin loader
-expects. Add the input and point DMS at it from Home Manager:
+`programs.tidesi.dms.enable` registers the plugin with DMS. Import DMS's Home
+Manager module as well; the option has no effect without it.
 
 ```nix
-# flake.nix
-inputs.tidesi.url = "github:Muddyblack/tidesi";
-
 # home-manager module
-{ inputs, pkgs, ... }:
+{ inputs, ... }:
 {
-  programs.dank-material-shell.plugins.tidesi = {
+  imports = [
+    inputs.dank-material-shell.homeModules.dank-material-shell
+    inputs.tidesi.homeManagerModules.default
+  ];
+
+  programs.tidesi = {
     enable = true;
-    src = inputs.tidesi.packages.${pkgs.stdenv.hostPlatform.system}.dms;
+    plasmoid.enable = false; # DMS only, no Plasma widget
+    cli.enable = true;       # optional: tidesi-cli for the terminal
+    dms.enable = true;       # registers programs.dank-material-shell.plugins.tidesi
   };
 }
 ```
@@ -318,8 +322,9 @@ inputs.tidesi.url = "github:Muddyblack/tidesi";
 Then enable **tideSI** in DMS's plugin settings and add `tidesi` to a bar. The
 package already contains the shared UI, backend, assets and translations; DMS
 needs `bash` and `coreutils` on its service `PATH` (Python and `secret-tool` are
-pinned inside the package). Requires DMS 1.5 or later. See
-[docs/packaging.md](docs/packaging.md#dankmaterialshell).
+pinned inside the package). Requires DMS 1.5 or later. The package is also
+available directly as `tidesi.packages.${pkgs.stdenv.hostPlatform.system}.dms`.
+See [docs/packaging.md](docs/packaging.md#dankmaterialshell).
 
 </details>
 

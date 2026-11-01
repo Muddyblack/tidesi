@@ -32,20 +32,28 @@ The NixOS module takes the same options, minus `plasmoid.enable` (Plasma finds t
 
 ## DankMaterialShell
 
-`packages.dms` is the plugin directory DMS's own plugin option expects. It is not
-part of the `programs.tidesi` module because DMS is configured by its own Home
-Manager module:
+`programs.tidesi.dms.enable` registers `packages.dms` with
+`programs.dank-material-shell.plugins.tidesi`. Import DMS's Home Manager module as
+well; without it the option has no effect:
 
 ```nix
-programs.dank-material-shell.plugins.tidesi = {
+imports = [
+  inputs.dank-material-shell.homeModules.dank-material-shell
+  tidesi.homeManagerModules.default
+];
+
+programs.tidesi = {
   enable = true;
-  src = tidesi.packages.${pkgs.stdenv.hostPlatform.system}.dms;
+  plasmoid.enable = false; # DMS only, no Plasma widget
+  dms.enable = true;
 };
 ```
 
 The package copies upstream's `hosts/quickshell/plugin/` host, `ProcessRunner.qml`,
 `ui/`, `backend/`, `assets/` and `translate/` into one directory, with Python and
 `secret-tool` pinned to store paths. No local assembly or patching is required.
+It is also available directly as `packages.dms` for hosts that would rather set
+`programs.dank-material-shell.plugins.tidesi.src` themselves.
 
 ## nixpkgs-style packages
 

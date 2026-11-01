@@ -1,5 +1,5 @@
 self:
-{ config, lib, pkgs, ... }:
+{ config, lib, options, pkgs, ... }:
 let
   cfg = config.programs.tidesi;
   system = pkgs.stdenv.hostPlatform.system;
@@ -90,31 +90,60 @@ in
         description = "The Hyprland/Quickshell package.";
       };
     };
-  };
 
-  config = lib.mkIf cfg.enable {
-    home.packages = lib.optional cfg.plasmoid.enable cfg.package
-      ++ lib.optional cfg.cli.enable cfg.cli.package
-      ++ lib.optional (cfg.desktop.enable || cfg.cosmic.enable) cfg.desktop.package
-      ++ lib.optional cfg.cosmic.enable cfg.cosmic.package
-      ++ lib.optional cfg.hyprland.enable cfg.hyprland.package;
-
-    xdg.configFile."autostart/tidesi.desktop" = lib.mkIf (cfg.desktop.enable && cfg.desktop.autostart) {
-      text = ''
-        [Desktop Entry]
-        Type=Application
-        Name=Tidesi
-        Exec=${cfg.desktop.package}/bin/tidesi
-        Icon=org.muddyblack.tidesi
-        X-GNOME-Autostart-enabled=true
-      '';
-    };
-
-    xdg.dataFile = lib.mkIf cfg.plasmoid.enable {
-      "plasma/plasmoids/${pluginId}" = {
-        source = "${cfg.package}/share/plasma/plasmoids/${pluginId}";
-        force = true;
+    dms = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Register the DankMaterialShell plugin with
+          `programs.dank-material-shell.plugins.tidesi`. Import DMS's Home Manager
+          module as well; without it this option has no effect.
+        '';
+      };
+      package = lib.mkOption {
+        type = lib.types.package;
+        default = self.packages.${system}.dms;
+        defaultText = lib.literalExpression "inputs.tidesi.packages.\${system}.dms";
+        description = "The DankMaterialShell plugin package.";
       };
     };
   };
+
+  config = lib.mkIf cfg.enable (lib.mkMerge [
+    {
+      home.packages = lib.optional cfg.plasmoid.enable cfg.package
+        ++ lib.optional cfg.cli.enable cfg.cli.package
+        ++ lib.optional (cfg.desktop.enable || cfg.cosmic.enable) cfg.desktop.package
+        ++ lib.optional cfg.cosmic.enable cfg.cosmic.package
+        ++ lib.optional cfg.hyprland.enable cfg.hyprland.package;
+
+      xdg.configFile."autostart/tidesi.desktop" = lib.mkIf (cfg.desktop.enable && cfg.desktop.autostart) {
+        text = ''
+          [Desktop Entry]
+          Type=Application
+          Name=Tidesi
+          Exec=${cfg.desktop.package}/bin/tidesi
+          Icon=org.muddyblack.tidesi
+          X-GNOME-Autostart-enabled=true
+        '';
+      };
+
+      xdg.dataFile = lib.mkIf cfg.plasmoid.enable {
+        "plasma/plasmoids/${pluginId}" = {
+          source = "${cfg.package}/share/plasma/plasmoids/${pluginId}";
+          force = true;
+        };
+      };
+    }
+    # Only define the DMS plugin when DMS's module is actually imported; a
+    # definition for an undeclared option is an evaluation error even when
+    # behind mkIf. The branch must not read `cfg`, or it recurses.
+    (lib.optionalAttrs (options ? programs.dank-material-shell.plugins) {
+      programs.dank-material-shell.plugins.tidesi = lib.mkIf cfg.dms.enable {
+        enable = true;
+        src = cfg.dms.package;
+      };
+    })
+  ]);
 }
