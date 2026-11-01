@@ -833,6 +833,18 @@ test("repeated snapshots within the window coalesce into one persistence", () =>
     assert.equal(UsageHistory.due(store, now + WINDOW), false, "the window is spent");
 });
 
+test("a fresh point is persisted within a minute", () => {
+    const now = 1785000000000;
+    const store = UsageHistory.newStore(500);
+    UsageHistory.opened(store);
+
+    UsageHistory.record(store, { w: 10 }, now);
+    assert.equal(UsageHistory.arm(store, now, UsageHistory.SAVE_WINDOW_MS), true);
+    assert.ok(UsageHistory.SAVE_WINDOW_MS <= 60000, "a restart can lose at most a minute");
+    assert.equal(UsageHistory.due(store, now + UsageHistory.SAVE_WINDOW_MS - 1), false);
+    assert.equal(UsageHistory.due(store, now + UsageHistory.SAVE_WINDOW_MS), true);
+});
+
 test("a flush sends the pending batch immediately", () => {
     const WINDOW = 300000;
     const now = 1785000000000;

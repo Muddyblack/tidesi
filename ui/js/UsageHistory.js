@@ -24,6 +24,10 @@ var DEFAULT_LIMIT = 10000;
 var HEARTBEAT_MS = 3600000;
 // The grid slopePerHour() resamples on — the default poll interval.
 var SLOPE_STEP_MS = 300000;
+// How long a fresh reading may sit unsaved. A shell reload or redeploy kills the
+// process without running Component.onDestruction, so this window is the bound on
+// what a restart can lose.
+var SAVE_WINDOW_MS = 60000;
 
 // A sample only counts when it carries a number. A provider that failed reports
 // its keys as null; writing those into the series would erase the last good
@@ -605,6 +609,7 @@ if (typeof module !== "undefined" && module.exports) {
         withResets: withResets,
         slopePerHour: slopePerHour,
         HEARTBEAT_MS: HEARTBEAT_MS,
+        SAVE_WINDOW_MS: SAVE_WINDOW_MS,
         newStore: newStore,
         restore: restore,
         record: record,
