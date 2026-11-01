@@ -1268,7 +1268,7 @@ Item {
     property string historyMsg: ""
     // The prune in flight is the automatic one at startup: no message for it.
     property bool historyAutoPrune: false
-    readonly property int historyDebounceMs: 300000
+    readonly property int historyDebounceMs: UsageHistory.SAVE_WINDOW_MS
 
     // The store replaces `history` rather than patching it in place, so an
     // unchanged reference means there is nothing to repaint.
