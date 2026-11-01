@@ -154,7 +154,7 @@ Session search is handled by the backend with `get-ai-usage --sessions --query <
 
 The backend returns the additive `sources` descriptor list with verified IDs and labels, in canonical order: Cline (`cline`), Muse (`muse`), Codex (`openai`), Grok (`grok`), Claude Code (`claude`), OpenCode (`opencode`), MiMo Code (`mimo`), Antigravity (`antigravity`), Mistral (`mistral`), Cursor (`cursor`), Junie (`junie`), and Zed Editor (`zed`). Only sources with cached parsed rows appear. Query-only searches read that cache and do not scan local stores. Non-empty searches check all underlying session records using only `provider`, `title`, `sessionName`, `state`, and `detail`; `fullTitle`, opaque resume keys, IDs, paths, and transcripts are not searchable or exposed. Claude titles are clipped opening-prompt previews; raw prompt text never leaves the backend. See the [provider contract](docs/provider-contract.md#session-search) for response, refresh, incomplete-cache, privacy, and cross-platform details.
 
-Also runs [on COSMIC](docs/cosmic.md) (native panel applet), [on Hyprland](docs/hyprland.md), [on Windows](docs/windows.md), [on macOS](docs/macos.md) and [in a terminal](docs/cli.md) — every platform shows the same UI (`ui/`) on the same backend (`backend/`); only the panel, tray or menu bar item around it is per platform (`hosts/`). See [docs/architecture.md](docs/architecture.md).
+Also runs [on COSMIC](docs/cosmic.md) (native panel applet), [on Hyprland](docs/hyprland.md), [on DankMaterialShell](docs/packaging.md#dankmaterialshell), [on Windows](docs/windows.md), [on macOS](docs/macos.md) and [in a terminal](docs/cli.md) — every platform shows the same UI (`ui/`) on the same backend (`backend/`); only the panel, tray or menu bar item around it is per platform (`hosts/`). See [docs/architecture.md](docs/architecture.md).
 
 ---
 
@@ -294,8 +294,39 @@ brew install --cask muddyblack/tidesi/tidesi
 
 Home Manager has the same module (`tidesi.homeManagerModules.default`), which also links
 the widget into `~/.local/share/plasma/plasmoids`. Packages can be used directly too:
-`tidesi.packages.${pkgs.system}.{default,cli,hyprland}`. See
-[docs/packaging.md](docs/packaging.md).
+`tidesi.packages.${pkgs.system}.{default,cli,hyprland,desktop,cosmic,dms}`.
+
+### DankMaterialShell
+
+`programs.tidesi.dms.enable` registers the plugin with DMS. Import DMS's Home
+Manager module as well; the option has no effect without it.
+
+```nix
+# home-manager module
+{ inputs, ... }:
+{
+  imports = [
+    inputs.dank-material-shell.homeModules.dank-material-shell
+    inputs.tidesi.homeManagerModules.default
+  ];
+
+  programs.dank-material-shell.enable = true;
+
+  programs.tidesi = {
+    enable = true;
+    plasmoid.enable = false; # DMS only, no Plasma widget
+    cli.enable = true;       # optional: tidesi-cli for the terminal
+    dms.enable = true;       # registers programs.dank-material-shell.plugins.tidesi
+  };
+}
+```
+
+Then enable **tideSI** in DMS's plugin settings and add `tidesi` to a bar. The
+package already contains the shared UI, backend, assets and translations; DMS
+needs `bash` and `coreutils` on its service `PATH` (Python and `secret-tool` are
+pinned inside the package). Requires DMS 1.5 or later. The package is also
+available directly as `tidesi.packages.${pkgs.stdenv.hostPlatform.system}.dms`.
+See [docs/packaging.md](docs/packaging.md#dankmaterialshell).
 
 </details>
 
