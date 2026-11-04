@@ -2,7 +2,7 @@
   "id": "tidesi",
   "name": "tideSI",
   "description": "AI usage panel and popup using the shared Quickshell UI",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "author": "Muddyblack",
   "license": "MIT",
   "type": "widget",

@@ -113,9 +113,25 @@ fi
 
 git push -u origin "$RELEASE_BRANCH"
 
+# The release notes are drafted into the PR description, between the markers.
+# Edit them there before merging: release.yml publishes exactly that text.
+PREV_TAG="$(git tag --list 'v*' --sort=-creatordate | head -1)"
+if [[ -n "$PREV_TAG" ]]; then
+    NOTES="$(git log "${PREV_TAG}..origin/${DEFAULT_BRANCH}" --pretty=format:'- %s' --no-merges)"
+else
+    NOTES="$(git log "origin/${DEFAULT_BRANCH}" --pretty=format:'- %s' --no-merges)"
+fi
+PR_BODY="Bumps the version to ${NEW_VERSION}. Merging this PR tags ${TAG_NAME} and publishes the release (see .github/workflows/release.yml).
+
+**Edit the release notes below before merging; they become the release text.**
+
+<!-- release-notes:start -->
+${NOTES}
+<!-- release-notes:end -->"
+
 PR_URL="$(gh pr create --base "$DEFAULT_BRANCH" --head "$RELEASE_BRANCH" \
     --title "$COMMIT_MSG" \
-    --body "Bumps the version to ${NEW_VERSION}. Merging this PR tags ${TAG_NAME} and publishes the release (see .github/workflows/release.yml).")"
+    --body "$PR_BODY")"
 echo "$PR_URL"
 
 read -rp "Auto-merge once checks pass? [y/N]: " auto_merge

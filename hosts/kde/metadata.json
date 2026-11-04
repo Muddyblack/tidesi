@@ -7,7 +7,7 @@
     "Description[fr]": "Suivi multi-services de quotas IA avec ventilation des coûts (Claude, Antigravity, OpenAI, Grok, Kiro, OpenRouter & Mistral)",
     "Icon": "org.muddyblack.tidesi",
     "Category": "Utilities",
-    "Version": "4.0.1",
+    "Version": "4.1.0",
     "Website": "https://github.com/Muddyblack/tidesi",
     "Authors": [
       {
