@@ -9,6 +9,7 @@ not part of this module.
 import hashlib
 import importlib
 import json
+import re
 import sqlite3
 import tempfile
 import threading
@@ -18,7 +19,7 @@ from pathlib import Path
 from typing import Callable
 from unittest import mock
 
-from _support import REPO  # noqa: F401  (ensures TOOLS is on sys.path)
+from _support import REPO
 
 
 @dataclass(frozen=True, slots=True)
@@ -621,6 +622,17 @@ class SchemaVersionInvalidationTest(unittest.TestCase):
         with mock.patch.object(storage, "_CONTENT_SOURCES", ("contract.py",)):
             self.assertNotEqual(storage._schema_version(), first)
         storage._schema_version.cache_clear()
+
+    def test_nix_never_patches_a_module_in_the_key(self):
+        # A store path moves with nixpkgs, so patching one into a hashed module
+        # would drop the whole cache on a redeploy that changed no parser.
+        storage = importlib.import_module("tidesi.session_index_storage")
+        packaging = [Path(REPO, "flake.nix"), *Path(REPO, "nix").rglob("*.nix")]
+        patched = {match for path in packaging for match in re.findall(r"backend/tidesi/([\w/]+\.py)", path.read_text(encoding="utf-8"))}
+        self.assertIn("paths.py", patched)
+        for module in patched:
+            self.assertNotIn(module, storage._CONTENT_SOURCES)
+            self.assertNotIn(module.split("/")[0], storage._CONTENT_PACKAGES)
 
     def test_a_key_change_forces_every_source_to_recollect(self):
         storage = importlib.import_module("tidesi.session_index_storage")
