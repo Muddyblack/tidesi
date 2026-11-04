@@ -1,9 +1,9 @@
 cask "tidesi" do
   arch arm: "apple-silicon", intel: "intel"
 
-  version "4.0.1"
-  sha256 arm:   "0a1411d5b36fc1f4f232548e68e0e0b74addc08743e8254d82df22f1cc8c29ae",
-         intel: "1a26b5d660d8bef214a78c16eb49e993344accb47ab1a6ab86fad2dd66bd6357"
+  version "4.1.0"
+  sha256 arm:   "ece4c6b048a35fc487463c96e7fc659d2abbc7d806e3bbc14b1f19bd33ef0142",
+         intel: "589427aa47cd5529f94428c05466de08554889f5404eb9bd837a6475759e3898"
 
   url "https://github.com/Muddyblack/tidesi/releases/download/v#{version}/tidesi-macos-#{version}-#{arch}.dmg"
   name "tideSI"
