@@ -1,6 +1,5 @@
 import QtQuick
 import "theme" as Appearance
-import QtQuick.Controls.Basic as QQC2
 import QtQuick.Layouts
 import "js/Tone.js" as Tone
 
@@ -330,9 +329,13 @@ ColumnLayout {
                         height: sparkRow.height
                         color: "transparent"
 
-                        QQC2.ToolTip.visible: sparkMA.containsMouse
-                        QQC2.ToolTip.delay: 200
-                        QQC2.ToolTip.text: modelData.date + "\n" + (statsSectionRoot.dailyUnit === "tokens" ? statsSectionRoot.shell.i18n("%1 tokens", statsSectionRoot.formatTokens(modelData.total)) : statsSectionRoot.dailyUnit === "requests" ? statsSectionRoot.shell.i18n("%1 requests", statsSectionRoot.formatTokens(modelData.total)) : statsSectionRoot.shell.i18n("%1 messages", statsSectionRoot.formatTokens(modelData.total)))
+                        TipBubble {
+                            visible: sparkMA.containsMouse
+                            delay: 200
+                            x: (parent.width - width) / 2
+                            y: -height - 4
+                            text: modelData.date + "\n" + (statsSectionRoot.dailyUnit === "tokens" ? statsSectionRoot.shell.i18n("%1 tokens", statsSectionRoot.formatTokens(modelData.total)) : statsSectionRoot.dailyUnit === "requests" ? statsSectionRoot.shell.i18n("%1 requests", statsSectionRoot.formatTokens(modelData.total)) : statsSectionRoot.shell.i18n("%1 messages", statsSectionRoot.formatTokens(modelData.total)))
+                        }
 
                         MouseArea {
                             id: sparkMA
@@ -561,8 +564,12 @@ ColumnLayout {
                 color: statsSectionRoot.accent
                 opacity: analyticsMA.containsMouse ? 1.0 : 0.7
 
-                QQC2.ToolTip.visible: analyticsMA.containsMouse
-                QQC2.ToolTip.text: statsSectionRoot.providerId === "cursor" ? statsSectionRoot.shell.i18n("Open the cursor.com usage dashboard in your browser") : statsSectionRoot.shell.i18n("Open chatgpt.com Codex usage analytics in your browser")
+                TipBubble {
+                    visible: analyticsMA.containsMouse
+                    x: (parent.width - width) / 2
+                    y: -height - 4
+                    text: statsSectionRoot.providerId === "cursor" ? statsSectionRoot.shell.i18n("Open the cursor.com usage dashboard in your browser") : statsSectionRoot.shell.i18n("Open chatgpt.com Codex usage analytics in your browser")
+                }
 
                 MouseArea {
                     id: analyticsMA
@@ -592,9 +599,13 @@ ColumnLayout {
         border.width: 1
         border.color: Tone.c(Appearance.Palette, Qt.rgba(1, 1, 1, 0.07))
 
-        QQC2.ToolTip.visible: tile.tileTip !== "" && tileMA.containsMouse
-        QQC2.ToolTip.delay: 300
-        QQC2.ToolTip.text: tile.tileTip
+        TipBubble {
+            visible: tile.tileTip !== "" && tileMA.containsMouse
+            delay: 300
+            x: (parent.width - width) / 2
+            y: -height - 4
+            text: tile.tileTip
+        }
 
         MouseArea {
             id: tileMA

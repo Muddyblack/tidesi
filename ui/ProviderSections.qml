@@ -140,12 +140,10 @@ ColumnLayout {
                                 Layout.fillWidth: true
                                 Layout.leftMargin: 13
                                 implicitHeight: barLine.implicitHeight
-                                z: barMouse.containsMouse ? 5 : 0
 
-                                MouseArea {
-                                    id: barMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: barRow.tip !== ""
+                                HoverHandler {
+                                    id: barHover
+                                    enabled: barRow.tip !== ""
                                 }
 
                                 RowLayout {
@@ -196,23 +194,11 @@ ColumnLayout {
                                     }
                                 }
 
-                                Rectangle {
-                                    visible: barMouse.containsMouse && barRow.tip !== ""
+                                TipBubble {
+                                    visible: barHover.hovered
                                     y: barRow.height + 3
                                     x: 0
-                                    width: barTip.implicitWidth + 16
-                                    height: barTip.implicitHeight + 10
-                                    radius: 5
-                                    color: Tone.c(Appearance.Palette, Qt.rgba(0.04, 0.045, 0.06, 0.96))
-                                    border.width: 1
-                                    border.color: Tone.c(Appearance.Palette, Qt.rgba(1, 1, 1, 0.14))
-                                    Text {
-                                        id: barTip
-                                        anchors.centerIn: parent
-                                        text: barRow.tip
-                                        font.pixelSize: 11
-                                        color: Tone.c(Appearance.Palette, "#e2e8f0")
-                                    }
+                                    text: barRow.tip
                                 }
                             }
                         }
