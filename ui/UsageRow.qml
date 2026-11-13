@@ -174,13 +174,12 @@ ColumnLayout {
     }
 
     // Hover bubble. A zero-height layout item whose mouse area reaches back up
-    // over the whole row, so the row keeps its layout and the bubble is not
-    // clipped by it.
+    // over the whole row, so the row keeps its layout. Not a HoverHandler on
+    // the row itself: on a ColumnLayout that a Repeater creates, it crashes
+    // Qt 6.12 (QQuickItemPrivate::handlePointerEvent from addChild).
     Item {
-        id: tipHost
         Layout.fillWidth: true
         Layout.preferredHeight: 0
-        z: 10
 
         MouseArea {
             id: rowHover
@@ -190,37 +189,13 @@ ColumnLayout {
             height: row.height
             hoverEnabled: row.tooltipText !== ""
             acceptedButtons: Qt.NoButton
-            onContainsMouseChanged: {
-                if (containsMouse)
-                    tipDelay.restart();
-                else {
-                    tipDelay.stop();
-                    tipHost.shown = false;
-                }
-            }
-        }
-        property bool shown: false
-        Timer {
-            id: tipDelay
-            interval: 450
-            onTriggered: tipHost.shown = rowHover.containsMouse
-        }
-        Rectangle {
-            visible: tipHost.shown && row.tooltipText !== ""
-            x: Math.max(0, Math.min(rowHover.mouseX + 10, row.width - width))
-            y: -row.height + rowHover.mouseY + 20
-            width: tipText.implicitWidth + 18
-            height: tipText.implicitHeight + 12
-            radius: 6
-            color: Tone.c(Appearance.Palette, Qt.rgba(0.04, 0.045, 0.06, 0.96))
-            border.width: 1
-            border.color: Tone.c(Appearance.Palette, Qt.rgba(1, 1, 1, 0.14))
-            Text {
-                id: tipText
-                anchors.centerIn: parent
+
+            TipBubble {
+                visible: rowHover.containsMouse && row.tooltipText !== ""
+                delay: 450
                 text: row.tooltipText
-                font.pixelSize: 11
-                color: Tone.c(Appearance.Palette, "#e2e8f0")
+                x: rowHover.mouseX + 10
+                y: rowHover.mouseY + 20
             }
         }
     }

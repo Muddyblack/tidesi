@@ -100,7 +100,6 @@ RowLayout {
             Layout.alignment: Qt.AlignVCenter
             implicitWidth: chipLabel.implicitWidth + (isPlan ? 16 : 12)
             implicitHeight: isPlan ? 18 : 16
-            z: chipMouse.containsMouse ? 5 : 0
 
             Rectangle {
                 anchors.fill: parent
@@ -117,30 +116,15 @@ RowLayout {
                 font.bold: chipItem.tone !== "off"
                 color: Tone.ink(Appearance.Palette, chipItem.base)
             }
-            MouseArea {
-                id: chipMouse
-                anchors.fill: parent
-                hoverEnabled: chipItem.tip !== ""
+            HoverHandler {
+                id: chipHover
+                enabled: chipItem.tip !== ""
             }
-            // The chip's explanation, drawn here (QQC2's ToolTip is not
-            // available under every host).
-            Rectangle {
-                visible: chipMouse.containsMouse && chipItem.tip !== ""
+            TipBubble {
+                visible: chipHover.hovered
                 y: chipItem.height + 5
                 x: Math.min(0, chipItem.width - width)
-                width: tipText.implicitWidth + 16
-                height: tipText.implicitHeight + 10
-                radius: 5
-                color: Tone.c(Appearance.Palette, Qt.rgba(0.04, 0.045, 0.06, 0.96))
-                border.width: 1
-                border.color: Tone.c(Appearance.Palette, Qt.rgba(1, 1, 1, 0.14))
-                Text {
-                    id: tipText
-                    anchors.centerIn: parent
-                    text: chipItem.tip
-                    font.pixelSize: 11
-                    color: Tone.c(Appearance.Palette, "#e2e8f0")
-                }
+                text: chipItem.tip
             }
         }
     }

@@ -200,25 +200,11 @@ ColumnLayout {
                 onClicked: saveMenu.visible ? saveMenu.close() : saveMenu.open()
             }
 
-            // Tooltip, drawn here: QQC2's is not available under every host.
-            Rectangle {
+            TipBubble {
                 visible: saveMouse.containsMouse && !saveMenu.visible
                 y: parent.height + 4
                 x: parent.width - width
-                width: saveTip.implicitWidth + 16
-                height: saveTip.implicitHeight + 10
-                radius: 5
-                z: 10
-                color: Tone.c(Appearance.Palette, Qt.rgba(0.04, 0.045, 0.06, 0.96))
-                border.width: 1
-                border.color: Tone.c(Appearance.Palette, Qt.rgba(1, 1, 1, 0.14))
-                Text {
-                    id: saveTip
-                    anchors.centerIn: parent
-                    text: shell.i18n("Save this view as a picture")
-                    font.pixelSize: 11
-                    color: Tone.c(Appearance.Palette, "#e2e8f0")
-                }
+                text: shell.i18n("Save this view as a picture")
             }
 
             QC.Popup {
@@ -390,8 +376,6 @@ ColumnLayout {
                 Layout.preferredWidth: 1
                 Layout.minimumWidth: 0
                 Layout.preferredHeight: 32
-                // Above its neighbours while its tooltip is out.
-                z: tabMouse.containsMouse ? 5 : 0
 
                 Rectangle {
                     id: tab
@@ -533,26 +517,12 @@ ColumnLayout {
                     }
                 }
 
-                // The name of an icon-only tab (QQC2's ToolTip is not available
-                // under every host, so it is drawn here).
-                Rectangle {
-                    id: tabTip
+                // The name of an icon-only tab.
+                TipBubble {
                     visible: !tabCell.labelFits && tabMouse.containsMouse
                     y: tabCell.height + 4
-                    x: Math.max(-tabCell.x, Math.min(tabBar.width - tabCell.x - width, (tabCell.width - width) / 2))
-                    width: tipLabel.implicitWidth + 16
-                    height: tipLabel.implicitHeight + 10
-                    radius: 5
-                    color: Tone.c(Appearance.Palette, Qt.rgba(0.04, 0.045, 0.06, 0.96))
-                    border.width: 1
-                    border.color: Tone.c(Appearance.Palette, Qt.rgba(1, 1, 1, 0.14))
-                    Text {
-                        id: tipLabel
-                        anchors.centerIn: parent
-                        text: (tabCell.modelData.label || "") + (tabCell.pinned ? "  ·  " + shell.i18n("Pinned on panel") : "")
-                        font.pixelSize: 11
-                        color: Tone.c(Appearance.Palette, "#e2e8f0")
-                    }
+                    x: (tabCell.width - width) / 2
+                    text: (tabCell.modelData.label || "") + (tabCell.pinned ? "  ·  " + shell.i18n("Pinned on panel") : "")
                 }
             }
         }

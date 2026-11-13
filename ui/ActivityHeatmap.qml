@@ -1,6 +1,5 @@
 import QtQuick
 import "theme" as Appearance
-import QtQuick.Controls.Basic as QQC2
 import QtQuick.Layouts
 import "js/Tone.js" as Tone
 
@@ -206,7 +205,7 @@ ColumnLayout {
                 onExited: index = -1
             }
 
-            QQC2.ToolTip {
+            TipBubble {
                 visible: gridHover.index >= 0
                 x: gridHover.index >= 0 ? Math.min(grid.width - width, Math.floor(gridHover.index / 7) * (heat.cell + heat.gap)) : 0
                 y: gridHover.index >= 0 ? (gridHover.index % 7) * (heat.cell + heat.gap) - height - 4 : 0
@@ -268,7 +267,7 @@ ColumnLayout {
                 onExited: index = -1
             }
 
-            QQC2.ToolTip {
+            TipBubble {
                 visible: hourHover.index >= 0
                 x: hourHover.index >= 0 ? Math.min(strip.width - width, hourHover.index * (strip.cellW + 2)) : 0
                 y: -height - 4

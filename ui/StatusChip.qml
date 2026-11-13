@@ -5,9 +5,8 @@ import QtQuick.Layouts
 import "js/Tone.js" as Tone
 
 // Service-status chip for the popup header: the Quickshell twin of the Plasma
-// widget's StatusChip.qml, fed by the same details.status block. QQC2.ToolTip
-// needs Kirigami, which Quickshell does not ship, so the hover card is drawn
-// here — the header row sets a z above its siblings so it can overlap them.
+// widget's StatusChip.qml, fed by the same details.status block; hovering it
+// shows the details in a TipBubble.
 Rectangle {
     id: chip
 
@@ -122,45 +121,12 @@ Rectangle {
         }
     }
 
-    Timer {
-        id: tipDelay
-        interval: 300
-        onTriggered: tip.visible = chipMouse.containsMouse && !chip.linkOnly
-    }
-    Connections {
-        target: chipMouse
-        function onContainsMouseChanged() {
-            if (chipMouse.containsMouse) {
-                tipDelay.restart();
-            } else {
-                tipDelay.stop();
-                tip.visible = false;
-            }
-        }
-    }
-
-    Rectangle {
-        id: tip
-        visible: false
-        anchors.top: chip.bottom
-        anchors.topMargin: 6
-        anchors.right: chip.right
+    TipBubble {
+        visible: chipMouse.containsMouse && !chip.linkOnly
+        delay: 300
+        y: chip.height + 6
+        x: chip.width - width
         width: 280
-        height: tipText.implicitHeight + 16
-        radius: 6
-        color: Tone.c(Appearance.Palette, Qt.rgba(0.04, 0.045, 0.06, 0.97))
-        border.width: 1
-        border.color: Tone.c(Appearance.Palette, Qt.rgba(1, 1, 1, 0.14))
-
-        Text {
-            id: tipText
-            x: 10
-            y: 8
-            width: parent.width - 20
-            text: chip.tooltipText
-            color: Tone.c(Appearance.Palette, "#e2e8f0")
-            font.pixelSize: 11
-            wrapMode: Text.Wrap
-        }
+        text: chip.tooltipText
     }
 }

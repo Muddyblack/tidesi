@@ -46,7 +46,6 @@ ColumnLayout {
     // ── Account line: who is signed in, plan / model chips, service status ──
     AccountRow {
         id: accountRow
-        z: 10
         shell: content.shell
         account: shell.activeProvider() ? (shell.activeProvider().account || ({})) : ({})
         status: {
