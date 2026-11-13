@@ -22,6 +22,8 @@ T.ToolTip {
 
     contentItem: Text {
         text: tip.text
+        // Status pages and the backend supply this text; never parse it as markup.
+        textFormat: Text.PlainText
         font.pixelSize: 11
         // Only wraps when the bubble is given a width; otherwise it sizes to
         // the text.
