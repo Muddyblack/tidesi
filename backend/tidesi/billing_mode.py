@@ -82,7 +82,9 @@ def mode_for(provider, source=""):
     key = (provider, source)
     if key in _CACHE:
         return _CACHE[key]
-    resolver = _RESOLVERS.get(provider)
+    # An extra account (claude@work) is classified like its provider, from the
+    # login the caller has pointed the environment at.
+    resolver = _RESOLVERS.get(str(provider).split("@", 1)[0])
     try:
         mode = _opencode_mode(provider) if source == "opencode" else resolver() if resolver is not None else API
     except Exception:

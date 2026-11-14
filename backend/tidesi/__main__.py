@@ -18,7 +18,7 @@ import sys
 from . import accounts, config, detect, envelope, pricing, widget_state
 from .contract import finalize
 from .normalize import normalize
-from .session_index import SOURCE_REGISTRY
+from .session_index import source_ids as known_source_ids
 
 USAGE = """usage: get-ai-usage [--all | --provider <id>[,<id>...] | --normalize | --sessions | --refresh-pricing | --pricing-table |
 --detect-providers | --initialize-provider-defaults | --last-snapshot | --shared-settings]
@@ -163,7 +163,8 @@ def main(argv):
             else:
                 raw_sources = arg[len("--source=") :]
             source_ids = []
-            valid_source_ids = {source_id for source_id, _label in SOURCE_REGISTRY}
+            known = known_source_ids()
+            valid_source_ids = set(known)
             for source_id in raw_sources.split(","):
                 normalized_source_id = source_id.strip()
                 if not normalized_source_id or normalized_source_id not in valid_source_ids:
@@ -173,7 +174,7 @@ def main(argv):
                 if normalized_source_id not in source_ids:
                     source_ids.append(normalized_source_id)
             selected_source_ids = set(source_ids)
-            source_ids = [source_id for source_id, _label in SOURCE_REGISTRY if source_id in selected_source_ids]
+            source_ids = [source_id for source_id in known if source_id in selected_source_ids]
         elif arg == "--limit" or arg.startswith("--limit="):
             if arg == "--limit":
                 i += 1

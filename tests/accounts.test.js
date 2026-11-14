@@ -81,8 +81,10 @@ test("accounts are listed, edited and removed without touching other settings", 
 });
 
 test("the sign-in command points the tool at the folder", () => {
-    assert.equal(Accounts.loginCommand("claude", "~/.claude-work"), "CLAUDE_CONFIG_DIR=~/.claude-work claude");
+    assert.equal(Accounts.loginCommand("claude", "~/.claude-work"), "CLAUDE_CONFIG_DIR=$HOME/.claude-work claude");
+    assert.equal(Accounts.loginCommand("claude", "/srv/claude"), "CLAUDE_CONFIG_DIR=/srv/claude claude");
     assert.equal(Accounts.loginCommand("openai", "/srv/my codex"), 'CODEX_HOME="/srv/my codex" codex login');
+    assert.equal(Accounts.loginCommand("openai", "~/my codex"), 'CODEX_HOME="$HOME/my codex" codex login');
     assert.equal(Accounts.loginCommand("kiro", "/k"), "KIRO_HOME=/k <kiro>");
     assert.equal(Accounts.loginCommand("zed", "/k"), "");
 });
@@ -100,4 +102,21 @@ test("an account follows its provider in the user's order", () => {
     const ids = (order) => plain(Order.sort(items, order, canonical)).map((i) => i.id);
     assert.deepEqual(ids(undefined), ["claude", "claude@work", "openai", "openai@team", "kiro"]);
     assert.deepEqual(ids(["kiro", "claude"]), ["kiro", "claude", "claude@work", "openai", "openai@team"]);
+});
+
+test("the spend page gives an account its own row, read from its own local sessions", () => {
+    const Spend = load("FeatureTabs.js", "spendProviderRows");
+    const group = (provider, usd) => ({
+        costStatus: "exact",
+        totalUSD: usd,
+        providers: { [provider]: { costUSD: usd, costStatus: "exact", dailyUSD: [{ date: "2026-11-01", usd }] } },
+    });
+    const providers = [
+        { id: "claude", label: "Claude", details: { stats: { totalCostUSD: 1 } } },
+        { id: "claude@work", label: "Claude · Work", details: { stats: { totalCostUSD: 5 } } },
+    ];
+    const rows = plain(Spend.spendProviderRows(providers, { estimated: { ...group("claude", 1), providers: { ...group("claude", 1).providers, ...group("claude@work", 5).providers } } }));
+    assert.deepEqual(rows.map((r) => [r.id, r.cost]), [["claude@work", 5], ["claude", 1]]);
+    // Each row's chart is its own account's days, never the sum.
+    assert.deepEqual(rows.map((r) => r.dailyCost.map((d) => d.usd)), [[5], [1]]);
 });

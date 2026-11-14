@@ -2,6 +2,7 @@ import QtQuick
 import "theme" as Appearance
 import QtQuick.Layouts
 import QtQuick.Controls.Basic as QC
+import "js/Accounts.js" as Accounts
 import "js/FeatureTabs.js" as FeatureTabs
 import "js/SessionSources.js" as SessionSources
 import "js/Tone.js" as Tone
@@ -156,8 +157,10 @@ ColumnLayout {
             "openrouter": "openrouter.svg",
             "zai": "zai.svg"
         };
-        if (fileMap[id])
-            return iconDir + fileMap[id];
+        // An extra account (claude@work) wears its provider's logo.
+        var base = Accounts.baseId(id);
+        if (fileMap[base])
+            return iconDir + fileMap[base];
         return "";
     }
 
@@ -187,7 +190,7 @@ ColumnLayout {
             "openrouter": "#9333ea",
             "zai": "#126ef4"
         };
-        return colorMap[id] || "#a78bfa";
+        return colorMap[Accounts.baseId(id)] || "#a78bfa";
     }
 
     function reconcileDisplayedSessions() {

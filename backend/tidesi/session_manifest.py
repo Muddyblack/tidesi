@@ -7,7 +7,7 @@ import json
 import os
 from dataclasses import dataclass
 
-from . import config, paths, pricing
+from . import accounts, config, paths, pricing
 from .providers import cursor_sessions, junie, mimo, mistral_sessions, opencode, zed_sessions  # noqa: F401
 from .providers.grok import grok_home
 from .providers.muse import sessions_root as muse_sessions_root
@@ -182,6 +182,57 @@ def _fingerprint(source_id: str, records: list[tuple[str, str, int, int, int]]) 
     return SessionManifest(source_id, int(digest[:16], 16) & ((1 << 63) - 1), len(encoded))
 
 
+def _source_groups():
+    """``(source_id, records)`` for every collector, the records read lazily.
+
+    Lazy because an extra account re-reads one collector's records with its
+    own home in the environment, which must not walk every other store again.
+    The order is the merge order, and must stay in step with
+    ``sessions.SESSION_COLLECTORS``.
+    """
+
+    def claude():
+        return _claude_records(os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude"))
+
+    def antigravity():
+        return _antigravity_records(os.environ.get("ANTIGRAVITY_HOME") or os.environ.get("GEMINI_HOME") or os.path.expanduser("~/.gemini"))
+
+    return (
+        ("cline", lambda: _cline_records(os.environ.get("CLINE_SESSIONS_DIR") or os.path.expanduser("~/.cline/data/sessions"))),
+        ("muse", lambda: _matching_files(muse_sessions_root(), lambda name: name == "session.jsonl", excluded={".msp-view-v1"})),
+        (
+            "codex",
+            lambda: _matching_files(
+                os.environ.get("CODEX_SESSIONS_DIR") or os.path.join(codex_home(), "sessions"),
+                lambda name: name.endswith(".jsonl"),
+            ),
+        ),
+        (
+            "grok",
+            lambda: _matching_files(
+                os.path.join(grok_home(), "sessions"),
+                # summary.json is the current per-session layout, updates.jsonl
+                # carries the usage totals, signals.json is the older format.
+                lambda name: name in ("summary.json", "updates.jsonl", "signals.json"),
+            ),
+        ),
+        ("claude", claude),
+        ("opencode", _opencode_records),
+        ("mimo", _mimo_records),
+        ("antigravity", antigravity),
+        (
+            "mistral",
+            lambda: [(path, "file", mtime_ns, size, 0) for path, mtime_ns, size in mistral_sessions.session_records()],
+        ),
+        (
+            "cursor",
+            lambda: [(path, "file", mtime_ns, size, 0) for path, mtime_ns, size in cursor_sessions.session_records()],
+        ),
+        ("junie", lambda: _matching_files(str(junie.sessions_root()), lambda name: name in ("index.jsonl", "summary.json", "events.jsonl"))),
+        ("zed", _zed_records),
+    )
+
+
 def build_manifests() -> list[SessionManifest]:
     """Fingerprint each session collector's metadata inputs separately.
 
@@ -191,44 +242,16 @@ def build_manifests() -> list[SessionManifest]:
     collector. Keyed per source, a Claude write re-parses only Claude and the
     other six keep their cached rows.
 
-    The order here is the order rows are merged in, and must stay in step with
-    ``sessions.SESSION_COLLECTORS``.
+    Each extra account (``claude@work``) is one more source, fingerprinted from
+    its own folder and listed after the built-in ones.
     """
-    claude_root = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
-    antigravity_root = os.environ.get("ANTIGRAVITY_HOME") or os.environ.get("GEMINI_HOME") or os.path.expanduser("~/.gemini")
-    groups = (
-        ("cline", _cline_records(os.environ.get("CLINE_SESSIONS_DIR") or os.path.expanduser("~/.cline/data/sessions"))),
-        ("muse", _matching_files(muse_sessions_root(), lambda name: name == "session.jsonl", excluded={".msp-view-v1"})),
-        (
-            "codex",
-            _matching_files(
-                os.environ.get("CODEX_SESSIONS_DIR") or os.path.join(codex_home(), "sessions"),
-                lambda name: name.endswith(".jsonl"),
-            ),
-        ),
-        (
-            "grok",
-            _matching_files(
-                os.path.join(grok_home(), "sessions"),
-                # summary.json is the current per-session layout, updates.jsonl
-                # carries the usage totals, signals.json is the older format.
-                lambda name: name in ("summary.json", "updates.jsonl", "signals.json"),
-            ),
-        ),
-        ("claude", _claude_records(claude_root)),
-        ("opencode", _opencode_records()),
-        ("mimo", _mimo_records()),
-        ("antigravity", _antigravity_records(antigravity_root)),
-        (
-            "mistral",
-            [(path, "file", mtime_ns, size, 0) for path, mtime_ns, size in mistral_sessions.session_records()],
-        ),
-        (
-            "cursor",
-            [(path, "file", mtime_ns, size, 0) for path, mtime_ns, size in cursor_sessions.session_records()],
-        ),
-    )
-    groups += (("junie", _matching_files(str(junie.sessions_root()), lambda name: name in ("index.jsonl", "summary.json", "events.jsonl"))),)
-    groups += (("zed", _zed_records()),)
+    groups = _source_groups()
     pricing_record = _stat_record(os.path.join(config.cache_dir(), pricing.CACHE_FILENAME), "file")
-    return [_fingerprint(source_id, records + [pricing_record]) for source_id, records in groups]
+    manifests = [_fingerprint(source_id, read() + [pricing_record]) for source_id, read in groups]
+    readers = dict(groups)
+    for account in accounts.session_accounts():
+        collector = accounts.SESSION_SOURCES[account["base"]][0]
+        with accounts.home_for(account["base"], account["home"]):
+            records = readers[collector]()
+        manifests.append(_fingerprint(account["id"], records + [pricing_record]))
+    return manifests

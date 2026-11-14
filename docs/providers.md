@@ -200,16 +200,20 @@ to the provider toggles):
 Each entry is a provider of its own with the id `<provider>@<id>`, such as `claude@work`, shown as
 "Claude · Work". It is on whenever the provider it belongs to is on, and
 `get-ai-usage --provider claude@work` fetches it alone. Only the directory is
-stored: tokens stay where the tool wrote them, and the widget never copies or refreshes them. On macOS, write
-`home` exactly as you write it in `CLAUDE_CONFIG_DIR`, `~` included, because Claude Code names its Keychain item after a
-digest of the text as written.
+stored: tokens stay where the tool wrote them, and the widget never copies or refreshes them. A leading `~` in
+`home` is expanded before the tool is pointed at it, as a shell would. That matters on macOS, where Claude Code names
+its Keychain item after a digest of the folder it is given: sign in with `CLAUDE_CONFIG_DIR=$HOME/.claude-work`
+(the settings page shows exactly that), not with a literal `~`.
 
 Providers that identify an account by an API key (OpenRouter, Mistral API, Z.AI…) are not covered:
 they have no login directory to repoint.
 
-Extra accounts show their own usage, windows, history and activity stats. The **Spend** page and the local
-session list still cover the main login only: they are built from this machine's session files, which are read from
-the default folder. Spend rows for extra accounts are left out rather than repeating the main account's figures.
+Extra accounts show their own usage, windows, history and activity stats. Their local **sessions** and **spend** are
+read from their own folder too, for the providers that keep session files there: Claude, Codex (`openai`), Grok,
+Antigravity and Mistral. Each account is a source of its own in the Sessions filter ("Claude Code · Work"), its
+sessions are labelled with it, **Spend** has a row and a chart for it next to the provider's, and the totals include
+it. Resuming one of its sessions from the list signs in as that account: the terminal is started with the provider's
+folder variable set to the account's folder. Providers in the table without session files (Kimi, Kiro) show usage only.
 
 ## Antigravity
 
