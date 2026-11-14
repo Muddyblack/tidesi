@@ -70,12 +70,17 @@ function defaultHome(providerId, name) {
     return spec.dir.replace(/-work$/, "") + "-" + slug(name);
 }
 
-// The command that signs a login folder in, for the page to show.
+// The command that signs a login folder in, for the page to show. A leading "~"
+// is written as $HOME: a shell expands "~" only at the start of a word, so
+// VAR=~/dir would hand the tool a folder literally named "~" in fish and in any
+// quoted form, while $HOME is expanded everywhere.
 function loginCommand(providerId, home) {
     var spec = HOMES[providerId];
     if (!spec)
         return "";
-    var folder = /\s/.test(home) ? "\"" + home + "\"" : home;
+    var folder = String(home).replace(/^~(?=\/|$)/, "$HOME");
+    if (/\s/.test(folder))
+        folder = "\"" + folder + "\"";
     return spec.env + "=" + folder + " " + (spec.login || "<" + providerId + ">");
 }
 

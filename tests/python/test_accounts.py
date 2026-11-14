@@ -57,6 +57,11 @@ class HomeOverrideTest(unittest.TestCase):
                 self.assertEqual(os.environ["CLAUDE_CONFIG_DIR"], "/work")
             self.assertEqual(os.environ["CLAUDE_CONFIG_DIR"], "/main")
 
+    def test_a_tilde_is_expanded_the_way_a_shell_would(self):
+        with accounts.home_for("claude", "~/.claude-work"):
+            self.assertEqual(os.environ["CLAUDE_CONFIG_DIR"], os.path.expanduser("~/.claude-work"))
+        self.assertEqual(accounts.launch_env({"base": "claude", "home": "~/x"}), {"CLAUDE_CONFIG_DIR": os.path.expanduser("~/x")})
+
     def test_unset_home_stays_unset_afterwards(self):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("CODEX_HOME", None)
@@ -106,7 +111,7 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(work["profile"]["base"], "claude")
         self.assertEqual(work["icon"], "claude-color.svg")
         # One fetch per row, each reading the home that row names.
-        self.assertCountEqual(homes, ["/main", "~/.claude-work"])
+        self.assertCountEqual(homes, ["/main", os.path.expanduser("~/.claude-work")])
 
     def test_crash_in_an_account_is_its_own_error_row(self):
         row = envelope.crashed("claude@work", 1, ValueError("boom"))

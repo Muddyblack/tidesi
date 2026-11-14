@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable, Final, Protocol, TypedDict
 
+from . import accounts
 from .contract import finite_number
 
 # Single source of truth for which public fields are searchable, shared with
@@ -233,7 +234,20 @@ def normalize_source_ids(source_ids: Sequence[str] | None) -> tuple[str, ...] | 
 def source_descriptors(providers: Iterable[str]) -> list[SessionSourceDescriptor]:
     """Return canonical, public descriptors for cached provider rows."""
     available = frozenset(providers)
-    return [{"id": source_id, "label": label} for source_id, label in SOURCE_REGISTRY if source_id in available]
+    descriptors = [{"id": source_id, "label": label} for source_id, label in SOURCE_REGISTRY if source_id in available]
+    # An extra account (claude@work) is a source of its own, labelled with its
+    # provider's name and its own, and follows the built-in ones.
+    labels = dict(SOURCE_REGISTRY)
+    for account in accounts.session_accounts():
+        if account["id"] in available:
+            base_label = labels.get(accounts.SESSION_SOURCES[account["base"]][1], account["base"])
+            descriptors.append({"id": account["id"], "label": f"{base_label} · {account['label']}"})
+    return descriptors
+
+
+def source_ids() -> list[str]:
+    """Every source id a caller may filter by: the built-in ones and each extra account."""
+    return [source_id for source_id, _label in SOURCE_REGISTRY] + [account["id"] for account in accounts.session_accounts()]
 
 
 def _valid_open_key(value: object) -> str:

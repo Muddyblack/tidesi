@@ -25,6 +25,8 @@ import os
 import re
 import threading
 
+from . import config
+
 ACCOUNT_SEPARATOR = "@"
 MAX_ACCOUNTS_PER_PROVIDER = 8
 
@@ -37,6 +39,17 @@ HOME_ENV = {
     "mistral": "VIBE_HOME",
     "kiro": "KIRO_HOME",
     "antigravity": "ANTIGRAVITY_HOME",
+}
+
+# Provider id -> (the session collector that reads its transcripts, the
+# provider id those rows carry). Only providers with a session collector can
+# have their sessions and spend read per account.
+SESSION_SOURCES = {
+    "claude": ("claude", "claude"),
+    "openai": ("codex", "openai"),
+    "grok": ("grok", "grok"),
+    "antigravity": ("antigravity", "antigravity"),
+    "mistral": ("mistral", "mistral"),
 }
 
 _KEY = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
@@ -101,6 +114,20 @@ def find(cfg, provider_id):
     return None
 
 
+def session_accounts(cfg=None):
+    """The configured accounts whose sessions can be read, in settings order.
+
+    Their rows carry the account's id (``claude@work``) as their provider, so
+    sessions, spend and the source filter treat each account as its own."""
+    found = configured(config.load_settings() if cfg is None else cfg)
+    return [account for provider, entries in found.items() if provider in SESSION_SOURCES for account in entries]
+
+
+def launch_env(account):
+    """``{VARIABLE: folder}`` for a command run on behalf of ``account``."""
+    return {HOME_ENV[account["base"]]: os.path.expanduser(account["home"])}
+
+
 def expand(cfg, provider_ids):
     """``provider_ids`` with each provider's extra accounts right after it."""
     extra = configured(cfg)
@@ -128,7 +155,10 @@ def home_for(provider, home=None):
             yield
             return
         previous = os.environ.get(name)
-        os.environ[name] = home
+        # Expanded, as a shell hands it to the tool. Claude Code keys its macOS
+        # Keychain item to the variable as it sees it, so "~/.claude-work" and
+        # the path a shell makes of it are two different logins.
+        os.environ[name] = os.path.expanduser(home)
         try:
             yield
         finally:

@@ -30,10 +30,11 @@ import re
 import shlex
 import shutil
 import subprocess
+import threading
 import time
 from collections.abc import Sequence
 
-from . import billing, billing_mode, pricing
+from . import accounts, billing, billing_mode, pricing
 from .contract import epoch_of, num
 from .providers import antigravity_sessions, antigravity_usage, cursor_sessions, junie, mimo, mistral_sessions, opencode, zed_sessions
 from .providers.cline import get_cline_session_records
@@ -98,10 +99,22 @@ def _state(last_activity, ended=False):
     return "active" if age <= _ACTIVE_WITHIN_SEC else "idle"
 
 
+# The extra account whose store the current thread is reading, set only while
+# _collect_account() holds that account's home in the environment. A thread of
+# its own, because the index parses several sources at once.
+_ACCOUNT = threading.local()
+
+
 def _entry(provider, title, last_activity, *, state="", session_name="", detail="", session_id="", full_title="", source=""):
     activity = int(last_activity or 0)
     if activity <= 0:
         return None
+    account = getattr(_ACCOUNT, "current", None)
+    if account is not None and provider == account["row_provider"]:
+        # The row belongs to the account: its provider id (and so its open key,
+        # spend group and filter chip) is the account's, and its name says which.
+        provider = account["id"]
+        session_name = f"{session_name} · {account['label']}" if session_name else account["label"]
     entry = {
         "provider": provider,
         "title": title or provider,
@@ -1181,16 +1194,42 @@ SESSION_COLLECTORS = {
 }
 
 
+def _account_for_source(source_id):
+    for account in accounts.session_accounts():
+        if account["id"] == source_id:
+            return account
+    return None
+
+
+def _collect_account(account):
+    """The rows of one extra account: its provider's collector, run with the
+    provider's home variable pointed at the account's folder."""
+    collector, row_provider = accounts.SESSION_SOURCES[account["base"]]
+    with accounts.home_for(account["base"], account["home"]):
+        _ACCOUNT.current = {**account, "row_provider": row_provider}
+        try:
+            return globals()[SESSION_COLLECTORS[collector]](include_all=True)
+        finally:
+            _ACCOUNT.current = None
+
+
 def collect_source(source_id):
     """Every row one collector can see. Raises if its store is unreadable —
-    the index then keeps that source's previous rows rather than dropping them."""
+    the index then keeps that source's previous rows rather than dropping them.
+
+    ``source_id`` is a collector, or an extra account (``claude@work``)."""
+    if accounts.is_account_id(source_id):
+        account = _account_for_source(source_id)
+        if account is None:
+            raise KeyError(source_id)
+        return _collect_account(account)
     return globals()[SESSION_COLLECTORS[source_id]](include_all=True)
 
 
 def _collect_all_sessions():
     merged = []
     complete = True
-    for source_id in SESSION_COLLECTORS:
+    for source_id in [*SESSION_COLLECTORS, *(account["id"] for account in accounts.session_accounts())]:
         try:
             merged.extend(collect_source(source_id))
         except Exception:
@@ -1307,7 +1346,35 @@ def collect_open_targets():
         except Exception:
             # A broken store must not block resuming the others.
             continue
+    for account in accounts.session_accounts():
+        try:
+            for target in _account_targets(account):
+                key = _open_key(target["provider"], target.get("keyId") or target["id"])
+                if key:
+                    targets[key] = target
+        except Exception:
+            continue
     return targets
+
+
+# Provider -> the function listing its resumable sessions.
+_TARGET_COLLECTORS = {
+    "claude": "_claude_targets",
+    "openai": "_codex_targets",
+    "grok": "_grok_targets",
+    "antigravity": "_antigravity_targets",
+}
+
+
+def _account_targets(account):
+    """Resume targets of one extra account. They carry the folder to launch
+    with, so the resumed tool signs in as that account and not the main one."""
+    name = _TARGET_COLLECTORS.get(account["base"])
+    if name is None:
+        return []
+    with accounts.home_for(account["base"], account["home"]):
+        found = globals()[name]()
+    return [{**target, "provider": account["id"], "launchEnv": accounts.launch_env(account)} for target in found]
 
 
 def _codex_targets():
@@ -1514,12 +1581,15 @@ def open_session(open_key):
     if target is None:
         return False, "unknown session (stale list — refresh and try again)"
     provider, session_id = target["provider"], target["id"]
-    spec = _RESUME_SPECS.get(provider)
+    base = accounts.base_id(provider)
+    spec = _RESUME_SPECS.get(base)
     if spec is None:
-        return False, f"{provider} has no resume command here yet"
-    argv = _resume_argv(provider, session_id)
+        return False, f"{base} has no resume command here yet"
+    argv = _resume_argv(base, session_id)
     if argv is None:
         return False, f"the {spec['bin']} command was not found (is it on PATH?)"
+    if target.get("launchEnv"):
+        argv = ["env", *(f"{name}={value}" for name, value in target["launchEnv"].items()), *argv]
     cwd = target.get("cwd") or ""
     if cwd and not os.path.isdir(cwd):
         cwd = ""

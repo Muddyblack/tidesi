@@ -475,6 +475,10 @@ the id `<provider>@<key>` and the label `<Provider> · <label>`. They carry the
 same fields as the provider they are based on plus
 `profile: { base, label, home }`, and are on exactly when the base provider is.
 Use `profile.base` to pick artwork and parsing, never the prefix of `id`.
+For providers with local session files (`claude`, `openai`, `grok`, `antigravity`, `mistral`) the session rows of an
+extra account carry its id as their `provider` (`claude@work`) and `sessionName` ends in ` · <label>`. Its id is also
+a session source id for `--source`, listed in `sources` with the label `<Provider> · <label>`, and the key of its
+entry in `localSpend`, so the account is totalled on its own and in the overall sum.
 The base provider's own row is unchanged and has no `profile`.
 
 ### Credentials

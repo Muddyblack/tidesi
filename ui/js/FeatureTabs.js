@@ -569,18 +569,17 @@ function spendProviderRows(providers, localSpend) {
         var note = "";
         var id = p.id || "";
 
-        // The spend page is built from this machine's local sessions, which are
-        // read for the main login only: an extra account has no figures of its
-        // own here, and repeating its provider's would count them twice.
-        if (id.indexOf("@") !== -1)
-            continue;
+        // An extra account (claude@work) is read like its provider but keeps its
+        // own id: its local sessions are rows of its own, so every lookup below
+        // by `id` finds the account's figures and never the main login's.
+        var kind = id.split("@")[0];
 
-        if (id === "claude") {
+        if (kind === "claude") {
             cost = (d.organizationUsage && d.organizationUsage.totalCostUSD)
                 || (d.org && d.org.totalCostUSD) || d.totalCostUSD
                 || (d.stats && d.stats.totalCostUSD) || 0;
             note = "30d API";
-        } else if (id === "openai") {
+        } else if (kind === "openai") {
             cost = (d.organizationUsage && d.organizationUsage.totalCostUSD)
                 || (d.org && d.org.totalCostUSD) || d.totalCostUSD
                 || (d.stats && d.stats.totalCostUSD) || 0;
