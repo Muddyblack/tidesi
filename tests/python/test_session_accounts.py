@@ -113,7 +113,9 @@ class SessionAccountsTest(IsolatedHomeTest):
             main_ok, _ = sessions.open_session(sessions._open_key("claude", "aaaa-main"))
         self.assertTrue(ok and main_ok)
         work_argv, main_argv = launched
-        self.assertEqual(work_argv[:2], ["env", f"CLAUDE_CONFIG_DIR={self.work}"])
+        # The folder as the settings spell it, with the ~ expanded: compared as
+        # text, since a Path would spell the separators the Windows way.
+        self.assertEqual(work_argv[:2], ["env", f"CLAUDE_CONFIG_DIR={os.path.expanduser('~/.claude-work')}"])
         self.assertEqual(work_argv[2:], ["/usr/bin/claude", "--resume", "bbbb-work"])
         self.assertEqual(main_argv, ["/usr/bin/claude", "--resume", "aaaa-main"])
 
