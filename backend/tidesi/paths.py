@@ -28,6 +28,11 @@ import sys
 IS_WINDOWS = sys.platform == "win32"
 IS_MACOS = sys.platform == "darwin"
 
+# Pinned to libsecret's path by the Nix packages. Kept out of the providers: they
+# are part of the session cache key, and a store path that moves with nixpkgs
+# must not read as a parser change.
+SECRET_TOOL = "secret-tool"
+
 # The folder this tool keeps its own settings, cache and history under, below
 # each of config_home(), data_home() and cache_home().
 APP_DIR = "tidesi"
