@@ -467,6 +467,16 @@ after wake-up (`UsageHistory.withResets`).
 | `mu` | Muse tokens (absolute) |
 | `mc` / `mw` | Muse Current / Weekly plan pct — only present when the opt-in quota is switched on |
 
+### Extra accounts
+
+A provider can appear more than once when the settings file lists extra login
+directories for it (`accounts`, see `docs/providers.md`). The extra rows have
+the id `<provider>@<key>` and the label `<Provider> · <label>`. They carry the
+same fields as the provider they are based on plus
+`profile: { base, label, home }`, and are on exactly when the base provider is.
+Use `profile.base` to pick artwork and parsing, never the prefix of `id`.
+The base provider's own row is unchanged and has no `profile`.
+
 ### Credentials
 
 Credentials and access tokens are **never** part of a result. The backend

@@ -165,6 +165,44 @@ account quotas for this widget.
 
 On each refresh cycle the widget reads `~/.claude/.credentials.json` to get the OAuth access token, then calls Anthropic's subscription usage endpoint. It prefers the current semantic `limits[]` entries and falls back to the legacy `five_hour` and `seven_day` objects. Only windows with usable data are displayed; legacy five-hour support remains available if Anthropic returns it.
 
+## Several accounts of one provider
+
+Anything that keeps its login under a directory chosen by an environment
+variable can be shown more than once, for example a work and a personal Claude
+login. Run the tool once per login with its own directory (`CLAUDE_CONFIG_DIR=~/.claude-work claude /login`), then
+list the extra directories in the settings file (`hyprland-settings.json`, next
+to the provider toggles):
+
+```json
+"accounts": {
+  "claude": [{ "id": "work", "label": "Work", "home": "~/.claude-work" }],
+  "openai": [{ "id": "team", "label": "Team", "home": "~/.codex-team" }]
+}
+```
+
+| provider | variable pointed at `home` |
+| --- | --- |
+| `claude` | `CLAUDE_CONFIG_DIR` |
+| `openai` (Codex) | `CODEX_HOME` |
+| `grok` | `GROK_HOME` |
+| `kimi` | `KIMI_CODE_HOME` |
+| `mistral` (Vibe) | `VIBE_HOME` |
+| `kiro` | `KIRO_HOME` |
+| `antigravity` | `ANTIGRAVITY_HOME` |
+
+Each entry is a provider of its own with the id `<provider>@<id>`, such as `claude@work`, shown as
+"Claude · Work". It is on whenever the provider it belongs to is on, and
+`get-ai-usage --provider claude@work` fetches it alone. Only the directory is
+stored: tokens stay where the tool wrote them, and the widget never copies or refreshes them. On macOS, write
+`home` exactly as you write it in `CLAUDE_CONFIG_DIR`, `~` included, because Claude Code names its Keychain item after a
+digest of the text as written.
+
+Providers that identify an account by an API key (OpenRouter, Mistral API, Z.AI…) are not covered:
+they have no login directory to repoint.
+
+The backend and the terminal frontend support this today. The graphical tabs do not list
+`<provider>@<id>` rows yet, so an extra account is currently visible through `get-ai-usage` and `tidesi-cli`.
+
 ## Antigravity
 
 Quota sources are the `antigravity-usage` CLI, a running IDE's local language

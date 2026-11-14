@@ -8,7 +8,7 @@ tidesi.cli. See docs/provider-contract.md for the shape produced here.
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from . import config
+from . import accounts, config
 from .collect import collect
 from .contract import SCHEMA_VERSION, provider_error, status_summary
 from .normalize import normalize
@@ -46,8 +46,11 @@ _CRASH_LABELS = {
 
 
 def enabled(cfg):
-    """Provider ids switched on in the shared settings file, in contract order."""
-    return [id_ for id_ in config.ALL_PROVIDERS if config.provider_enabled(cfg, id_)]
+    """Provider ids switched on in the shared settings file, in contract order.
+
+    A provider's extra accounts (``claude@work``) follow it and are on exactly
+    when it is: there is no second toggle to keep in step."""
+    return accounts.expand(cfg, [id_ for id_ in config.ALL_PROVIDERS if config.provider_enabled(cfg, id_)])
 
 
 def _local_spend_group(sessions, provenance, billing="api"):
@@ -97,9 +100,20 @@ def crashed(id_, now, exc):
     this catches what one missed — a file in a shape nobody planned for, a
     platform difference — so that it costs that provider its tab rather than
     failing the whole envelope, and with it every other provider's."""
-    label, accent = _CRASH_LABELS.get(id_, (id_, "#888888"))
+    label, accent = _CRASH_LABELS.get(accounts.base_id(id_), (id_, "#888888"))
+    if accounts.is_account_id(id_):
+        label = f"{label} · {id_.split(accounts.ACCOUNT_SEPARATOR, 1)[1]}"
     message = f"{label}: internal error ({type(exc).__name__}: {exc})"
     return provider_error(id_, label, accent, now, message, {"status": status_summary(None, id_)})
+
+
+def _fetch(id_, now, **options):
+    """collect + normalize one provider id, which may name an extra account."""
+    account = accounts.find(config.load_settings(), id_) if accounts.is_account_id(id_) else None
+    base = account["base"] if account else id_
+    with accounts.home_for(base, account["home"] if account else None):
+        provider = normalize(collect(base, now, **options))
+    return accounts.relabel(provider, account) if account else provider
 
 
 def provider_update(provider):
@@ -128,8 +142,8 @@ def build(selected, now=None, *, on_provider=None, deferred_provider_ids=()):
                     return {**provider, "stale": True}
         try:
             if id_ == "zed" and id_ not in deferred:
-                return normalize(collect(id_, now, refresh_zed=True))
-            return normalize(collect(id_, now))
+                return _fetch(id_, now, refresh_zed=True)
+            return _fetch(id_, now)
         except Exception as exc:  # noqa: BLE001  # noqa: BROAD_EXCEPT_OK
             return crashed(id_, now, exc)
 
