@@ -19,7 +19,7 @@ import re
 import tempfile
 from contextlib import contextmanager
 
-from . import config, paths
+from . import accounts, config, paths
 from .contract import PROVIDER_ICONS
 from .historyio import _acquire, _unlock
 
@@ -95,11 +95,11 @@ def _current_providers(providers):
         return []
     result = []
     for provider in providers:
-        if not isinstance(provider, dict) or provider.get("id") not in config.ALL_PROVIDERS:
+        if not isinstance(provider, dict) or accounts.base_id(provider.get("id")) not in config.ALL_PROVIDERS:
             continue
         provider = dict(provider)
         if "icon" in provider:
-            provider["icon"] = PROVIDER_ICONS.get(provider["id"], "")
+            provider["icon"] = PROVIDER_ICONS.get(accounts.base_id(provider["id"]), "")
         result.append(provider)
     return result
 
@@ -134,7 +134,7 @@ def last_snapshot():
     stored = _read_object(snapshot_path()) or {}
     if "providers" in stored:
         stored["providers"] = _current_providers(stored["providers"])
-        if stored.get("active") and stored["active"] not in config.ALL_PROVIDERS:
+        if stored.get("active") and accounts.base_id(stored["active"]) not in config.ALL_PROVIDERS:
             stored["active"] = next((p["id"] for p in stored["providers"]), "")
     return stored
 

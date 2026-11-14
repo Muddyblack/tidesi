@@ -15,7 +15,7 @@ import json
 import os
 import sys
 
-from . import config, detect, envelope, pricing, widget_state
+from . import accounts, config, detect, envelope, pricing, widget_state
 from .contract import finalize
 from .normalize import normalize
 from .session_index import SOURCE_REGISTRY
@@ -336,7 +336,7 @@ def main(argv):
             return 2
         selected = []
         for id_ in requested.split(","):
-            if id_ not in config.ALL_PROVIDERS:
+            if id_ not in config.ALL_PROVIDERS and not accounts.find(cfg, id_):
                 sys.stderr.write(f"get-ai-usage: unknown provider: {id_}\n")
                 return 2
             selected.append(id_)

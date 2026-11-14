@@ -14,7 +14,7 @@ import os
 import stat
 import sys
 
-from . import config, envelope, render
+from . import accounts, config, envelope, render
 from .contract import finalize
 from .render import Style
 
@@ -124,7 +124,7 @@ def main(argv):
     selected = []
     if requested:
         for id_ in requested.split(","):
-            if id_ not in config.ALL_PROVIDERS:
+            if id_ not in config.ALL_PROVIDERS and not accounts.find(config.load_settings(), id_):
                 sys.stderr.write(f"tidesi-cli: unknown provider: {id_}\n")
                 return 2
             selected.append(id_)

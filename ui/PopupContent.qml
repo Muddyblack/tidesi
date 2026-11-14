@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Controls.Basic as QC
 import "js/FeatureTabs.js" as FeatureTabs
+import "js/Accounts.js" as Accounts
 import "js/Tone.js" as Tone
 
 // The popup's content — header, tabs, usage rows, stats, chart and footer —
@@ -308,7 +309,8 @@ ColumnLayout {
     StatsSection {
         visible: !shell.showSettings && !shell.activeIsFeature && shell.activeHasStats && shell.activeSubTab === "stats"
         stats: shell.activeProvider() ? (shell.activeProvider().details.stats || ({})) : ({})
-        providerId: shell.activeId
+        // An extra account (claude@work) is drawn like the provider it belongs to.
+        providerId: Accounts.baseId(shell.activeId)
         accent: shell.activeAccent
         shell: content.shell
         currency: shell.activeProvider() ? (shell.activeProvider().details.currency || "USD") : "USD"

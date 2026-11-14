@@ -198,6 +198,8 @@ for (var _i = 0; _i < providers.length; _i++)
 var OPT_IN = ["zai", "copilot", "deepseek", "kimi", "muse", "cursor", "cline", "opencode", "mimo", "junie", "jetbrains", "windsurf", "pi", "kilo", "coderabbit", "zed", "ollama", "selfhosted"];
 
 function enabled(settings, id) {
+    // An extra account ("claude@work") is on exactly when its provider is.
+    id = String(id).split("@")[0];
     var toggles = (settings && settings.providers) || {};
     if (!settings || settings.providerDefaultsApplied !== true) {
         if (OPT_IN.indexOf(id) !== -1)

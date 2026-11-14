@@ -6,7 +6,7 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Tidesi 4.0.1\n"
+"Project-Id-Version: Tidesi 4.1.0\n"
 "Report-Msgid-Bugs-To: https://github.com/Muddyblack/tidesi/issues\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
@@ -69,11 +69,11 @@ msgstr ""
 msgid "Not set up"
 msgstr ""
 
-#: ui/AppState.qml ui/SourceChoice.qml
+#: ui/AppState.qml ui/ProviderAccounts.qml ui/SourceChoice.qml
 msgid "Working"
 msgstr ""
 
-#: ui/AppState.qml
+#: ui/AppState.qml ui/ProviderAccounts.qml
 msgid "Waiting for data"
 msgstr ""
 
@@ -411,6 +411,60 @@ msgstr ""
 
 #: ui/PopupHeader.qml
 msgid "Pinned on panel"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "That is the most accounts one provider can have."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Give the account a name."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Accounts"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid ""
+"Sign in to more than one account. Each one gets its own tab next to this "
+"provider's."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Main login"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "The account this provider already uses. Nothing to set up."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Not signed in yet"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Name"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Folder"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Remove account"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Add an account"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Name it, for example Work. The folder is optional."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Add account"
 msgstr ""
 
 #: ui/ProviderDetail.qml
@@ -1158,7 +1212,7 @@ msgid ""
 "run it as tidesi-cli, or pass --compact for one status-bar line."
 msgstr ""
 
-#: ui/SettingsPage.qml
+#: ui/SettingsPage.qml ui/SignInStep.qml
 msgid "Copy"
 msgstr ""
 
@@ -1209,6 +1263,10 @@ msgstr ""
 
 #: ui/SettingsPage.qml
 msgid "Configuration file"
+msgstr ""
+
+#: ui/SignInStep.qml
+msgid "Sign in once: run this in a terminal, finish the login, then refresh."
 msgstr ""
 
 #: ui/SourceChoice.qml

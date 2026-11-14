@@ -18,11 +18,17 @@ function sort(items, order, canonical) {
     var canon = (canonical || []).map(function (entry) {
         return entry.id;
     });
+    // An extra account ("claude@work") has no place of its own: it follows its
+    // provider, in the order the accounts were added.
     function rank(item) {
-        var chosen = indexOfId(order, item.id);
+        var id = String(item.id);
+        var at = id.indexOf("@");
+        if (at !== -1)
+            return rank({ id: id.slice(0, at) }) + 0.5;
+        var chosen = indexOfId(order, id);
         if (chosen !== -1)
             return chosen;
-        var known = canon.indexOf(item.id);
+        var known = canon.indexOf(id);
         return placed + (known === -1 ? canon.length : known);
     }
     return (items || []).map(function (item, position) {

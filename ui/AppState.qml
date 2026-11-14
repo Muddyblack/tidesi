@@ -3,6 +3,7 @@ import "theme" as Appearance
 import QtCore
 import "js/ProviderOrder.js" as ProviderOrder
 import "js/ProviderRegistry.js" as ProviderRegistry
+import "js/Accounts.js" as Accounts
 import "js/ProviderSources.js" as ProviderSources
 import "js/Format.js" as Format
 import "js/FeatureTabs.js" as FeatureTabs
@@ -404,7 +405,8 @@ Item {
         if (root.activeIsFeature)
             return false;
         var p = activeProvider();
-        return p && (p.id === "claude" || p.id === "antigravity" || p.id === "kiro" || p.id === "openai" || p.id === "copilot" || p.id === "muse" || p.id === "cursor" || p.id === "cline" || p.id === "opencode" || p.id === "mimo" || p.id === "junie" || p.id === "pi");
+        var id = p ? Accounts.baseId(p.id) : "";
+        return p && (id === "claude" || id === "antigravity" || id === "kiro" || id === "openai" || id === "copilot" || id === "muse" || id === "cursor" || id === "cline" || id === "opencode" || id === "mimo" || id === "junie" || id === "pi");
     }
 
     function providerById(id) {
