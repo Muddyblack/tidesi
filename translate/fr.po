@@ -68,11 +68,11 @@ msgstr "%1 ne fonctionne pas"
 msgid "Not set up"
 msgstr "Non configuré"
 
-#: ui/AppState.qml ui/SourceChoice.qml
+#: ui/AppState.qml ui/ProviderAccounts.qml ui/SourceChoice.qml
 msgid "Working"
 msgstr "Fonctionne"
 
-#: ui/AppState.qml
+#: ui/AppState.qml ui/ProviderAccounts.qml
 msgid "Waiting for data"
 msgstr "En attente de données"
 
@@ -431,6 +431,62 @@ msgstr "Enregistrer en SVG"
 #: ui/PopupHeader.qml
 msgid "Pinned on panel"
 msgstr "Épinglé sur le panneau"
+
+#: ui/ProviderAccounts.qml
+msgid "That is the most accounts one provider can have."
+msgstr "C'est le nombre maximal de comptes pour un fournisseur."
+
+#: ui/ProviderAccounts.qml
+msgid "Give the account a name."
+msgstr "Donnez un nom au compte."
+
+#: ui/ProviderAccounts.qml
+msgid "Accounts"
+msgstr "Comptes"
+
+#: ui/ProviderAccounts.qml
+msgid ""
+"Sign in to more than one account. Each one gets its own tab next to this "
+"provider's."
+msgstr ""
+"Connectez plusieurs comptes. Chacun a son propre onglet à côté de celui de "
+"ce fournisseur."
+
+#: ui/ProviderAccounts.qml
+msgid "Main login"
+msgstr "Connexion principale"
+
+#: ui/ProviderAccounts.qml
+msgid "The account this provider already uses. Nothing to set up."
+msgstr "Le compte que ce fournisseur utilise déjà. Rien à configurer."
+
+#: ui/ProviderAccounts.qml
+msgid "Not signed in yet"
+msgstr "Pas encore connecté"
+
+#: ui/ProviderAccounts.qml
+msgid "Name"
+msgstr "Nom"
+
+#: ui/ProviderAccounts.qml
+msgid "Folder"
+msgstr "Dossier"
+
+#: ui/ProviderAccounts.qml
+msgid "Remove account"
+msgstr "Supprimer le compte"
+
+#: ui/ProviderAccounts.qml
+msgid "Add an account"
+msgstr "Ajouter un compte"
+
+#: ui/ProviderAccounts.qml
+msgid "Name it, for example Work. The folder is optional."
+msgstr "Donnez-lui un nom, par exemple Travail. Le dossier est facultatif."
+
+#: ui/ProviderAccounts.qml
+msgid "Add account"
+msgstr "Ajouter le compte"
 
 #: ui/ProviderDetail.qml
 msgid "Remove provider"
@@ -1234,7 +1290,7 @@ msgstr ""
 "Liez-le dans ~/.local/bin pour l'exécuter sous le nom tidesi-cli, ou passez "
 "--compact pour une ligne de barre d'état."
 
-#: ui/SettingsPage.qml
+#: ui/SettingsPage.qml ui/SignInStep.qml
 msgid "Copy"
 msgstr "Copier"
 
@@ -1293,6 +1349,12 @@ msgstr ""
 #: ui/SettingsPage.qml
 msgid "Configuration file"
 msgstr "Fichier de configuration"
+
+#: ui/SignInStep.qml
+msgid "Sign in once: run this in a terminal, finish the login, then refresh."
+msgstr ""
+"Connexion unique : lancez ceci dans un terminal, terminez la connexion, puis "
+"actualisez."
 
 #: ui/SourceChoice.qml
 msgid "CLI"
@@ -3390,59 +3452,3 @@ msgstr "Z.AI : erreur de l'API"
 #: backend/tidesi/providers/zai.py
 msgid "Z.AI unexpected response"
 msgstr "Z.AI : réponse inattendue"
-
-#: ui/ProviderAccounts.qml
-msgid "That is the most accounts one provider can have."
-msgstr "C'est le nombre maximal de comptes pour un fournisseur."
-
-#: ui/ProviderAccounts.qml
-msgid "Give the account a name."
-msgstr "Donnez un nom au compte."
-
-#: ui/ProviderAccounts.qml
-msgid "Accounts"
-msgstr "Comptes"
-
-#: ui/ProviderAccounts.qml
-msgid "Sign in to more than one account. Each one gets its own tab next to this provider's."
-msgstr "Connectez plusieurs comptes. Chacun a son propre onglet à côté de celui de ce fournisseur."
-
-#: ui/ProviderAccounts.qml
-msgid "Main login"
-msgstr "Connexion principale"
-
-#: ui/ProviderAccounts.qml
-msgid "The account this provider already uses. Nothing to set up."
-msgstr "Le compte que ce fournisseur utilise déjà. Rien à configurer."
-
-#: ui/ProviderAccounts.qml
-msgid "Not signed in yet"
-msgstr "Pas encore connecté"
-
-#: ui/ProviderAccounts.qml
-msgid "Name"
-msgstr "Nom"
-
-#: ui/ProviderAccounts.qml
-msgid "Folder"
-msgstr "Dossier"
-
-#: ui/ProviderAccounts.qml
-msgid "Remove account"
-msgstr "Supprimer le compte"
-
-#: ui/ProviderAccounts.qml
-msgid "Add an account"
-msgstr "Ajouter un compte"
-
-#: ui/ProviderAccounts.qml
-msgid "Name it, for example Work. The folder is optional."
-msgstr "Donnez-lui un nom, par exemple Travail. Le dossier est facultatif."
-
-#: ui/ProviderAccounts.qml
-msgid "Add account"
-msgstr "Ajouter le compte"
-
-#: ui/SignInStep.qml
-msgid "Sign in once: run this in a terminal, finish the login, then refresh."
-msgstr "Connexion unique : lancez ceci dans un terminal, terminez la connexion, puis actualisez."
