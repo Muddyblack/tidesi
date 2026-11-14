@@ -3201,3 +3201,59 @@ msgstr ""
 #: backend/tidesi/providers/zai.py
 msgid "Z.AI unexpected response"
 msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "That is the most accounts one provider can have."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Give the account a name."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Accounts"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Sign in to more than one account. Each one gets its own tab next to this provider's."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Main login"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "The account this provider already uses. Nothing to set up."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Not signed in yet"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Name"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Folder"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Remove account"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Add an account"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Name it, for example Work. The folder is optional."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Add account"
+msgstr ""
+
+#: ui/SignInStep.qml
+msgid "Sign in once: run this in a terminal, finish the login, then refresh."
+msgstr ""

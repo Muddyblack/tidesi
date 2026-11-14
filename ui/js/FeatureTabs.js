@@ -569,6 +569,12 @@ function spendProviderRows(providers, localSpend) {
         var note = "";
         var id = p.id || "";
 
+        // The spend page is built from this machine's local sessions, which are
+        // read for the main login only: an extra account has no figures of its
+        // own here, and repeating its provider's would count them twice.
+        if (id.indexOf("@") !== -1)
+            continue;
+
         if (id === "claude") {
             cost = (d.organizationUsage && d.organizationUsage.totalCostUSD)
                 || (d.org && d.org.totalCostUSD) || d.totalCostUSD

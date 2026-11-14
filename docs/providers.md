@@ -169,8 +169,15 @@ On each refresh cycle the widget reads `~/.claude/.credentials.json` to get the 
 
 Anything that keeps its login under a directory chosen by an environment
 variable can be shown more than once, for example a work and a personal Claude
-login. Run the tool once per login with its own directory (`CLAUDE_CONFIG_DIR=~/.claude-work claude /login`), then
-list the extra directories in the settings file (`hyprland-settings.json`, next
+login. Each extra account gets its own tab next to the provider's ("Claude" and
+"Claude · Work"), so there is no switcher to learn.
+
+**In the settings page:** Settings → Providers → the provider → **Accounts**. Type a name
+(say "Work") and press **Add account**. The page suggests a folder (`~/.claude-work`) and shows the one
+command to run in a terminal to sign in there, with a Copy button. Refresh once the login is done. The
+same card renames, repoints or removes an account.
+
+**By hand:** list the extra directories in the settings file (`hyprland-settings.json`, next
 to the provider toggles):
 
 ```json
@@ -200,8 +207,9 @@ digest of the text as written.
 Providers that identify an account by an API key (OpenRouter, Mistral API, Z.AI…) are not covered:
 they have no login directory to repoint.
 
-The backend and the terminal frontend support this today. The graphical tabs do not list
-`<provider>@<id>` rows yet, so an extra account is currently visible through `get-ai-usage` and `tidesi-cli`.
+Extra accounts show their own usage, windows, history and activity stats. The **Spend** page and the local
+session list still cover the main login only: they are built from this machine's session files, which are read from
+the default folder. Spend rows for extra accounts are left out rather than repeating the main account's figures.
 
 ## Antigravity
 

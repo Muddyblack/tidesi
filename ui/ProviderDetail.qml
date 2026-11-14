@@ -63,6 +63,11 @@ Column {
         providerId: detail.providerId
     }
 
+    ProviderAccounts {
+        provider: detail.provider
+        shell: detail.shell
+    }
+
     ProviderOptions {
         provider: detail.provider
         shell: detail.shell
