@@ -82,7 +82,7 @@ class CollectorTest(IsolatedHomeTest):
         self.assertEqual(result["schemaVersion"], 1)
         self.assertEqual(set(providers), {"copilot", "deepseek", "zai"})
         self.assertEqual(result["active"], "zai")
-        self.assertEqual(providers["zai"]["historyValues"], {"za": 25})
+        self.assertEqual(providers["zai"]["historyValues"], {"za": 25, "za7": 0, "zat": 40})
         self.assertEqual(providers["copilot"]["historyValues"], {"gh": 25})
         self.assertEqual(providers["copilot"]["quotaWindows"][0]["detail"], "125 / 500 requests")
         self.assertEqual(providers["deepseek"]["details"]["currency"], "USD")

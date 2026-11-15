@@ -39,11 +39,11 @@ class CursorLimitsTest(unittest.TestCase):
         pu.update(totalPercentUsed=0, includedSpend=0, autoPercentUsed=0, apiPercentUsed=0)
         result = normalize_cursor(raw)
         self.assertTrue(result["ok"])
-        self.assertEqual(result["historyValues"], {"cu": 0})
+        self.assertEqual(result["historyValues"], {"cu": 0, "cua": 0, "cup": 0})
 
     def test_spend_can_supply_missing_percentage(self):
         raw = raw_fixture("cursor-success")
         del raw["inputs"]["usage"]["usage"]["planUsage"]["totalPercentUsed"]
         result = normalize_cursor(raw)
         self.assertTrue(result["ok"])
-        self.assertEqual(result["historyValues"], {"cu": 62.5})
+        self.assertEqual(result["historyValues"], {"cu": 62.5, "cua": 25, "cup": 75})
