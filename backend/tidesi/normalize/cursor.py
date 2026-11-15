@@ -56,7 +56,7 @@ def normalize_cursor(raw):
     od_limit = num(slu.get("individualLimit")) / 100
 
     total_detail = f"{money(included, 'USD')} / {money(limit, 'USD')}" if limit > 0 else tr("%1% of included usage", jround(total))
-    windows = [flat_window("cursor_total", tr("Included usage"), total, reset_at, total_detail, True)]
+    windows = [flat_window("cursor_total", tr("Included usage"), total, reset_at, total_detail, True, history="cu")]
     if has_split:
         windows.append(flat_window("cursor_auto", tr("Auto + Composer"), auto, reset_at, tr("%1% used", jround(auto)), True))
         windows.append(flat_window("cursor_api", tr("API models"), api, reset_at, tr("%1% used", jround(api)), True))

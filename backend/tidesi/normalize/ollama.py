@@ -59,7 +59,7 @@ def normalize_ollama(raw):
         if "allowance_usd" in bucket:
             label = tr("Included credits")
             detail = tr("%1 of %2 USD remaining", f"{bucket['balance_usd']:.2f}", f"{bucket['allowance_usd']:.2f}")
-        windows.append(flat_window(f"ollama_{key}", label, pct, epoch_of(bucket.get("resets_at")), detail, True))
+        windows.append(flat_window(f"ollama_{key}", label, pct, epoch_of(bucket.get("resets_at")), detail, True, history=f"ollama_{key}"))
         rows = bucket.get("models")
         if isinstance(rows, list):
             models[key] = [

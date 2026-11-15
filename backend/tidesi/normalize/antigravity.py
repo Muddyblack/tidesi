@@ -182,12 +182,12 @@ def normalize_antigravity(raw):
         quota_windows.append(qw)
     elif models and (not groups or per_model):
         # The average says something the family rows do not.
-        qw = flat_window("overall", tr("Overall Quota"), pct, earliest, "", True)
+        qw = flat_window("overall", tr("Overall Quota"), pct, earliest, "", True, history="ag")
         qw["color"] = "#4285f4"
         quota_windows.append(qw)
     if not per_model:
         for grp in groups:
-            qw = flat_window(grp["key"], grp["label"], grp["usedPct"], grp["resetAt"], "", True)
+            qw = flat_window(grp["key"], grp["label"], grp["usedPct"], grp["resetAt"], "", True, history="agg" if grp["key"] == "gemini" else "age")
             qw["color"] = "#4285f4" if grp["key"] == "gemini" else "#34a853"
             quota_windows.append(qw)
     r["quotaWindows"] = quota_windows

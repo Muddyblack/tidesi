@@ -42,7 +42,7 @@ def normalize_openrouter(raw):
     r = provider_base("openrouter", "OpenRouter", "#9333ea", now)
     r["summary"] = {"pct": pct, "text": money(usage, "USD"), "detail": account, "hasChart": True}
     detail = money(usage, "USD") + (f" / {money(limit, 'USD')}" if limit is not None else " / unlimited")
-    r["quotaWindows"] = [flat_window("openrouter", tr("Credit usage"), pct, 0, detail, True)] if not key_unavailable else []
+    r["quotaWindows"] = [flat_window("openrouter", tr("Credit usage"), pct, 0, detail, True, history="or")] if not key_unavailable else []
     if balance is not None:
         r["quotaWindows"].append(flat_window("openrouter_balance", tr("Balance"), 0, 0, money(balance, "USD"), False))
     spend = [

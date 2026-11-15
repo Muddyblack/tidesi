@@ -277,6 +277,27 @@ function slopePerHour(points, key, windowMs, fallbackKey) {
     return denom === 0 ? null : (n * sxy - sx * sy) / denom;
 }
 
+// The ETA trend: the last six hours, a climb under half a point an hour is noise,
+// and anything more than ten days out is not worth a line.
+var ETA_WINDOW_MS = 6 * 3600000;
+var ETA_MIN_SLOPE = 0.5;
+var ETA_MAX_HOURS = 240;
+
+// Hours until the series `key` reaches 100% from `currentPct` at its recent
+// burn rate, or null when it is not climbing meaningfully, is already full, or
+// the reach is too far off to act on.
+function hoursToFull(points, key, currentPct) {
+    if (!key || !isValue(currentPct) || currentPct >= 100)
+        return null;
+
+    var slope = slopePerHour(points, key, ETA_WINDOW_MS);
+    if (slope === null || slope < ETA_MIN_SLOPE)
+        return null;
+
+    var hours = (100 - currentPct) / slope;
+    return hours > ETA_MAX_HOURS ? null : hours;
+}
+
 // ── The save protocol ────────────────────────────────────────────────────
 //
 // Both frontends run this over tools/sh/history-io, so it lives here rather than
@@ -604,6 +625,7 @@ if (typeof module !== "undefined" && module.exports) {
         normalize: normalize,
         withResets: withResets,
         slopePerHour: slopePerHour,
+        hoursToFull: hoursToFull,
         HEARTBEAT_MS: HEARTBEAT_MS,
         newStore: newStore,
         restore: restore,

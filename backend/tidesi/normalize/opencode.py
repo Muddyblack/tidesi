@@ -144,7 +144,8 @@ def _normalize_go(now, stats, account):
     r = provider_base("opencode", "OpenCode", ACCENT, now)
     r["summary"] = {"pct": primary_pct, "text": f"{jround(primary_pct)}%", "detail": primary_label, "hasChart": True}
     r["quotaWindows"] = [
-        flat_window(key, label, pct, reset_at, tr("%1% used", jround(pct)), True) for _name, (key, label, _period, (pct, reset_at)) in parsed.items()
+        flat_window(key, label, pct, reset_at, tr("%1% used", jround(pct)), True, history=key)
+        for _name, (key, label, _period, (pct, reset_at)) in parsed.items()
     ]
     r["slots"] = [
         {

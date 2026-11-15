@@ -177,9 +177,9 @@ def window_value(pct, reset, active):
     return {"available": True, "pct": pct_clamp(pct), "resetAt": epoch_of(reset)}
 
 
-def quota_window(key, label, w, detail):
+def quota_window(key, label, w, detail, history=""):
     reset_at = w.get("resetAt", 0) or 0
-    return {
+    qw = {
         "key": key,
         "label": label,
         "pct": w.get("pct", 0) or 0,
@@ -189,9 +189,14 @@ def quota_window(key, label, w, detail):
         "detail": detail,
         "showMeter": True,
     }
+    if history:
+        # The historyValues series this row's pct is recorded under, which the
+        # frontends fit a burn rate to for the row's "~3h to 100%".
+        qw["historyKey"] = history
+    return qw
 
 
-def flat_window(key, label, pct, reset_at, detail, meter, note=""):
+def flat_window(key, label, pct, reset_at, detail, meter, note="", history=""):
     w = {
         "key": key,
         "label": label,
@@ -207,6 +212,8 @@ def flat_window(key, label, pct, reset_at, detail, meter, note=""):
         # beside it. `note` is the aside such a row would otherwise have to
         # cram into the value.
         w["note"] = note
+    if history:
+        w["historyKey"] = history
     return w
 
 

@@ -214,6 +214,7 @@ ColumnLayout {
             activeId: shell.activeId
             accent: shell.activeAccent
             countdown: shell.countdownFor
+            eta: shell.etaToFull
             translate: shell.tr
             // Hover: the row's name, used and remaining share, detail and reset time.
             tooltip: function (w) {
