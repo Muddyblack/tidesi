@@ -522,6 +522,100 @@ test("the burn rate can read one series through another", () => {
     assert.equal(UsageHistory.slopePerHour([{ t: 0, w: 1 }], "w", 3600000), null, "one sample has no slope");
 });
 
+// ── The burn-rate ETA ────────────────────────────────────────────────────────
+
+const HOUR = 60 * MIN;
+
+// Five-minute readings of "w" from `segments` of [hours, from, to], each a
+// straight climb (or a flat run when from === to). Returns the readings, the
+// moment right after the last one and the live value then.
+function etaSeries(segments, t0 = 1785000000000) {
+    const points = [];
+    let t = t0;
+    let v = 0;
+    for (const [hours, from, to] of segments) {
+        const n = Math.round(hours * 12);
+        for (let i = 0; i < n; i++, t += 5 * MIN)
+            points.push({ t, w: from + (to - from) * i / n });
+        v = to;
+    }
+    return { points, now: t, pct: v };
+}
+
+function eta(segments, resetInHours = 0) {
+    const s = etaSeries(segments);
+    return UsageHistory.hoursToFull(s.points, "w", s.pct, s.now, resetInHours ? s.now + resetInHours * HOUR : 0);
+}
+
+const near = (actual, expected, tolerance, what) =>
+    assert.ok(actual !== null && Math.abs(actual - expected) <= tolerance, `${what}: ${actual} vs ${expected}`);
+
+test("the ETA reads a steady climb exactly", () => {
+    near(eta([[3, 50, 80]]), 2, 0.01, "10 %/h at 80%");
+    near(eta([[3, 50, 80]], 4), 2, 0.01, "with the reset after it");
+});
+
+test("the ETA reads only the current window", () => {
+    // A straight line through the last six hours sees the fall and no climb.
+    near(eta([[3, 60, 95], [2, 0, 30]], 5), 70 / 15, 0.05, "15 %/h since the reset");
+    assert.equal(eta([[3, 60, 90], [10 / 60, 0, 3]]), null, "ten minutes into a window is too little");
+});
+
+test("the ETA says nothing when the window resets first", () => {
+    assert.equal(eta([[3, 50, 80]], 1), null, "2 h to fill, 1 h to the reset");
+});
+
+test("the ETA follows a burst and lets go of one that ended", () => {
+    const burst = eta([[5, 40, 40], [40 / 60, 40, 50]]);
+    assert.ok(burst !== null && burst < 7, `40 min at 15 %/h after a flat morning: ${burst}`);
+    const paused = eta([[2, 40, 60], [3, 60, 60]]);
+    assert.equal(paused, null, "three hours after the climb stopped");
+    const working = eta([[2, 40, 60]]);
+    const resting = eta([[2, 40, 60], [1, 60, 60]]);
+    assert.ok(resting === null || resting > working * 2, `an hour's pause: ${resting} vs ${working}`);
+});
+
+test("the ETA reads a long window by its daily rhythm, not the work pace", () => {
+    // 16 points over an 8-hour working day, then nothing for 16: 16 % a day.
+    const segments = [];
+    let v = 0;
+    for (let d = 0; d < 3; d++) {
+        segments.push([8, v, v + 16]);
+        v += 16;
+        segments.push([d < 2 ? 16 : 4, v, v]);
+    }
+    const hours = eta(segments, 4 * 24);
+    near(hours, (100 - 48) / 16 * 24, 24, "52 points at 16 a day");
+});
+
+test("the ETA ignores blips, flat series and full windows", () => {
+    assert.equal(eta([[5, 20, 20], [5 / 60, 20, 21]]), null, "a one-point blip");
+    assert.equal(eta([[6, 30, 30]]), null, "flat");
+    assert.equal(eta([[6, 20, 22]]), null, "a third of a point an hour");
+    const full = etaSeries([[3, 70, 100]]);
+    assert.equal(UsageHistory.hoursToFull(full.points, "w", 100, full.now, 0), null, "already full");
+    const s = etaSeries([[3, 50, 80]]);
+    assert.equal(UsageHistory.hoursToFull(s.points, "", 80, s.now, 0), null, "no series");
+    assert.equal(UsageHistory.hoursToFull(s.points, "x", 80, s.now, 0), null, "a series with no readings");
+    assert.equal(UsageHistory.hoursToFull(s.points, "w", null, s.now, 0), null, "no live reading");
+    assert.equal(UsageHistory.hoursToFull([], "w", 50, s.now, 0), null, "no history");
+});
+
+test("the ETA reads the same from the changes as from every reading", () => {
+    // Cut a quarter of an hour after the second climb, while it still shows.
+    const readings = aDayOfReadings().slice(0, 111);
+    const store = recordAll(readings);
+    const dense = readings.map(r => ({ t: r.t, w: r.v }));
+    const last = readings[readings.length - 1];
+    assert.notEqual(UsageHistory.hoursToFull(dense, "w", last.v, last.t + 5 * MIN, 0), null, "the climb shows");
+    for (const resetIn of [0, 3 * HOUR, 5 * 24 * HOUR]) {
+        const now = last.t + 5 * MIN;
+        const fromDense = UsageHistory.hoursToFull(dense, "w", last.v, now, resetIn ? now + resetIn : 0);
+        const fromStored = UsageHistory.hoursToFull(store.history, "w", last.v, now, resetIn ? now + resetIn : 0);
+        assert.ok(fromDense === fromStored || Math.abs(fromDense - fromStored) < 1e-6, `${resetIn}: ${fromDense} vs ${fromStored}`);
+    }
+});
+
 // ── The two frontends against the real history-io ───────────────────────────
 // The Plasma widget and the Quickshell panel share one file and never
 // coordinate, so what each one *sends* decides what the other can lose. Both

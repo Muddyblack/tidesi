@@ -705,11 +705,14 @@ Item {
     }
 
     // "~3h to 100%" for a quota row at its recent burn rate, "" when the row
-    // is not climbing meaningfully. The row names its series (historyKey).
+    // is not climbing meaningfully or resets first. The row names its series
+    // (historyKey). Reading nowTick keeps the line moving while nothing is
+    // recorded: a pause flattens the trend and the ETA fades out.
     function etaToFull(window) {
-        if (!window || window.showMeter === false)
+        if (!window || window.showMeter === false || window.available === false || !window.historyKey)
             return "";
-        var hours = UsageHistory.hoursToFull(root.usageHistory, window.historyKey || "", window.pct);
+        var resetAtMs = window.resetAt > 0 ? window.resetAt * 1000 : 0;
+        var hours = UsageHistory.hoursToFull(root.usageHistory, window.historyKey, Number(window.pct), root.nowTick, resetAtMs);
         if (hours === null)
             return "";
         if (hours < 1)

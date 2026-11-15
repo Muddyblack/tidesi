@@ -406,7 +406,7 @@ when its remembered one disappears.
 | `summary.detail` | plan / account line |
 | `summary.hasChart` | false when the provider has no series worth charting |
 | `quotaWindows[]` | ordered rows: `key`, `label`, `pct`, `available`, `resetAt`, `resetText`, `detail`, `showMeter`, and optionally `note` and `historyKey` |
-| `historyKey` | the `historyValues` series this row's `pct` is recorded under. Frontends fit the row's recent burn rate to it and show "~3h to 100%" under the title (`UsageHistory.hoursToFull`). Optional — a row without one simply has no ETA |
+| `historyKey` | the `historyValues` series this row's `pct` is recorded under. Frontends fit the row's recent burn rate to it (current window only, recent readings weighted most) and show "~3h to 100%" under the title, unless the row's `resetAt` comes first (`UsageHistory.hoursToFull`). Must name a key the provider writes to `historyValues` whenever the row is available. Optional — a row without one simply has no ETA |
 | `note` | aside shown beside the value. Only meaningful with `showMeter: false`, where `detail` becomes the value itself and would otherwise leave the row no room for context. Optional — a frontend that ignores it loses the aside, nothing else |
 | `chartWindows[]` | chart ranges — see below. Empty when the provider has no chartable series |
 | `slots[]` | compact panel pills: `pct`, `color`, `text` (null → show the meter), `tooltip` |
