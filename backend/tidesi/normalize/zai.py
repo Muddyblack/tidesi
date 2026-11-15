@@ -90,7 +90,7 @@ def normalize_zai(raw):
     today_detail = _today_detail(today) if today else ""
 
     r["quotaWindows"] = [
-        flat_window("zai_tokens", tr("5-hour tokens"), token_pct, token_reset, token_detail, True),
+        flat_window("zai_tokens", tr("5-hour tokens"), token_pct, token_reset, token_detail, True, history="za"),
         flat_window("zai_tokens_long", tr("7-day tokens"), token2_pct, token2_reset, "", True),
         flat_window("zai_tools", tr("Monthly tools"), tools_pct, tools_reset, tools_detail, True),
     ]

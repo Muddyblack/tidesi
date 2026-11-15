@@ -85,6 +85,18 @@ msgid "Loading"
 msgstr "Chargement"
 
 #: ui/AppState.qml
+msgid "~%1m to 100%"
+msgstr "~%1m pour atteindre 100%"
+
+#: ui/AppState.qml
+msgid "~%1h to 100%"
+msgstr "~%1h pour atteindre 100%"
+
+#: ui/AppState.qml
+msgid "~%1d to 100%"
+msgstr "~%1j pour atteindre 100%"
+
+#: ui/AppState.qml
 msgid "Open tideSI"
 msgstr "Ouvrir tideSI"
 

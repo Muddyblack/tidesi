@@ -47,7 +47,9 @@ def normalize_zed(raw):
     rows = []
     if not unlimited and isinstance(used, (int, float)) and isinstance(limit, (int, float)) and limit > 0:
         pct = pct_clamp(used / limit * 100)
-        rows.append(flat_window("zed_predictions", tr("Edit predictions"), pct, reset_at, tr("%1 / %2", jround(used), jround(limit)), True))
+        rows.append(
+            flat_window("zed_predictions", tr("Edit predictions"), pct, reset_at, tr("%1 / %2", jround(used), jround(limit)), True, history="zd")
+        )
     elif unlimited:
         rows.append(flat_window("zed_predictions", tr("Edit predictions"), 0, reset_at, tr("Unlimited"), False))
     if not rows:

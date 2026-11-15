@@ -704,6 +704,21 @@ Item {
         return Format.countdownFromEpoch(resetAt, root.nowTick);
     }
 
+    // "~3h to 100%" for a quota row at its recent burn rate, "" when the row
+    // is not climbing meaningfully. The row names its series (historyKey).
+    function etaToFull(window) {
+        if (!window || window.showMeter === false)
+            return "";
+        var hours = UsageHistory.hoursToFull(root.usageHistory, window.historyKey || "", window.pct);
+        if (hours === null)
+            return "";
+        if (hours < 1)
+            return root.i18n("~%1m to 100%", Math.max(1, Math.round(hours * 60)));
+        if (hours < 24)
+            return root.i18n("~%1h to 100%", hours.toFixed(1).replace(/\.0$/, ""));
+        return root.i18n("~%1d to 100%", Math.round(hours / 24));
+    }
+
     // ── Tray ─────────────────────────────────────────────────────────────────
     // Hosts with a tray icon (Windows, macOS) draw it from this: the pill's
     // slots in the chosen trayStyle, plus a tooltip listing every provider.

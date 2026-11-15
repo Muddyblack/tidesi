@@ -212,8 +212,8 @@ def normalize_claude(raw):
         "hasChart": True,
     }
     r["quotaWindows"] = [
-        quota_window("session", tr("5-hour session"), w["session"], s_detail),
-        quota_window("weekly", tr("7-day window"), w["weekly"], w_detail),
+        quota_window("session", tr("5-hour session"), w["session"], s_detail, history="s"),
+        quota_window("weekly", tr("7-day window"), w["weekly"], w_detail, history="w"),
     ] + [quota_window(scoped_key(name), scoped_label(name), win, "") for name, win in w["scoped"] if win["available"]]
     r["slots"] = [
         {

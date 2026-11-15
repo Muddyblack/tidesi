@@ -165,9 +165,9 @@ def normalize_openai(raw):
         }
         quota_windows = []
         if session_on:
-            quota_windows.append(quota_window("codex_session", tr("Codex 5-hour"), codex["session"], tr("ChatGPT/Codex plan window")))
+            quota_windows.append(quota_window("codex_session", tr("Codex 5-hour"), codex["session"], tr("ChatGPT/Codex plan window"), history="cp"))
         if weekly_on:
-            quota_windows.append(quota_window("codex_weekly", tr("Codex weekly"), codex["weekly"], tr("Secondary plan window")))
+            quota_windows.append(quota_window("codex_weekly", tr("Codex weekly"), codex["weekly"], tr("Secondary plan window"), history="cw"))
         for a in codex["additional"]:
             if a["session"]["available"]:
                 quota_windows.append(

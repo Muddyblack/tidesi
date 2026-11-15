@@ -96,8 +96,14 @@ def normalize_moonshot(raw):
     details.update({"availableBalance": available, "voucherBalance": voucher, "cashBalance": cash, "currency": "USD"})
 
     rows = []
+    # The first 5-hour and the first weekly window are the ones charted as
+    # kc / kcw below; their rows say so.
+    first_of = {}
+    for w in windows:
+        first_of.setdefault(w.get("seconds"), w)
     for i, w in enumerate(windows):
-        rows.append(flat_window(f"kimi_code_{i}", w["label"], w["pct"], w["resetAt"], f"{w['used']} / {w['limit']}", True))
+        series = {18000: "kc", 604800: "kcw"}.get(w.get("seconds"), "") if first_of.get(w.get("seconds")) is w else ""
+        rows.append(flat_window(f"kimi_code_{i}", w["label"], w["pct"], w["resetAt"], f"{w['used']} / {w['limit']}", True, history=series))
     if exhausted and not windows:
         rows.append(flat_window("kimi_code_plan", tr("Plan usage"), 100, 0, code_plan["message"] or tr("Plan quota used up"), True))
     if code_plan["booster"]:

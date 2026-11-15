@@ -21,6 +21,11 @@ ColumnLayout {
     property var tooltip: function (window) {
         return "";
     }
+    // The row's burn-rate ETA ("~3h to 100%"), from its window; the popup
+    // supplies it.
+    property var eta: function (window) {
+        return "";
+    }
     readonly property int rowCount: repeater.count
 
     spacing: 12
@@ -43,6 +48,7 @@ ColumnLayout {
             barColor: modelData.color || (rows.activeId === "antigravity" && (modelData.key === "external" || modelData.key === "rest" || (modelData.label && modelData.label.indexOf("Claude") !== -1)) ? "#34a853" : rows.accent)
             showMeter: modelData.showMeter !== false
             tooltipText: rows.tooltip(modelData)
+            etaText: rows.eta(modelData)
         }
     }
 }

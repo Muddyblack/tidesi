@@ -4,8 +4,8 @@ import QtQuick.Layouts
 import "js/Tone.js" as Tone
 
 // A labelled usage row, ported from the Plasma PopupRow: title + "· reset" +
-// live countdown chip + animated %, a 20-segment bar with gradient partial
-// fill, and an optional sub-label.
+// live countdown chip + animated %, an optional burn-rate ETA line, a
+// 20-segment bar with gradient partial fill, and an optional sub-label.
 ColumnLayout {
     id: row
 
@@ -19,6 +19,8 @@ ColumnLayout {
     property bool showMeter: true
     // Shown in a bubble while the row is hovered (name, used share, reset time).
     property string tooltipText: ""
+    // Burn-rate ETA ("~3h to 100%"), "" when the row is not climbing.
+    property string etaText: ""
 
     readonly property color dangerColor: Tone.isLight(Appearance.Palette) ? "#c62828" : "#ff4d4d"
     readonly property color warningColor: Tone.isLight(Appearance.Palette) ? "#c2410c" : "#ffa64d"
@@ -92,6 +94,14 @@ ColumnLayout {
             color: row.value >= 90 ? row.dangerColor : row.value >= 70 ? row.warningColor : Tone.ink(Appearance.Palette, row.barColor)
             Layout.alignment: Qt.AlignVCenter
         }
+    }
+
+    Text {
+        visible: row.showMeter && row.etaText !== ""
+        text: "↗ " + row.etaText
+        font.pixelSize: 10
+        color: row.warningColor
+        opacity: 0.9
     }
 
     Item {

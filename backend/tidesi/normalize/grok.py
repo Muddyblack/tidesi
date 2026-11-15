@@ -39,7 +39,9 @@ def normalize_grok(raw):
         "hasChart": has_chart,
     }
     if has_billing:
-        qw0 = flat_window("grok", tr("Credit usage"), pct, reset["at"], f"{used} / {limit}" if limit > 0 else "", True)
+        qw0 = flat_window(
+            "grok", tr("Credit usage"), pct, reset["at"], f"{used} / {limit}" if limit > 0 else "", True, history="gr" if has_chart else ""
+        )
         qw0["resetText"] = reset["text"]
         quota_windows = [qw0]
     else:
