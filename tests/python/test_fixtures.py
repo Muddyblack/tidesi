@@ -53,6 +53,16 @@ class FixtureContractTest(unittest.TestCase):
                     self.assertIn(type(reset), (int, float))
                     self.assertTrue(reset == 0 or reset > 1_000_000_000)
                 series = set(result["historyValues"])
+                for window in result["quotaWindows"]:
+                    # The ETA reads the row's historyKey series against the
+                    # row's pct, so the key has to be one this result records.
+                    if "historyKey" not in window:
+                        continue
+                    self.assertIsInstance(window["historyKey"], str)
+                    self.assertTrue(window["historyKey"])
+                    if window["available"] and window["showMeter"] and window["pct"] > 0:
+                        self.assertIn(window["historyKey"], series, window["key"])
+                        self.assertEqual(result["historyValues"][window["historyKey"]], window["pct"], window["key"])
                 for chart in result["chartWindows"]:
                     self.assertIsInstance(chart["id"], str)
                     self.assertIsInstance(chart["key"], str)

@@ -232,8 +232,8 @@ function withResets(series, resetAtMs, periodMs, minT, maxT) {
 // Least-squares slope in %/hour over the trailing `windowMs` of one series, fitted
 // to the series resampled on a five-minute grid rather than to the stored points.
 // record() stores a flat run as a pair of points, so fitting those directly would
-// weigh the run by how it is stored instead of how long it lasted, and the ETA and
-// the chart's pulse would move with the storage. `fallbackKey` stands in for a
+// weigh the run by how it is stored instead of how long it lasted, and the chart's
+// pulse would move with the storage. `fallbackKey` stands in for a
 // point that lacks `key`, the way the Antigravity chart reads "ag" for "agg".
 function slopePerHour(points, key, windowMs, fallbackKey) {
     var xs = [];
@@ -277,25 +277,139 @@ function slopePerHour(points, key, windowMs, fallbackKey) {
     return denom === 0 ? null : (n * sxy - sx * sy) / denom;
 }
 
-// The ETA trend: the last six hours, a climb under half a point an hour is noise,
-// and anything more than ten days out is not worth a line.
-var ETA_WINDOW_MS = 6 * 3600000;
-var ETA_MIN_SLOPE = 0.5;
+// ── Burn-rate ETA ────────────────────────────────────────────────────────
+//
+// "~3h to 100%" has to hold up against how quota actually moves: in bursts while
+// someone works, flat while they don't, and back to zero at every reset. A
+// straight line through the last six hours does none of that well: it lags a
+// burst by hours, holds on to one that ended, and a fit across a reset sees the
+// fall and reports no climb at all. So the rate here is
+//   - the current window only: what came before the last reset belongs to a
+//     quota that no longer exists;
+//   - measured up to now, at the live reading, so a pause flattens it instead of
+//     freezing the last burst into the ETA;
+//   - an average of the climb with recent minutes weighted most, over a horizon
+//     matched to the prediction: a 5-hour session with three hours left reads
+//     the current pace (half-life 30 min), a weekly or monthly window reads the
+//     daily rhythm, sleep and breaks included (half-life up to 6 h);
+// and nothing is shown when the window resets before the climb would fill it.
+
+// The half-life of a reading's weight is the time left to the reset divided by
+// this, kept between the two bounds below; 30 min when the reset is unknown.
+var ETA_HORIZON_PARTS = 8;
+var ETA_MIN_HALF_LIFE_MS = 30 * 60000;
+var ETA_MAX_HALF_LIFE_MS = 6 * 3600000;
+// The rate reads back four half-lives, by when a reading weighs 1/16.
+var ETA_LOOKBACK_HALF_LIVES = 4;
+// Less of the current window than this is too little to tell.
+var ETA_MIN_SPAN_MS = 20 * 60000;
+// A rise of less than this over the lookback is a rounding blip, not a climb.
+var ETA_MIN_GAIN = 2;
+// A climb under half a point an hour is noise.
+var ETA_MIN_RATE = 0.5;
+// Anything further out than ten days is not worth a line.
 var ETA_MAX_HOURS = 240;
+// A fall bigger than this between two readings is a reset; a smaller one is a
+// rolling window shedding old usage, or rounding.
+var ETA_RESET_DROP = 3;
 
-// Hours until the series `key` reaches 100% from `currentPct` at its recent
-// burn rate, or null when it is not climbing meaningfully, is already full, or
-// the reach is too far off to act on.
-function hoursToFull(points, key, currentPct) {
-    if (!key || !isValue(currentPct) || currentPct >= 100)
+// The half-life the ETA weighs readings with, for a reset `resetAtMs` (0 when
+// unknown) seen from `nowMs`.
+function etaHalfLife(nowMs, resetAtMs) {
+    if (!(resetAtMs > nowMs))
+        return ETA_MIN_HALF_LIFE_MS;
+    return Math.min(ETA_MAX_HALF_LIFE_MS, Math.max(ETA_MIN_HALF_LIFE_MS, (resetAtMs - nowMs) / ETA_HORIZON_PARTS));
+}
+
+// The recent climb of `key` in %/hour, or null when there is too little of the
+// current window to tell. The live reading `currentPct` at `nowMs` closes the
+// series; readings `age` old weigh 0.5^(age / halfLifeMs).
+function burnRate(points, key, currentPct, nowMs, halfLifeMs) {
+    var from = nowMs - ETA_LOOKBACK_HALF_LIVES * halfLifeMs;
+    var list = points || [];
+
+    // Newest first, back to the first reading at or before the lookback edge.
+    var xs = [];
+    var ys = [];
+    for (var i = list.length - 1; i >= 0; i--) {
+        var p = list[i];
+        if (!p || typeof p.t !== "number" || !isFinite(p.t) || p.t >= nowMs)
+            continue;
+        var v = p[key];
+        if (typeof v !== "number" || !isFinite(v))
+            continue;
+
+        xs.push(p.t);
+        ys.push(v);
+        if (p.t <= from)
+            break;
+    }
+    xs.reverse();
+    ys.reverse();
+    xs.push(nowMs);
+    ys.push(currentPct);
+
+    // Keep the current window: from the first reading after the last reset.
+    for (var k = ys.length - 1; k > 0; k--) {
+        if (ys[k] < ys[k - 1] - ETA_RESET_DROP) {
+            xs = xs.slice(k);
+            ys = ys.slice(k);
+            break;
+        }
+    }
+
+    var start = Math.max(from, xs[0]);
+    var steps = Math.floor((nowMs - start) / SLOPE_STEP_MS);
+    if (steps < 1 || nowMs - start < ETA_MIN_SPAN_MS)
         return null;
 
-    var slope = slopePerHour(points, key, ETA_WINDOW_MS);
-    if (slope === null || slope < ETA_MIN_SLOPE)
+    // Resampled on the five-minute grid, like slopePerHour(), so a flat run
+    // counts for how long it lasted rather than how it is stored. Each step's
+    // rise weighs by the age of its middle.
+    var gain = 0, time = 0, rise = 0;
+    var prev = null;
+    var j = 0;
+    for (var s = steps; s >= 0; s--) {
+        var t = nowMs - s * SLOPE_STEP_MS;
+        while (j < xs.length - 2 && xs[j + 1] < t)
+            j++;
+        var dt = xs[j + 1] - xs[j];
+        var y = dt > 0 ? ys[j] + (ys[j + 1] - ys[j]) * (t - xs[j]) / dt : ys[j + 1];
+        if (prev !== null) {
+            var w = Math.pow(0.5, (s + 0.5) * SLOPE_STEP_MS / halfLifeMs);
+            gain += w * (y - prev);
+            time += w * SLOPE_STEP_MS / 3600000;
+            rise += y - prev;
+        }
+        prev = y;
+    }
+    if (time <= 0 || rise < ETA_MIN_GAIN)
         return null;
 
-    var hours = (100 - currentPct) / slope;
-    return hours > ETA_MAX_HOURS ? null : hours;
+    return gain / time;
+}
+
+// Hours until the series `key` reaches 100% from `currentPct` at its recent burn
+// rate, or null when it is not climbing meaningfully, is already full, resets
+// before it would fill (`resetAtMs`, 0 when unknown), or the reach is too far
+// off to act on.
+function hoursToFull(points, key, currentPct, nowMs, resetAtMs) {
+    if (!key || typeof currentPct !== "number" || !isFinite(currentPct) || currentPct >= 100)
+        return null;
+
+    var now = typeof nowMs === "number" && isFinite(nowMs) ? nowMs : Date.now();
+    var reset = typeof resetAtMs === "number" && isFinite(resetAtMs) ? resetAtMs : 0;
+    var rate = burnRate(points, key, currentPct, now, etaHalfLife(now, reset));
+    if (rate === null || !isFinite(rate) || rate < ETA_MIN_RATE)
+        return null;
+
+    var hours = (100 - currentPct) / rate;
+    if (hours > ETA_MAX_HOURS)
+        return null;
+    if (reset > now && now + hours * 3600000 >= reset)
+        return null;
+
+    return hours;
 }
 
 // ── The save protocol ────────────────────────────────────────────────────
@@ -625,6 +739,8 @@ if (typeof module !== "undefined" && module.exports) {
         normalize: normalize,
         withResets: withResets,
         slopePerHour: slopePerHour,
+        burnRate: burnRate,
+        etaHalfLife: etaHalfLife,
         hoursToFull: hoursToFull,
         HEARTBEAT_MS: HEARTBEAT_MS,
         newStore: newStore,
