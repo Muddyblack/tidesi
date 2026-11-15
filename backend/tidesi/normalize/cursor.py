@@ -56,10 +56,12 @@ def normalize_cursor(raw):
     od_limit = num(slu.get("individualLimit")) / 100
 
     total_detail = f"{money(included, 'USD')} / {money(limit, 'USD')}" if limit > 0 else tr("%1% of included usage", jround(total))
-    windows = [flat_window("cursor_total", tr("Included usage"), total, reset_at, total_detail, True, history="cu")]
+    windows = [flat_window("cursor_total", tr("Included usage"), total, reset_at, total_detail, True, history="cu", period="month")]
     if has_split:
-        windows.append(flat_window("cursor_auto", tr("Auto + Composer"), auto, reset_at, tr("%1% used", jround(auto)), True))
-        windows.append(flat_window("cursor_api", tr("API models"), api, reset_at, tr("%1% used", jround(api)), True))
+        windows.append(
+            flat_window("cursor_auto", tr("Auto + Composer"), auto, reset_at, tr("%1% used", jround(auto)), True, history="cua", period="month")
+        )
+        windows.append(flat_window("cursor_api", tr("API models"), api, reset_at, tr("%1% used", jround(api)), True, history="cup", period="month"))
     if od_limit > 0 or od_used > 0:
         od_pct = od_used / od_limit * 100 if od_limit > 0 else 0
         od_detail = f"{money(od_used, 'USD')} / {money(od_limit, 'USD')}" if od_limit > 0 else money(od_used, "USD")
@@ -77,7 +79,7 @@ def normalize_cursor(raw):
         }
     ]
     r["chartWindows"] = monthly_window("cursor", "cu", False)
-    r["historyValues"] = {"cu": total}
+    r["historyValues"] = {"cu": total, **({"cua": auto, "cup": api} if has_split else {})}
     upgrade = plan_body.get("nextUpgrade") if isinstance(plan_body.get("nextUpgrade"), dict) else {}
     r["details"] = {
         **base_details,

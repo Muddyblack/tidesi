@@ -405,8 +405,9 @@ when its remembered one disappears.
 | `summary.text` | headline string, already formatted (`"23%"`, `"$12.5"`, `"CLI"`) |
 | `summary.detail` | plan / account line |
 | `summary.hasChart` | false when the provider has no series worth charting |
-| `quotaWindows[]` | ordered rows: `key`, `label`, `pct`, `available`, `resetAt`, `resetText`, `detail`, `showMeter`, and optionally `note` and `historyKey` |
+| `quotaWindows[]` | ordered rows: `key`, `label`, `pct`, `available`, `resetAt`, `resetText`, `detail`, `showMeter`, and optionally `note`, `historyKey` and `periodMs` |
 | `historyKey` | the `historyValues` series this row's `pct` is recorded under. Frontends fit the row's recent burn rate to it (current window only, recent readings weighted most) and show "~3h to 100%" under the title, unless the row's `resetAt` comes first (`UsageHistory.hoursToFull`). Must name a key the provider writes to `historyValues` whenever the row is available. Optional — a row without one simply has no ETA |
+| `periodMs` | how long the window the row meters runs: 18000000 for a 5-hour session, 604800000 for a week, the length of the calendar month that ends at `resetAt` for a monthly one (`contract.period_ms`). With `historyKey` it gives the row its "+12% vs last week": the usage now against the same point of the window before, or, for a window shorter than a day, today against yesterday up to the same time (`UsageHistory.periodChange`). Optional — a row without one has no comparison |
 | `note` | aside shown beside the value. Only meaningful with `showMeter: false`, where `detail` becomes the value itself and would otherwise leave the row no room for context. Optional — a frontend that ignores it loses the aside, nothing else |
 | `chartWindows[]` | chart ranges — see below. Empty when the provider has no chartable series |
 | `slots[]` | compact panel pills: `pct`, `color`, `text` (null → show the meter), `tooltip` |
@@ -480,6 +481,10 @@ For providers with local session files (`claude`, `openai`, `grok`, `antigravity
 extra account carry its id as their `provider` (`claude@work`) and `sessionName` ends in ` · <label>`. Its id is also
 a session source id for `--source`, listed in `sources` with the label `<Provider> · <label>`, and the key of its
 entry in `localSpend`, so the account is totalled on its own and in the overall sum.
+An extra account records its own usage history: every key of its `historyValues`, the `key` of each of its
+`chartWindows` and the `historyKey` of its quota rows end in `@<key>` (`s@work`), so its chart, burn-rate ETA and
+period comparison read that login alone. Series keys are opaque to the frontends; one that needs the provider's own
+name for a series takes the part before the `@`.
 The base provider's own row is unchanged and has no `profile`.
 
 ### Credentials

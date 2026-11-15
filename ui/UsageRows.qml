@@ -26,6 +26,11 @@ ColumnLayout {
     property var eta: function (window) {
         return "";
     }
+    // The row's comparison with the period before ("+12% vs last week"), from
+    // its window; the popup supplies it.
+    property var delta: function (window) {
+        return "";
+    }
     readonly property int rowCount: repeater.count
 
     spacing: 12
@@ -49,6 +54,7 @@ ColumnLayout {
             showMeter: modelData.showMeter !== false
             tooltipText: rows.tooltip(modelData)
             etaText: rows.eta(modelData)
+            deltaText: rows.delta(modelData)
         }
     }
 }

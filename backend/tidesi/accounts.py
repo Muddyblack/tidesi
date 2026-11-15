@@ -175,4 +175,15 @@ def relabel(provider, account):
     result["id"] = account["id"]
     result["label"] = f"{base_label} · {account['label']}"
     result["profile"] = {"base": account["base"], "label": account["label"], "home": account["home"]}
+    # Its own history series ("s@work"): two logins of one provider are two
+    # quotas, and one series fed by both is a chart and an ETA of neither.
+    series = lambda key: f"{key}{ACCOUNT_SEPARATOR}{account['key']}"  # noqa: E731
+    if isinstance(result.get("historyValues"), dict):
+        result["historyValues"] = {series(key): value for key, value in result["historyValues"].items()}
+    if isinstance(result.get("chartWindows"), list):
+        result["chartWindows"] = [{**w, "key": series(w["key"])} if isinstance(w, dict) and w.get("key") else w for w in result["chartWindows"]]
+    if isinstance(result.get("quotaWindows"), list):
+        result["quotaWindows"] = [
+            {**w, "historyKey": series(w["historyKey"])} if isinstance(w, dict) and w.get("historyKey") else w for w in result["quotaWindows"]
+        ]
     return result

@@ -90,9 +90,9 @@ def normalize_zai(raw):
     today_detail = _today_detail(today) if today else ""
 
     r["quotaWindows"] = [
-        flat_window("zai_tokens", tr("5-hour tokens"), token_pct, token_reset, token_detail, True, history="za"),
-        flat_window("zai_tokens_long", tr("7-day tokens"), token2_pct, token2_reset, "", True),
-        flat_window("zai_tools", tr("Monthly tools"), tools_pct, tools_reset, tools_detail, True),
+        flat_window("zai_tokens", tr("5-hour tokens"), token_pct, token_reset, token_detail, True, history="za", period=18000000),
+        flat_window("zai_tokens_long", tr("7-day tokens"), token2_pct, token2_reset, "", True, history="za7", period=604800000),
+        flat_window("zai_tools", tr("Monthly tools"), tools_pct, tools_reset, tools_detail, True, history="zat", period="month"),
     ]
     if today_detail:
         # Consumption so far, not a share of anything, so it carries a value
@@ -108,7 +108,7 @@ def normalize_zai(raw):
         {"pct": tools_pct, "color": "#60a5fa", "text": None, "tooltip": tr("Z.AI tools: %1%", jround(tools_pct))},
     ]
     r["chartWindows"] = monthly_window("zai", "za", False)
-    r["historyValues"] = {"za": token_pct}
+    r["historyValues"] = {"za": token_pct, "za7": token2_pct, "zat": tools_pct}
     r["details"] = {
         "hasKey": res.get("hasKey") is True,
         "keyValid": res.get("keyValid") is True,

@@ -103,7 +103,18 @@ def normalize_moonshot(raw):
         first_of.setdefault(w.get("seconds"), w)
     for i, w in enumerate(windows):
         series = {18000: "kc", 604800: "kcw"}.get(w.get("seconds"), "") if first_of.get(w.get("seconds")) is w else ""
-        rows.append(flat_window(f"kimi_code_{i}", w["label"], w["pct"], w["resetAt"], f"{w['used']} / {w['limit']}", True, history=series))
+        rows.append(
+            flat_window(
+                f"kimi_code_{i}",
+                w["label"],
+                w["pct"],
+                w["resetAt"],
+                f"{w['used']} / {w['limit']}",
+                True,
+                history=series,
+                period=(w.get("seconds") or 0) * 1000,
+            )
+        )
     if exhausted and not windows:
         rows.append(flat_window("kimi_code_plan", tr("Plan usage"), 100, 0, code_plan["message"] or tr("Plan quota used up"), True))
     if code_plan["booster"]:

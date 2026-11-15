@@ -54,6 +54,11 @@ class FixtureContractTest(unittest.TestCase):
                     self.assertTrue(reset == 0 or reset > 1_000_000_000)
                 series = set(result["historyValues"])
                 for window in result["quotaWindows"]:
+                    # The period comparison reads the window's length.
+                    if "periodMs" in window:
+                        self.assertIs(type(window["periodMs"]), int)
+                        self.assertGreaterEqual(window["periodMs"], 3600000)
+                        self.assertLessEqual(window["periodMs"], 31 * 86400000)
                     # The ETA reads the row's historyKey series against the
                     # row's pct, so the key has to be one this result records.
                     if "historyKey" not in window:
@@ -82,18 +87,18 @@ class FixtureContractTest(unittest.TestCase):
 
     def test_success_and_error_fixture_values(self):
         cases = {
-            "claude-success": (True, "", {"s": 23, "w": 61}),
-            "openai-codex-success": (True, "", {"cp": 58, "cw": 30}),
+            "claude-success": (True, "", {"s": 23, "w": 61, "weekly_scoped": 44}),
+            "openai-codex-success": (True, "", {"cp": 58, "cw": 30, "cx_spark_s": 90, "cx_spark_w": 9}),
             "antigravity-success": (True, "", {"ag": 60, "agg": 40, "age": 100}),
             "kiro-success": (True, "", {"kr": 25}),
             "mistral-success": (True, "", {"mv": 12.5}),
             "openrouter-success": (True, "", {"or": 32.5}),
             "grok-billing": (True, "", {"gr": 42}),
-            "zai-success": (True, "", {"za": 25}),
+            "zai-success": (True, "", {"za": 25, "za7": 0, "zat": 40}),
             "copilot-success": (True, "", {"gh": 25}),
             "deepseek-success": (True, "", {"ds": 12.5}),
             "kimi-success": (True, "", {"km": 49.58894}),
-            "cursor-success": (True, "", {"cu": 62.5}),
+            "cursor-success": (True, "", {"cu": 62.5, "cua": 25, "cup": 75}),
             "muse-success": (True, "", {"mu": 150000}),
             "claude-missing-credentials": (False, "Claude not logged in", {}),
             "openai-missing-credentials": (False, "OpenAI: no API key or Codex login", {}),

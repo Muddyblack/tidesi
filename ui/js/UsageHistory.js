@@ -412,6 +412,208 @@ function hoursToFull(points, key, currentPct, nowMs, resetAtMs) {
     return hours;
 }
 
+// ── Period comparison ────────────────────────────────────────────────────
+//
+// "+12% vs last week": how much more (or less) of a quota has been used than by
+// the same point of the period before. What "the same point" is depends on the
+// window the row meters:
+//   - a window of a day or more (weekly, monthly) is compared with itself: the
+//     reading now against the reading as far into the window before. A monthly
+//     window is laid over the calendar month before it, so the 10th is compared
+//     with the 10th whether that month had 28 days or 31;
+//   - a shorter one (a 5-hour session) starts whenever it is first used, so two
+//     sessions have no common point. What is compared is the day: everything
+//     used since local midnight against yesterday up to the same time of day,
+//     summed across the resets in between.
+// Nothing is said when the history has a hole where the other reading would be,
+// or when the period before had too little usage to be a baseline.
+
+var DAY_MS = 86400000;
+// Usage before under this many points is no baseline: 1 → 3 is not "+200%".
+var COMPARE_MIN_BASE = 5;
+// A hole in the history longer than this (or a tenth of the window, if longer)
+// is not read across.
+var COMPARE_MAX_GAP_MS = 12 * 3600000;
+
+// The readings of `key` from the last one at or before `from` up to `until`,
+// oldest first, as {xs, ys}.
+function seriesBetween(points, key, from, until) {
+    var xs = [];
+    var ys = [];
+    var list = points || [];
+    for (var i = list.length - 1; i >= 0; i--) {
+        var p = list[i];
+        if (!p || typeof p.t !== "number" || !isFinite(p.t) || p.t > until)
+            continue;
+        var v = p[key];
+        if (typeof v !== "number" || !isFinite(v))
+            continue;
+
+        xs.push(p.t);
+        ys.push(v);
+        if (p.t <= from)
+            break;
+    }
+    xs.reverse();
+    ys.reverse();
+    return {
+        xs: xs,
+        ys: ys
+    };
+}
+
+// The same instant one calendar month earlier (UTC), the day clamped to the
+// shorter month — what backend/tidesi/contract.py period_ms() measures from.
+function monthBefore(ms) {
+    var d = new Date(ms);
+    var year = d.getUTCFullYear();
+    var month = d.getUTCMonth() - 1;
+    if (month < 0) {
+        month = 11;
+        year--;
+    }
+    var days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    return Date.UTC(year, month, Math.min(d.getUTCDate(), days), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds());
+}
+
+function isMonth(periodMs) {
+    return periodMs >= 27.5 * DAY_MS && periodMs <= 31.5 * DAY_MS;
+}
+
+// The reading of a window that runs [start, end) at the instant `t` inside it,
+// or null when the history does not cover that instant. A window starts empty,
+// so before its first reading the line runs up from zero at `start`.
+function readingInWindow(series, start, end, t, maxGap) {
+    var xs = series.xs;
+    var ys = series.ys;
+    var before = -1;
+    var after = -1;
+    for (var i = 0; i < xs.length; i++) {
+        if (xs[i] < start || xs[i] >= end)
+            continue;
+        if (xs[i] <= t)
+            before = i;
+        else if (after < 0)
+            after = i;
+    }
+    var t0 = before >= 0 ? xs[before] : start;
+    var y0 = before >= 0 ? ys[before] : 0;
+    if (after < 0)
+        // Nothing later in the window: the last reading stands in only while fresh.
+        // A held value is stored at least once an hour (HEARTBEAT_MS).
+        return before >= 0 && t - t0 <= HEARTBEAT_MS * 1.5 ? y0 : null;
+    if (xs[after] - t0 > maxGap || ys[after] < y0 - ETA_RESET_DROP)
+        return null;
+    return y0 + (ys[after] - y0) * (t - t0) / (xs[after] - t0);
+}
+
+// Everything used between `from` and `to`: the rises of the series, with each
+// reset starting again from zero. null when the history does not cover the span.
+function usedBetween(series, from, to, maxGap) {
+    var xs = series.xs;
+    var ys = series.ys;
+    var first = -1;
+    for (var i = 0; i < xs.length; i++) {
+        if (xs[i] <= from)
+            first = i;
+    }
+    if (first < 0)
+        return null;
+
+    var used = 0;
+    var prevT = xs[first];
+    var prevY = ys[first];
+    var inside = 0;
+    for (var j = first + 1; j < xs.length; j++) {
+        var t = xs[j];
+        var y = ys[j];
+        var reset = y < prevY - ETA_RESET_DROP;
+        if (t - prevT > maxGap)
+            return null;
+        if (t > to) {
+            // The step that crosses `to` counts for the part before it.
+            if (!reset && y > prevY && prevT < to)
+                used += (y - prevY) * (to - Math.max(prevT, from)) / (t - prevT);
+            prevT = t;
+            break;
+        }
+        inside++;
+        if (reset)
+            used += y;
+        else if (y > prevY)
+            // The step that crosses `from` counts for the part after it.
+            used += prevT < from ? (y - prevY) * (t - from) / (t - prevT) : y - prevY;
+        prevT = t;
+        prevY = y;
+    }
+    if (prevT < to && to - prevT > maxGap)
+        return null;
+    return inside > 0 ? used : null;
+}
+
+// How the usage of `key` compares with the same point of the period before:
+// {change, period}, where `change` is the relative difference (0.12 for +12%)
+// and `period` is "day", "week", "month" or "window", or null when there is
+// nothing sound to compare with. `periodMs` is the length of the row's window
+// and `resetAtMs` its next reset (0 when unknown); `dayStartMs` is the local
+// midnight before `nowMs`, worked out here when it is not given.
+function periodChange(points, key, currentPct, nowMs, periodMs, resetAtMs, dayStartMs) {
+    if (!key || typeof currentPct !== "number" || !isFinite(currentPct) || !(periodMs > 0))
+        return null;
+
+    var now = typeof nowMs === "number" && isFinite(nowMs) ? nowMs : Date.now();
+    var base;
+    var current = currentPct;
+    var period;
+    var series;
+
+    if (periodMs < DAY_MS) {
+        var today = dayStartMs;
+        if (typeof today !== "number" || !isFinite(today)) {
+            var d = new Date(now);
+            d.setHours(0, 0, 0, 0);
+            today = d.getTime();
+        }
+        var y = new Date(today);
+        y.setDate(y.getDate() - 1);
+        var yesterday = y.getTime();
+        var elapsed = now - today;
+        if (elapsed <= 0)
+            return null;
+
+        series = seriesBetween(points, key, yesterday, now);
+        series.xs.push(now);
+        series.ys.push(currentPct);
+        current = usedBetween(series, today, now, COMPARE_MAX_GAP_MS);
+        base = usedBetween(series, yesterday, yesterday + elapsed, COMPARE_MAX_GAP_MS);
+        period = "day";
+    } else {
+        if (!(resetAtMs > now))
+            return null;
+
+        var start = resetAtMs - periodMs;
+        var month = isMonth(periodMs);
+        var before = month ? monthBefore(start) : start - periodMs;
+        if (now <= start)
+            return null;
+
+        // As far into the window before as now is into this one; a longer
+        // month's last days are held against the shorter one's last reading.
+        var at = Math.min(before + (now - start), start - 1);
+        series = seriesBetween(points, key, before, start);
+        base = readingInWindow(series, before, start, at, Math.max(COMPARE_MAX_GAP_MS, periodMs / 10));
+        period = month ? "month" : Math.abs(periodMs - 7 * DAY_MS) < 3600000 ? "week" : "window";
+    }
+
+    if (base === null || current === null || base < COMPARE_MIN_BASE)
+        return null;
+
+    return {
+        change: (current - base) / base,
+        period: period
+    };
+}
+
 // ── The save protocol ────────────────────────────────────────────────────
 //
 // Both frontends run this over tools/sh/history-io, so it lives here rather than
@@ -742,6 +944,8 @@ if (typeof module !== "undefined" && module.exports) {
         burnRate: burnRate,
         etaHalfLife: etaHalfLife,
         hoursToFull: hoursToFull,
+        periodChange: periodChange,
+        monthBefore: monthBefore,
         HEARTBEAT_MS: HEARTBEAT_MS,
         newStore: newStore,
         restore: restore,

@@ -616,6 +616,105 @@ test("the ETA reads the same from the changes as from every reading", () => {
     }
 });
 
+// ── The period comparison ────────────────────────────────────────────────────
+
+const DAY = 24 * HOUR;
+const WEEK = 7 * DAY;
+
+// Readings of "w" every `stepMs` along straight `legs` of [from, to, v0, v1].
+function readingsAlong(legs, stepMs = 30 * MIN) {
+    const points = [];
+    for (const [from, to, v0, v1] of legs)
+        for (let t = from; t < to; t += stepMs)
+            points.push({ t, w: v0 + (v1 - v0) * (t - from) / (to - from) });
+    return points;
+}
+
+const changeNear = (found, expected, period, what) => {
+    assert.ok(found !== null, `${what}: nothing to compare`);
+    assert.equal(found.period, period, what);
+    assert.ok(Math.abs(found.change - expected) < 0.02, `${what}: ${found.change} vs ${expected}`);
+};
+
+test("a weekly window is compared with the same point of the week before", () => {
+    const start = Date.UTC(2026, 5, 8, 9);
+    const now = start + 3 * DAY;
+    // Last week climbed 10 points a day; this one is at 45 three days in.
+    const points = readingsAlong([[start - WEEK, start, 0, 70], [start, now, 0, 45]]);
+    changeNear(UsageHistory.periodChange(points, "w", 45, now, WEEK, start + WEEK), 0.5, "week", "45 against 30");
+    changeNear(UsageHistory.periodChange(points, "w", 15, now, WEEK, start + WEEK), -0.5, "week", "15 against 30");
+    const same = UsageHistory.periodChange(points, "w", 30, now, WEEK, start + WEEK);
+    assert.ok(Math.abs(same.change) < 0.02, String(same.change));
+});
+
+test("a monthly window is laid over the calendar month before it", () => {
+    // 1 Feb → 1 Mar is 28 days; the window before it, 1 Jan → 1 Feb, is 31.
+    const start = Date.UTC(2026, 1, 1, 12);
+    const reset = Date.UTC(2026, 2, 1, 12);
+    const before = Date.UTC(2026, 0, 1, 12);
+    assert.equal(UsageHistory.monthBefore(start), before);
+    assert.equal(UsageHistory.monthBefore(Date.UTC(2026, 2, 31, 12)), Date.UTC(2026, 1, 28, 12), "the 31st has no February");
+    const now = start + 10 * DAY;
+    // January: 2 points a day, 20 by the 11th. A flat 28 days back would land
+    // on the 14th and read 26.
+    const points = readingsAlong([[before, start, 0, 62], [start, now, 0, 30]], 2 * HOUR);
+    changeNear(UsageHistory.periodChange(points, "w", 30, now, reset - start, reset), 0.5, "month", "30 against 20");
+});
+
+test("a session is compared day against day, across its resets", () => {
+    const today = new Date(2026, 5, 10).getTime();
+    const yesterday = new Date(2026, 5, 9).getTime();
+    const now = today + 12 * HOUR;
+    const points = readingsAlong([
+        // Yesterday: two sessions of 20 points before noon, a third after it.
+        [yesterday - 2 * HOUR, yesterday + 1 * HOUR, 0, 0],
+        [yesterday + 1 * HOUR, yesterday + 5 * HOUR, 0, 20],
+        [yesterday + 6 * HOUR, yesterday + 10 * HOUR, 0, 20],
+        [yesterday + 10 * HOUR, yesterday + 14 * HOUR, 20, 20],
+        [yesterday + 14 * HOUR, yesterday + 18 * HOUR, 0, 50],
+        [yesterday + 18 * HOUR, today + 2 * HOUR, 0, 0],
+        // Today: 30 points, a reset, then 30 more by noon.
+        [today + 2 * HOUR, today + 6 * HOUR, 0, 30],
+        [today + 7 * HOUR, now, 0, 30],
+    ], 10 * MIN);
+    changeNear(UsageHistory.periodChange(points, "w", 30, now, 5 * HOUR, 0, today), 0.5, "day", "60 against 40");
+    // The local midnight is worked out when it is not passed in.
+    changeNear(UsageHistory.periodChange(points, "w", 30, now, 5 * HOUR, 0), 0.5, "day", "60 against 40");
+});
+
+test("the comparison says nothing without a sound baseline", () => {
+    const start = Date.UTC(2026, 5, 8, 9);
+    const now = start + 3 * DAY;
+    const full = readingsAlong([[start - WEEK, start, 0, 70], [start, now, 0, 45]]);
+    const compare = (points, pct = 45, period = WEEK, reset = start + WEEK) => UsageHistory.periodChange(points, "w", pct, now, period, reset);
+
+    assert.equal(compare(readingsAlong([[start, now, 0, 45]])), null, "no history of the week before");
+    const holed = full.filter(p => p.t < start - WEEK + 2 * DAY || p.t > start - WEEK + 4 * DAY);
+    assert.equal(compare(holed), null, "two days missing around the point compared with");
+    assert.equal(compare(readingsAlong([[start - WEEK, start, 0, 7], [start, now, 0, 45]])), null, "3 points last week is no baseline");
+    assert.equal(compare(full, 45, WEEK, 0), null, "no reset to place the window by");
+    assert.equal(compare(full, 45, 0), null, "no window length");
+    assert.equal(compare(full, null), null, "no live reading");
+    assert.equal(UsageHistory.periodChange(full, "", 45, now, WEEK, start + WEEK), null, "no series");
+    assert.equal(UsageHistory.periodChange(full, "x", 45, now, WEEK, start + WEEK), null, "a series with no readings");
+    assert.equal(UsageHistory.periodChange([], "w", 45, now, 5 * HOUR, 0), null, "no history, by day");
+});
+
+test("the comparison reads the same from the changes as from every reading", () => {
+    const start = Date.UTC(2026, 5, 8, 9);
+    const now = start + 3 * DAY;
+    const dense = readingsAlong([[start - WEEK, start - 3 * DAY, 0, 40], [start - 3 * DAY, start, 40, 40], [start, now, 0, 45]], 5 * MIN)
+        .map(p => ({ t: p.t, w: Math.round(p.w) }));
+    const store = UsageHistory.newStore(10000);
+    for (const p of dense)
+        UsageHistory.record(store, { w: p.w }, p.t);
+    assert.ok(store.points.length < dense.length / 3, `${store.points.length} of ${dense.length} stored`);
+    const fromDense = UsageHistory.periodChange(dense, "w", 45, now, WEEK, start + WEEK);
+    const fromStored = UsageHistory.periodChange(store.history, "w", 45, now, WEEK, start + WEEK);
+    assert.ok(fromDense !== null && fromStored !== null);
+    assert.ok(Math.abs(fromDense.change - fromStored.change) < 0.02, `${fromDense.change} vs ${fromStored.change}`);
+});
+
 // ── The two frontends against the real history-io ───────────────────────────
 // The Plasma widget and the Quickshell panel share one file and never
 // coordinate, so what each one *sends* decides what the other can lose. Both

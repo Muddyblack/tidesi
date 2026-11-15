@@ -81,7 +81,7 @@ def normalize_kiro(raw):
         ),
     )
     r["summary"] = {"pct": pct, "text": f"{jround(pct)}%", "detail": plan, "hasChart": True}
-    r["quotaWindows"] = [flat_window("kiro", tr("Monthly credits"), pct, reset_at, detail, True, history="kr" if available else "")]
+    r["quotaWindows"] = [flat_window("kiro", tr("Monthly credits"), pct, reset_at, detail, True, history="kr" if available else "", period="month")]
     r["slots"] = [
         {
             "pct": pct,

@@ -247,7 +247,8 @@
         "45%"
       ],
       "history": {
-        "cw": 45
+        "cw": 45,
+        "cx_spark_s": 0
       },
       "rowValues": [
         45,

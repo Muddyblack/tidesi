@@ -7,6 +7,7 @@ from ..messages import lines, tr
 
 ACCENT = "#f0f0f0"
 BUCKETS = (("session", "Session (5h)"), ("weekly", "Weekly (7d)"), ("monthly", "Monthly"))
+_PERIODS = {"session": 18000000, "weekly": 604800000, "monthly": "month"}
 
 
 def normalize_ollama(raw):
@@ -59,7 +60,9 @@ def normalize_ollama(raw):
         if "allowance_usd" in bucket:
             label = tr("Included credits")
             detail = tr("%1 of %2 USD remaining", f"{bucket['balance_usd']:.2f}", f"{bucket['allowance_usd']:.2f}")
-        windows.append(flat_window(f"ollama_{key}", label, pct, epoch_of(bucket.get("resets_at")), detail, True, history=f"ollama_{key}"))
+        windows.append(
+            flat_window(f"ollama_{key}", label, pct, epoch_of(bucket.get("resets_at")), detail, True, history=f"ollama_{key}", period=_PERIODS[key])
+        )
         rows = bucket.get("models")
         if isinstance(rows, list):
             models[key] = [
