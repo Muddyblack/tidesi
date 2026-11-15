@@ -4,8 +4,9 @@ import QtQuick.Layouts
 import "js/Tone.js" as Tone
 
 // A labelled usage row, ported from the Plasma PopupRow: title + "· reset" +
-// live countdown chip + animated %, an optional burn-rate ETA line, a
-// 20-segment bar with gradient partial fill, and an optional sub-label.
+// live countdown chip + animated %, an optional line with the burn-rate ETA
+// and the comparison with the period before, a 20-segment bar with gradient
+// partial fill, and an optional sub-label.
 ColumnLayout {
     id: row
 
@@ -21,6 +22,9 @@ ColumnLayout {
     property string tooltipText: ""
     // Burn-rate ETA ("~3h to 100%"), "" when the row is not climbing.
     property string etaText: ""
+    // Comparison with the period before ("+12% vs last week"), "" when there
+    // is nothing to compare with.
+    property string deltaText: ""
 
     readonly property color dangerColor: Tone.isLight(Appearance.Palette) ? "#c62828" : "#ff4d4d"
     readonly property color warningColor: Tone.isLight(Appearance.Palette) ? "#c2410c" : "#ffa64d"
@@ -96,12 +100,29 @@ ColumnLayout {
         }
     }
 
-    Text {
-        visible: row.showMeter && row.etaText !== ""
-        text: "↗ " + row.etaText
-        font.pixelSize: 10
-        color: row.warningColor
-        opacity: 0.9
+    RowLayout {
+        visible: row.showMeter && (row.etaText !== "" || row.deltaText !== "")
+        Layout.fillWidth: true
+        spacing: 6
+
+        Text {
+            visible: row.etaText !== ""
+            text: "↗ " + row.etaText
+            font.pixelSize: 10
+            color: row.warningColor
+            opacity: 0.9
+        }
+
+        Item {
+            Layout.fillWidth: true
+        }
+
+        Text {
+            visible: row.deltaText !== ""
+            text: row.deltaText
+            font.pixelSize: 10
+            color: Tone.c(Appearance.Palette, "#94a3b8")
+        }
     }
 
     Item {

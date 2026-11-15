@@ -113,6 +113,24 @@ class BuildTest(unittest.TestCase):
         # One fetch per row, each reading the home that row names.
         self.assertCountEqual(homes, ["/main", os.path.expanduser("~/.claude-work")])
 
+    def test_an_account_records_its_own_history_series(self):
+        # One series fed by two logins is a chart and an ETA of neither.
+        account = accounts.find(CFG, "claude@work")
+        base = {
+            "id": "claude",
+            "label": "Claude",
+            "historyValues": {"s": 23, "w": 61},
+            "chartWindows": [{"id": "session", "key": "s"}, {"id": "weekly", "key": "w"}],
+            "quotaWindows": [{"key": "session", "historyKey": "s"}, {"key": "extra"}],
+        }
+        work = accounts.relabel(base, account)
+        self.assertEqual(work["historyValues"], {"s@work": 23, "w@work": 61})
+        self.assertEqual([w["key"] for w in work["chartWindows"]], ["s@work", "w@work"])
+        self.assertEqual(work["quotaWindows"], [{"key": "session", "historyKey": "s@work"}, {"key": "extra"}])
+        # The base provider's own result is left as it was.
+        self.assertEqual(base["historyValues"], {"s": 23, "w": 61})
+        self.assertEqual(base["chartWindows"][0]["key"], "s")
+
     def test_crash_in_an_account_is_its_own_error_row(self):
         row = envelope.crashed("claude@work", 1, ValueError("boom"))
         self.assertEqual(row["id"], "claude@work")

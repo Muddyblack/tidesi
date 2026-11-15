@@ -212,9 +212,14 @@ def normalize_claude(raw):
         "hasChart": True,
     }
     r["quotaWindows"] = [
-        quota_window("session", tr("5-hour session"), w["session"], s_detail, history="s"),
-        quota_window("weekly", tr("7-day window"), w["weekly"], w_detail, history="w"),
-    ] + [quota_window(scoped_key(name), scoped_label(name), win, "") for name, win in w["scoped"] if win["available"]]
+        quota_window("session", tr("5-hour session"), w["session"], s_detail, history="s", period=18000000),
+        quota_window("weekly", tr("7-day window"), w["weekly"], w_detail, history="w", period=604800000),
+    ] + [
+        # A scoped week is a budget of its own, so it is recorded under its row key.
+        quota_window(scoped_key(name), scoped_label(name), win, "", history=scoped_key(name), period=604800000)
+        for name, win in w["scoped"]
+        if win["available"]
+    ]
     r["slots"] = [
         {
             "pct": w["session"]["pct"],
@@ -233,6 +238,7 @@ def normalize_claude(raw):
     r["historyValues"] = {
         **({"s": w["session"]["pct"]} if w["session"]["available"] else {}),
         **({"w": w["weekly"]["pct"]} if w["weekly"]["available"] else {}),
+        **{scoped_key(name): win["pct"] for name, win in w["scoped"] if win["available"]},
     }
     if extra.get("tokens_remaining") is not None:
         extra_tokens = num(extra.get("tokens_remaining"))

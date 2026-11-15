@@ -76,9 +76,9 @@ def normalize_muse(raw):
     # Plan windows only exist here when the user opted into the billed call
     # (providers/muse_quota.py); everything else on this tab is free and local.
     windows = []
-    for key, label, w, series in (("muse_current", "Current", current, "mc"), ("muse_weekly", "Weekly", weekly, "mw")):
+    for key, label, w, series, period in (("muse_current", "Current", current, "mc", 0), ("muse_weekly", "Weekly", weekly, "mw", 604800000)):
         if w["available"]:
-            windows.append(quota_window(key, label, w, tr("%1% used", jround(w["pct"])), history=series))
+            windows.append(quota_window(key, label, w, tr("%1% used", jround(w["pct"])), history=series, period=period))
 
     if stats.get("available"):
         windows.append(

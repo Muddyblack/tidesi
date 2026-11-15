@@ -46,7 +46,7 @@ def normalize_jetbrains(raw):
     r = provider_base("jetbrains", "JetBrains AI", ACCENT, now)
     r["account"] = account(res.get("ide") or "", [chip(res.get("state"), "muted")] if res.get("state") not in ("", "Available", None) else [])
     r["summary"] = {"pct": pct, "text": f"{jround(pct)}%", "detail": detail, "hasChart": True}
-    r["quotaWindows"] = [flat_window("jetbrains", tr("Monthly credits"), pct, reset_at, detail, True, history="jb")]
+    r["quotaWindows"] = [flat_window("jetbrains", tr("Monthly credits"), pct, reset_at, detail, True, history="jb", period="month")]
     r["slots"] = [
         {
             "pct": pct,

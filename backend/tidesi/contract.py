@@ -177,7 +177,44 @@ def window_value(pct, reset, active):
     return {"available": True, "pct": pct_clamp(pct), "resetAt": epoch_of(reset)}
 
 
-def quota_window(key, label, w, detail, history=""):
+# A window that resets on a calendar date: its length is the month that ends at
+# the row's reset, which period_ms() works out.
+MONTH = "month"
+
+
+def period_ms(period, reset_at):
+    """The length in ms of the window a row meters, 0 when it is not known.
+
+    `period` is a length in ms, or MONTH for a window that runs from one
+    calendar date to the same date a month on: 28 to 31 days, read off the
+    reset so the frontends compare against the right day of the month before."""
+    if period != MONTH:
+        return int(period) if isinstance(period, (int, float)) and not isinstance(period, bool) and period > 0 else 0
+    if not reset_at or reset_at <= 0:
+        return 0
+    try:
+        end = datetime.datetime.fromtimestamp(reset_at, datetime.timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        return 0
+    year, month = (end.year, end.month - 1) if end.month > 1 else (end.year - 1, 12)
+    start = end.replace(year=year, month=month, day=min(end.day, calendar.monthrange(year, month)[1]))
+    return int((end - start).total_seconds() * 1000)
+
+
+def _series(w, history, period):
+    if history:
+        # The historyValues series this row's pct is recorded under, which the
+        # frontends read the row's "~3h to 100%" and "+12% vs last week" from.
+        w["historyKey"] = history
+    length = period_ms(period, w["resetAt"])
+    if length:
+        # How long the metered window runs, for the comparison with the same
+        # point of the window before.
+        w["periodMs"] = length
+    return w
+
+
+def quota_window(key, label, w, detail, history="", period=0):
     reset_at = w.get("resetAt", 0) or 0
     qw = {
         "key": key,
@@ -189,14 +226,10 @@ def quota_window(key, label, w, detail, history=""):
         "detail": detail,
         "showMeter": True,
     }
-    if history:
-        # The historyValues series this row's pct is recorded under, which the
-        # frontends fit a burn rate to for the row's "~3h to 100%".
-        qw["historyKey"] = history
-    return qw
+    return _series(qw, history, period)
 
 
-def flat_window(key, label, pct, reset_at, detail, meter, note="", history=""):
+def flat_window(key, label, pct, reset_at, detail, meter, note="", history="", period=0):
     w = {
         "key": key,
         "label": label,
@@ -212,9 +245,7 @@ def flat_window(key, label, pct, reset_at, detail, meter, note="", history=""):
         # beside it. `note` is the aside such a row would otherwise have to
         # cram into the value.
         w["note"] = note
-    if history:
-        w["historyKey"] = history
-    return w
+    return _series(w, history, period)
 
 
 def chart_window(id_, key, label, size, gran):

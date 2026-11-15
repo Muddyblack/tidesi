@@ -19,6 +19,13 @@ from ..messages import tr
 from ..stats import codex_stats
 
 
+def _additional_series(name, suffix):
+    """The history series of an additional (per-model) Codex limit: "cx_<model>_s"
+    for its 5-hour window, "_w" for its weekly one."""
+    slug = "".join(c if c.isalnum() else "_" for c in str(name).lower()).strip("_") or "model"
+    return f"cx_{slug}_{suffix}"
+
+
 def _codex_window(w):
     if not isinstance(w, dict):
         return {"kind": "", "value": unavailable_window()}
@@ -165,9 +172,13 @@ def normalize_openai(raw):
         }
         quota_windows = []
         if session_on:
-            quota_windows.append(quota_window("codex_session", tr("Codex 5-hour"), codex["session"], tr("ChatGPT/Codex plan window"), history="cp"))
+            quota_windows.append(
+                quota_window("codex_session", tr("Codex 5-hour"), codex["session"], tr("ChatGPT/Codex plan window"), history="cp", period=18000000)
+            )
         if weekly_on:
-            quota_windows.append(quota_window("codex_weekly", tr("Codex weekly"), codex["weekly"], tr("Secondary plan window"), history="cw"))
+            quota_windows.append(
+                quota_window("codex_weekly", tr("Codex weekly"), codex["weekly"], tr("Secondary plan window"), history="cw", period=604800000)
+            )
         for a in codex["additional"]:
             if a["session"]["available"]:
                 quota_windows.append(
@@ -176,10 +187,16 @@ def normalize_openai(raw):
                         tr("%1 · 5-hour", a["name"]),
                         a["session"],
                         tr("Limit reached") if a["limitReached"] else "",
+                        history=_additional_series(a["name"], "s"),
+                        period=18000000,
                     )
                 )
             if a["weekly"]["available"]:
-                quota_windows.append(quota_window("additional", tr("%1 · weekly", a["name"]), a["weekly"], ""))
+                quota_windows.append(
+                    quota_window(
+                        "additional", tr("%1 · weekly", a["name"]), a["weekly"], "", history=_additional_series(a["name"], "w"), period=604800000
+                    )
+                )
         r["quotaWindows"] = quota_windows
         if org_error:
             r["quotaWindows"].append(flat_window("openai_org_usage", tr("Organization usage unavailable"), 0, 0, org_error, False))
@@ -215,6 +232,12 @@ def normalize_openai(raw):
         r["historyValues"] = {
             **({"cp": codex["session"]["pct"]} if codex["session"]["available"] else {}),
             **({"cw": codex["weekly"]["pct"]} if codex["weekly"]["available"] else {}),
+            **{
+                _additional_series(a["name"], suffix): a[window]["pct"]
+                for a in codex["additional"]
+                for window, suffix in (("session", "s"), ("weekly", "w"))
+                if a[window]["available"]
+            },
         }
         r["details"] = details
         return r

@@ -60,7 +60,7 @@ def normalize_copilot(raw):
         "detail": f"@{username}" if username != "" else tr("Personal billing"),
         "hasChart": True,
     }
-    r["quotaWindows"] = [flat_window("copilot", tr("Premium requests"), pct, reset_at, detail, not unlimited, history="gh")]
+    r["quotaWindows"] = [flat_window("copilot", tr("Premium requests"), pct, reset_at, detail, not unlimited, history="gh", period="month")]
     r["slots"] = [{"pct": pct, "color": "#8b5cf6", "text": None, "tooltip": tr("Copilot premium requests: %1", detail)}]
     r["chartWindows"] = monthly_window("copilot", "gh", False)
     r["historyValues"] = {"gh": pct}

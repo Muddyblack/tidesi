@@ -97,6 +97,30 @@ msgid "~%1d to 100%"
 msgstr "~%1j pour atteindre 100%"
 
 #: ui/AppState.qml
+msgid "yesterday"
+msgstr "hier"
+
+#: ui/AppState.qml
+msgid "last week"
+msgstr "semaine dernière"
+
+#: ui/AppState.qml
+msgid "last month"
+msgstr "mois dernier"
+
+#: ui/AppState.qml
+msgid "last period"
+msgstr "période précédente"
+
+#: ui/AppState.qml
+msgid "≈ same as %1"
+msgstr "≈ identique à %1"
+
+#: ui/AppState.qml
+msgid "%1 vs %2"
+msgstr "%1 par rapport à %2"
+
+#: ui/AppState.qml
 msgid "Open tideSI"
 msgstr "Ouvrir tideSI"
 

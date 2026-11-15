@@ -48,17 +48,24 @@ Rectangle {
         return windows.length > 0 ? windows[0] : null;
     }
 
-    readonly property bool isAntigravity: activeId === "antigravity" || (currentWindow && currentWindow.key && currentWindow.key.indexOf("ag") === 0)
+    // An extra account records under its own series ("ag@work"): the part of
+    // the window's key from the "@" on, "" for the provider's main account.
+    readonly property string seriesSuffix: {
+        var key = currentWindow && currentWindow.key ? String(currentWindow.key) : "";
+        var at = key.indexOf("@");
+        return at < 0 ? "" : key.substring(at);
+    }
+    readonly property bool isAntigravity: activeId.split("@")[0] === "antigravity" || (currentWindow && currentWindow.key && currentWindow.key.indexOf("ag") === 0)
     readonly property bool hasModelFilter: isAntigravity
     readonly property bool isBoth: isAntigravity && antigravityFilter === "both"
 
     readonly property string historyKey: {
         if (isAntigravity) {
             if (antigravityFilter === "gemini")
-                return "agg";
+                return "agg" + seriesSuffix;
             if (antigravityFilter === "rest")
-                return "age";
-            return "ag";
+                return "age" + seriesSuffix;
+            return "ag" + seriesSuffix;
         }
         return currentWindow ? currentWindow.key : "w";
     }
@@ -67,6 +74,17 @@ Rectangle {
     // chart auto-scales; rolling plan windows are the ones that drop at a reset.
     readonly property bool isCost: currentWindow ? currentWindow.raw === true : false
     readonly property bool windowHasResets: currentWindow ? currentWindow.resets === true : false
+
+    // Whether a history point carries any of this account's Antigravity series.
+    function hasAntigravityPoint(p) {
+        var keys = ["ag", "agg", "age"];
+        for (var i = 0; i < keys.length; i++) {
+            var v = p[keys[i] + chart.seriesSuffix];
+            if (v !== undefined && v !== null)
+                return true;
+        }
+        return false;
+    }
 
     function extractSeries(key, fallbackKey) {
         var out = [];
@@ -90,8 +108,8 @@ Rectangle {
         return out;
     }
 
-    readonly property var geminiSeries: isAntigravity ? extractSeries("agg", "ag") : []
-    readonly property var restSeries: isAntigravity ? extractSeries("age", null) : []
+    readonly property var geminiSeries: isAntigravity ? extractSeries("agg" + seriesSuffix, "ag" + seriesSuffix) : []
+    readonly property var restSeries: isAntigravity ? extractSeries("age" + seriesSuffix, null) : []
 
     // {t, v[, raw]} view of the selected series inside the visible window
     readonly property var series: {
@@ -104,8 +122,8 @@ Rectangle {
         for (var i = 0; i < usageHistory.length; i++) {
             var p = usageHistory[i];
             var v = p[chart.historyKey];
-            if ((v === undefined || v === null) && chart.isAntigravity && chart.historyKey === "agg") {
-                v = p["ag"];
+            if ((v === undefined || v === null) && chart.isAntigravity && chart.historyKey === "agg" + chart.seriesSuffix) {
+                v = p["ag" + chart.seriesSuffix];
             }
             if (v === undefined || v === null)
                 continue;
@@ -140,11 +158,7 @@ Rectangle {
         for (var i = 0; i < usageHistory.length; i++) {
             var p = usageHistory[i];
             if (chart.isAntigravity) {
-                if (p.ag !== undefined && p.ag !== null)
-                    return true;
-                if (p.agg !== undefined && p.agg !== null)
-                    return true;
-                if (p.age !== undefined && p.age !== null)
+                if (chart.hasAntigravityPoint(p))
                     return true;
             } else {
                 var v = p[chart.historyKey];
@@ -181,7 +195,7 @@ Rectangle {
         if (isTokens)
             return OpenCodeUsage.compactTokens(chartMaxRaw * fraction);
         if (isCost) {
-            var symbol = currency === "CNY" ? "¥" : (currency === "USD" || historyKey === "mv" ? "$" : "");
+            var symbol = currency === "CNY" ? "¥" : (currency === "USD" || historyKey.split("@")[0] === "mv" ? "$" : "");
             return chartMaxRaw > 0 ? symbol + (chartMaxRaw * fraction).toFixed(2) + (symbol === "" && currency !== "" ? " " + currency : "") : "";
         }
         return Math.round(fraction * 100) + "%";
@@ -204,7 +218,7 @@ Rectangle {
     // Usage slope in %/hour over the trailing lookback, for the pulse effect —
     // the same fit the Plasma widget uses. See UsageHistory.slopePerHour.
     function usageSlopePerHour(lookbackMs) {
-        return UsageHistory.slopePerHour(usageHistory, chart.historyKey, lookbackMs, chart.isAntigravity ? "ag" : null);
+        return UsageHistory.slopePerHour(usageHistory, chart.historyKey, lookbackMs, chart.isAntigravity ? "ag" + chart.seriesSuffix : null);
     }
 
     visible: extraVisible && hasAnySeriesData && windows.length > 0
@@ -246,7 +260,7 @@ Rectangle {
                 var oldestT = 0;
                 for (var i = 0; i < chart.usageHistory.length; i++) {
                     var p = chart.usageHistory[i];
-                    var hasPt = chart.isAntigravity ? (p.ag !== undefined || p.agg !== undefined || p.age !== undefined) : (p[chart.historyKey] !== undefined && p[chart.historyKey] !== null);
+                    var hasPt = chart.isAntigravity ? chart.hasAntigravityPoint(p) : (p[chart.historyKey] !== undefined && p[chart.historyKey] !== null);
                     if (hasPt) {
                         oldestT = p.t;
                         break;
@@ -892,7 +906,7 @@ Rectangle {
                                 var value = (pt.raw !== undefined ? pt.raw : 0).toFixed(4);
                                 if (chart.currency === "CNY")
                                     return "¥" + value;
-                                if (chart.currency === "USD" || chart.historyKey === "mv")
+                                if (chart.currency === "USD" || chart.historyKey.split("@")[0] === "mv")
                                     return "$" + value;
                                 return value + (chart.currency !== "" ? " " + chart.currency : "");
                             }

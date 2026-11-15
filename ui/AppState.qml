@@ -722,6 +722,25 @@ Item {
         return root.i18n("~%1d to 100%", Math.round(hours / 24));
     }
 
+    // "+12% vs last week" for a quota row: how much more or less has been used
+    // than by the same point of the period before, "" when the history has
+    // nothing sound to compare with. The row names its series (historyKey) and
+    // how long its window runs (periodMs); a window shorter than a day is
+    // compared day against day. See UsageHistory.periodChange.
+    function periodDelta(window) {
+        if (!window || window.showMeter === false || window.available === false || !window.historyKey || !(window.periodMs > 0))
+            return "";
+        var resetAtMs = window.resetAt > 0 ? window.resetAt * 1000 : 0;
+        var found = UsageHistory.periodChange(root.usageHistory, window.historyKey, Number(window.pct), root.nowTick, window.periodMs, resetAtMs);
+        if (!found)
+            return "";
+        var label = found.period === "day" ? root.i18n("yesterday") : found.period === "week" ? root.i18n("last week") : found.period === "month" ? root.i18n("last month") : root.i18n("last period");
+        var pct = Math.max(-100, Math.min(999, Math.round(found.change * 100)));
+        if (Math.abs(pct) < 3)
+            return root.i18n("≈ same as %1", label);
+        return root.i18n("%1 vs %2", (pct > 0 ? "+" : "") + pct + "%", label);
+    }
+
     // ── Tray ─────────────────────────────────────────────────────────────────
     // Hosts with a tray icon (Windows, macOS) draw it from this: the pill's
     // slots in the chosen trayStyle, plus a tooltip listing every provider.
