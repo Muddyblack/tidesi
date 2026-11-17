@@ -104,7 +104,7 @@ struct Applet {
 enum Msg {
     Tick,
     Press,
-    Surface(surface::Action),
+    Surface(surface::Action<Msg>),
 }
 
 impl Applet {
@@ -200,7 +200,7 @@ impl cosmic::Application for Applet {
             Msg::Press if self.modified.is_none() => spawn_tidesi(&["--cosmic", "--open"]),
             Msg::Press => spawn_tidesi(&["--cosmic"]),
             Msg::Surface(a) => {
-                return cosmic::task::message(cosmic::Action::Cosmic(app::Action::Surface(a)));
+                return cosmic::task::message(cosmic::Action::Surface(a));
             }
         }
         Task::none()
