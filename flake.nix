@@ -362,11 +362,9 @@
                 ./hosts/cosmic/data
               ];
             };
-            cargoLock = {
-              lockFile = ./hosts/cosmic/Cargo.lock;
-              # libcosmic and its forks are git dependencies, pinned by rev in the lock.
-              allowBuiltinFetchGit = true;
-            };
+            # Vendors crates.io and git deps (libcosmic & co.) in one fixed-output fetch.
+            # Update after any Cargo.lock change: set to pkgs.lib.fakeHash, build, copy the hash.
+            cargoHash = "sha256-lUNpxH89cmwNC7slrKUyUHzD2t2iQqUM/e+s/SL5dhQ=";
             nativeBuildInputs = [ pkgs.libcosmicAppHook ];
             postInstall = ''
               install -Dm644 data/org.muddyblack.tidesi.CosmicApplet.desktop \
