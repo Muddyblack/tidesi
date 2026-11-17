@@ -15,6 +15,5 @@ serde_json = "1"
 
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"
-rev = "758c13723fc35b1d82d7fa4f35859c9f7f3c1b0c"
 default-features = false
 features = ["applet", "applet-token", "dbus-config", "multi-window", "tokio", "wayland", "desktop-systemd-scope", "winit"]
