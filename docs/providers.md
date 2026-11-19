@@ -663,4 +663,5 @@ on 2026-10-10 — the marks themselves remain their owners' trademarks. The
 `windsurf`, `pi`, `kilo` and `coderabbit` icons are simple monograms drawn for
 this widget, not official artwork. `commandcode.svg` is the white mark from the
 official VS Code extension shipped in the `command-code` npm package (1.84.0,
-`icons/icon-dark.svg`), fetched on 2026-11-19; it remains its owner's trademark.
+`icons/icon-dark.svg`), fetched on 2026-11-19, with the outer frame dropped; it
+remains its owner's trademark.
