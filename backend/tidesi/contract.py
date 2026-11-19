@@ -43,6 +43,7 @@ PROVIDER_ICONS = {
     "pi": "pi.svg",
     "kilo": "kilo.svg",
     "coderabbit": "coderabbit.svg",
+    "commandcode": "commandcode.svg",
     "zed": "zed.svg",
     "selfhosted": "local-models.svg",
     "openrouter": "openrouter.svg",

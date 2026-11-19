@@ -610,8 +610,7 @@ The credential is the widget setting / `$COMMAND_CODE_API_KEY`, then the
 to the CLI login. These endpoints are not in Command Code's public docs: they
 were read from command-code 1.84.0 and verified against a live account on
 Linux on 2026-11-19. Organisation (Teams) usage is not read — the requests carry
-no `orgId` — and local sessions are not listed in the Sessions tab. There is no
-bundled icon; the tab shows the accent dot.
+no `orgId` — and local sessions are not listed in the Sessions tab.
 
 ## CodeRabbit
 
@@ -662,4 +661,6 @@ Artwork: `jetbrains.svg` and `zed.svg` come from the
 [simple-icons](https://github.com/simple-icons/simple-icons) set (CC0), fetched
 on 2026-10-10 — the marks themselves remain their owners' trademarks. The
 `windsurf`, `pi`, `kilo` and `coderabbit` icons are simple monograms drawn for
-this widget, not official artwork.
+this widget, not official artwork. `commandcode.svg` is the white mark from the
+official VS Code extension shipped in the `command-code` npm package (1.84.0,
+`icons/icon-dark.svg`), fetched on 2026-11-19; it remains its owner's trademark.
