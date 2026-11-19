@@ -457,6 +457,7 @@ after wake-up (`UsageHistory.withResets`).
 | `jb` | JetBrains AI monthly credits pct |
 | `ws` | Windsurf highest of daily / weekly quota pct |
 | `kl` | Kilo highest of credits / Kilo Pass pct |
+| `cmd5` / `cmd7` / `cmdm` | Command Code 5-hour, weekly and monthly-credit pct |
 | `zd` | Zed edit predictions pct (limited plans only) |
 | `mv` | Mistral vibe spend (absolute USD, auto-scaled by the chart) |
 | `gr` | Grok credits |
@@ -834,8 +835,8 @@ update while the program runs). `pi` uses the shared local-activity shape
 `chartWindows`) and leaves `costStatus` `unavailable`: Pi records an API-rate
 price even on subscription logins, so it is never presented as spend.
 
-`kilo` and `zed` make the vendor's own request with the vendor's own login (or
-an API key for `kilo`); `coderabbit` runs `coderabbit usage` and exposes only a
+`kilo`, `commandcode` and `zed` make the vendor's own request with the vendor's own login (or
+an API key for `kilo` and `commandcode`); `coderabbit` runs `coderabbit usage` and exposes only a
 review count in non-metered rows. `zed` carries `details.untested: false` after
 live Linux quota verification. macOS and Windows credential access are implemented but
 not live-verified. Local Zed sessions remain

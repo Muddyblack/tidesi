@@ -50,6 +50,7 @@ The backend constant `AUTO_DETECT_PROVIDERS` is the complete allowlist:
 | `pi` | `pi` or `omp` executable |
 | `kilo` | `kilo` executable |
 | `coderabbit` | `coderabbit` executable |
+| `commandcode` | `command-code` or `commandcode` executable (not the `cmd` alias, which is the Windows shell) |
 
 Executables are looked up on `PATH` and in the directories user-level
 installers use but a desktop session's `PATH` often lacks (`~/.local/bin`,
@@ -139,5 +140,5 @@ only its collector works.
     is introduced.
 
 Finally, run the full test suite and review the provider count in every document.
-The current backend has 25 IDs in `ALL_PROVIDERS` and 16 IDs in
+The current backend has 26 IDs in `ALL_PROVIDERS` and 17 IDs in
 `AUTO_DETECT_PROVIDERS`.

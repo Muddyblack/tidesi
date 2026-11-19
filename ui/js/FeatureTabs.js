@@ -160,6 +160,7 @@ function providerAccent(provider) {
         kilo: "#f4e04d",
         coderabbit: "#ff7a3d",
         zed: "#e6e6e6",
+        commandcode: "#e6e6e6",
         "zed.dev": "#e6e6e6"
     };
     var key = localSourceKey(provider);

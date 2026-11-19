@@ -154,6 +154,13 @@ var providers = [
         accent: "#e6e6e6"
     },
     {
+        id: "commandcode",
+        label: "Command Code",
+        accent: "#e6e6e6",
+        keySetting: "commandcode",
+        keyPlaceholder: "optional — the cmd CLI login is used"
+    },
+    {
         id: "opencode",
         label: "OpenCode",
         accent: "#B7B1B1"
@@ -185,6 +192,7 @@ var ICONS = {
     pi: "pi.svg",
     kilo: "kilo.svg",
     coderabbit: "coderabbit.svg",
+    commandcode: "commandcode.svg",
     zed: "zed.svg",
     selfhosted: "local-models.svg",
     openrouter: "openrouter.svg",
@@ -195,7 +203,7 @@ for (var _i = 0; _i < providers.length; _i++)
 
 // Mirrors OPT_IN_PROVIDERS in tidesi/config.py: what a missing toggle means
 // until providerDefaultsApplied is set (or when applying the defaults failed).
-var OPT_IN = ["zai", "copilot", "deepseek", "kimi", "muse", "cursor", "cline", "opencode", "mimo", "junie", "jetbrains", "windsurf", "pi", "kilo", "coderabbit", "zed", "ollama", "selfhosted"];
+var OPT_IN = ["zai", "copilot", "deepseek", "kimi", "muse", "cursor", "cline", "opencode", "mimo", "junie", "jetbrains", "windsurf", "pi", "kilo", "coderabbit", "zed", "commandcode", "ollama", "selfhosted"];
 
 function enabled(settings, id) {
     // An extra account ("claude@work") is on exactly when its provider is.
@@ -211,7 +219,7 @@ function enabled(settings, id) {
 
 // Mirrors AUTO_DETECT_PROVIDERS in tidesi/detect.py: the providers detection
 // can speak for. Every other provider is only ever switched by hand.
-var AUTO_DETECT = ["claude", "antigravity", "openai", "kiro", "mistral", "grok", "muse", "cursor", "cline", "opencode", "mimo", "junie", "windsurf", "pi", "kilo", "coderabbit"];
+var AUTO_DETECT = ["claude", "antigravity", "openai", "kiro", "mistral", "grok", "muse", "cursor", "cline", "opencode", "mimo", "junie", "windsurf", "pi", "kilo", "coderabbit", "commandcode"];
 
 // Re-run of detection from the settings page. Detection reports what is
 // installed right now, so it syncs both ways: a detected provider that is off

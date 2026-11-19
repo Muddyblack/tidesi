@@ -100,6 +100,16 @@ class CliLoginE2ETest(SourceE2ETest):
         row = self.source("kilo", "cli", KILO_USAGE_RESPONSE_FILE=str(response))
         self.assertEqual(row["details"]["credits"]["remaining"], 5)
 
+    def test_commandcode_cli_login(self):
+        self.write(".commandcode/auth.json", {"apiKey": "E2E_CMD_CLI"})
+        self.server.routes["/https/api.commandcode.ai/alpha/billing/credits"] = {
+            "credits": {"monthlyCredits": 49},
+            "windowLimits": {"weekly": {"used": 7, "cap": 35, "resetAt": 0}},
+        }
+        row = self.source("commandcode", "cli")
+        self.assertEqual(row["quotaWindows"][0]["pct"], 20)
+        self.assertEqual({r.header("authorization") for r in self.server.requests}, {"Bearer E2E_CMD_CLI"})
+
     def test_ollama_opencode_login(self):
         self.write("xdg-data/opencode/auth.json", {"ollama-cloud": {"type": "api", "key": "E2E_OPENCODE"}})
         response = self.write("ollama-response.json", {"limits": {"session": {"usage": 0.25}}})

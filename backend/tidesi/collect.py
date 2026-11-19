@@ -23,6 +23,7 @@ from .providers.coderabbit import get_coderabbit_usage
 from .providers.codex_rate_limits import get_codex_rate_limits
 from .providers.codex_rate_limits import remember as remember_codex_rate_limits
 from .providers.codex_stats import get_codex_stats
+from .providers.commandcode import get_commandcode_usage
 from .providers.copilot import get_copilot_usage
 from .providers.copilot_stats import get_copilot_stats
 from .providers.cursor import get_cursor_usage
@@ -308,6 +309,7 @@ _SIMPLE = {
     "kilo": get_kilo_usage,
     "coderabbit": get_coderabbit_usage,
     "zed": get_zed_usage,
+    "commandcode": get_commandcode_usage,
 }
 
 

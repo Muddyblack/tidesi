@@ -4,6 +4,7 @@ from .antigravity import normalize_antigravity
 from .claude import normalize_claude
 from .cline import normalize_cline
 from .coderabbit import normalize_coderabbit
+from .commandcode import normalize_commandcode
 from .copilot import normalize_copilot
 from .cursor import normalize_cursor
 from .deepseek import normalize_deepseek
@@ -52,6 +53,7 @@ _DISPATCH = {
     "kilo": normalize_kilo,
     "coderabbit": normalize_coderabbit,
     "zed": normalize_zed,
+    "commandcode": normalize_commandcode,
 }
 
 
