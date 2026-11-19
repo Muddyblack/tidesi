@@ -1,4 +1,4 @@
-"""JetBrains AI, Windsurf, Pi/OMP, Kilo, CodeRabbit and Zed, from synthetic files.
+"""JetBrains AI, Windsurf, Pi/OMP, Kilo, Command Code, CodeRabbit and Zed, from synthetic files.
 
 Nothing here needs an account, a key or the network: every collector reads a
 file planted under a throwaway HOME, or replays a recorded response.
@@ -14,7 +14,7 @@ from _support import IsolatedHomeTest
 from tidesi import detect
 from tidesi.http import HttpResult
 from tidesi.normalize import normalize
-from tidesi.providers import coderabbit, jetbrains, kilo, openrouter, pi, windsurf, zed
+from tidesi.providers import coderabbit, commandcode, jetbrains, kilo, openrouter, pi, windsurf, zed
 
 NOW = 1790841600
 OPTIONS = ".config/JetBrains/IntelliJIdea2025.3/options/AIAssistantQuotaManager2.xml"
@@ -336,16 +336,102 @@ class ZedTest(IsolatedHomeTest):
         self.assertEqual(zed._server_url(zed._settings()), "https://zed.example.com")
 
 
+class CommandCodeTest(IsolatedHomeTest):
+    CREDITS = {
+        "credits": {"monthlyCredits": 49, "purchasedCredits": 5, "freeCredits": 0},
+        "windowLimits": {
+            "limited": True,
+            "fiveHour": {"used": 3.5, "cap": 14, "resetAt": 0},
+            "weekly": {"used": 7, "cap": 35, "resetAt": 1791300000000},
+        },
+    }
+    SUBSCRIPTION = {
+        "data": {
+            "status": "active",
+            "planId": "individual-goat",
+            "currentPeriodStart": "2026-10-01T00:00:00.000Z",
+            "currentPeriodEnd": "2026-11-01T00:00:00.000Z",
+        }
+    }
+    SUMMARY = {"totalCost": 21, "totalMonthlyCredits": 21}
+
+    def collect(self, bodies=None, statuses=(), key="cmd-test-key"):
+        """Run the collector against canned bodies keyed by endpoint; `statuses` are the credits call's answers in order."""
+        bodies = {"credits": self.CREDITS, "subscriptions": self.SUBSCRIPTION, "summary": self.SUMMARY, **(bodies or {})}
+        self.seen, pending = [], list(statuses)
+
+        def fake(url, headers=None, **kw):
+            self.seen.append((url, headers["Authorization"]))
+            name = next(n for n in bodies if n in url)
+            status = pending.pop(0) if name == "credits" and pending else 200
+            body = bodies[name]
+            return HttpResult(status, body if isinstance(body, str) else json.dumps(body))
+
+        with (
+            mock.patch.dict(os.environ, {"COMMAND_CODE_API_KEY": key} if key else {}),
+            mock.patch.object(commandcode, "fetch_json", side_effect=fake),
+        ):
+            return commandcode.get_commandcode_usage()
+
+    def test_windows_monthly_credits_and_plan(self):
+        result = normalized("commandcode", self.collect())
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            [(w["key"], w["pct"], w["resetAt"]) for w in result["quotaWindows"]],
+            [("commandcode_5h", 25, 0), ("commandcode_weekly", 20, 1791300000), ("commandcode_monthly", 30, 1793491200)],
+        )
+        self.assertEqual(result["quotaWindows"][2]["detail"], "$21 / $70")
+        self.assertEqual(result["account"]["chips"][0]["text"], "GOAT")
+        self.assertEqual(result["historyValues"], {"cmd5": 25, "cmd7": 20, "cmdm": 30})
+        self.assertIn("since=2026-10-01T00%3A00%3A00.000Z", self.seen[2][0])
+
+    def test_pay_as_you_go_has_a_balance_and_no_windows(self):
+        usage = self.collect(
+            {
+                "credits": {"credits": {"monthlyCredits": 0, "purchasedCredits": 12}, "windowLimits": {"limited": False}},
+                "subscriptions": {"data": None},
+            }
+        )
+        result = normalized("commandcode", usage)
+        self.assertTrue(result["ok"])
+        self.assertEqual((result["quotaWindows"], result["summary"]["text"]), ([], "$12"))
+        self.assertEqual(len(self.seen), 2)  # no period, so no summary request
+
+    def test_plan_names_match_the_longest_prefix(self):
+        self.assertEqual(
+            [commandcode.plan_name(p) for p in ("individual-go-v1", "individual-goat", "INDIVIDUAL_PRO_V1", "new-plan", None)],
+            ["Go", "GOAT", "Pro", "new-plan", ""],
+        )
+
+    def test_cli_login_is_used_and_a_refused_key_falls_back_to_it(self):
+        self.write(".commandcode/auth.json", {"apiKey": "cli-token", "userName": "someone"})
+        self.assertEqual(self.collect(key="")["source"], "cli")
+        self.assertEqual(self.seen[0][1], "Bearer cli-token")
+        self.assertEqual(self.collect(statuses=[401, 200], key="stale")["source"], "cli")
+
+    def test_no_credential_http_errors_and_garbage(self):
+        self.assertEqual(commandcode.get_commandcode_usage(), {})
+        self.assertFalse(normalized("commandcode", {})["ok"])
+        self.assertEqual(self.collect(statuses=[403])["error"], "access denied")
+        self.assertEqual(self.collect(statuses=[0])["error"], "offline")
+        self.assertEqual(self.collect({"credits": "not json"})["error"], "unexpected response")
+        # The extras failing leaves the windows readable.
+        self.assertEqual(len(normalized("commandcode", self.collect({"subscriptions": "nope"}))["quotaWindows"]), 2)
+
+    def test_key_never_reaches_output(self):
+        self.assertNotIn("cmd-secret-value", json.dumps(normalized("commandcode", self.collect(key="cmd-secret-value"))))
+
+
 class DetectionTest(IsolatedHomeTest):
     @unittest.skipIf(os.name == "nt", "POSIX executable bits")
     def test_cli_providers_are_detected_and_ide_providers_stay_manual(self):
         bin_dir = self.home / "path-bin"
         bin_dir.mkdir()
-        for name in ("windsurf", "omp", "kilo", "coderabbit", "zed", "idea"):
+        for name in ("windsurf", "omp", "kilo", "coderabbit", "command-code", "cmd", "zed", "idea"):
             (bin_dir / name).write_text("", encoding="utf-8")
             (bin_dir / name).chmod(0o755)
         with mock.patch.dict(os.environ, {"PATH": str(bin_dir)}):
-            self.assertEqual(detect.detect_providers(), ["windsurf", "pi", "kilo", "coderabbit"])
+            self.assertEqual(detect.detect_providers(), ["windsurf", "pi", "kilo", "coderabbit", "commandcode"])
         self.assertTrue({"jetbrains", "zed"}.isdisjoint(detect.AUTO_DETECT_PROVIDERS))
 
 

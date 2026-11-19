@@ -1,0 +1,28 @@
+{
+  "id": "commandcode",
+  "now": 1790841600,
+  "inputs": {
+    "usage": {
+      "fiveHour": {
+        "used": 3.5,
+        "cap": 14,
+        "resetAt": 1790850000
+      },
+      "weekly": {
+        "used": 7,
+        "cap": 35,
+        "resetAt": 1791300000
+      },
+      "monthly": {
+        "used": 21,
+        "total": 70,
+        "remaining": 49,
+        "resetAt": 1793433600
+      },
+      "remaining": 49,
+      "extra": 5,
+      "plan": "GOAT",
+      "source": "cli"
+    }
+  }
+}

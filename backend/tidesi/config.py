@@ -38,6 +38,7 @@ ALL_PROVIDERS = [
     "kilo",
     "coderabbit",
     "zed",
+    "commandcode",
 ]
 
 # Legacy classification: what a missing toggle means in settings that have
@@ -59,6 +60,7 @@ OPT_IN_PROVIDERS = {
     "kilo",
     "coderabbit",
     "zed",
+    "commandcode",
     "ollama",
     "selfhosted",
 }
@@ -78,6 +80,7 @@ _KEY_EXPORTS = [
     ("WIDGET_DEEPSEEK_API_KEY", "deepseek"),
     ("WIDGET_MOONSHOT_API_KEY", "moonshot"),
     ("WIDGET_KILO_API_KEY", "kilo"),
+    ("WIDGET_COMMANDCODE_API_KEY", "commandcode"),
 ]
 
 

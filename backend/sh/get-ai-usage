@@ -25,7 +25,7 @@ set -u
 # --list and the missing-python3 fallback work without importing Python.
 # tests/translation-provider-parity.test.sh asserts this list equals the
 # canonical one, so drift fails a test instead of shipping silently.
-ALL_PROVIDERS="claude antigravity openai kiro mistral openrouter ollama selfhosted grok zai copilot deepseek kimi muse cursor cline opencode mimo junie jetbrains windsurf pi kilo coderabbit zed"
+ALL_PROVIDERS="claude antigravity openai kiro mistral openrouter ollama selfhosted grok zai copilot deepseek kimi muse cursor cline opencode mimo junie jetbrains windsurf pi kilo coderabbit zed commandcode"
 
 # Interpreter resolution lives in a sibling file shared with export-snapshot
 # and history-io. Keep the inline fallback: this script's whole contract is to

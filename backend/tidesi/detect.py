@@ -32,6 +32,7 @@ AUTO_DETECT_PROVIDERS = (
     "pi",
     "kilo",
     "coderabbit",
+    "commandcode",
 )
 
 # Command names each provider's tools install. A desktop application (see
@@ -53,6 +54,8 @@ _EXECUTABLES = {
     "pi": ("pi", "omp"),
     "kilo": ("kilo",),
     "coderabbit": ("coderabbit",),
+    # Not `cmd`: that alias is the Windows shell, and command-code is always installed beside it.
+    "commandcode": ("command-code", "commandcode"),
 }
 
 # Desktop application names: the .desktop id on Linux, the bundle name on
