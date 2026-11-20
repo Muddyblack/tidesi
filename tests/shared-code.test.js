@@ -91,6 +91,19 @@ test("reports a passed deadline and a missing one", () => {
     assert.equal(Format.countdown(null, now), "");
 });
 
+test("dates follow the locale's day/month order and clock", () => {
+    // Qt's ShortFormat patterns for a few locales.
+    assert.equal(Format.dayPattern("M/d/yy"), "MMM d");
+    assert.equal(Format.dayPattern("dd/MM/yyyy"), "d MMM");
+    assert.equal(Format.dayPattern("dd.MM.yy"), "d MMM");
+    assert.equal(Format.dayPattern("yyyy-MM-dd"), "MMM d");
+    assert.equal(Format.dayPattern(""), "MMM d");
+    assert.equal(Format.timePattern("h:mm AP"), "h:mm AP");
+    assert.equal(Format.timePattern("HH:mm"), "HH:mm");
+    assert.equal(Format.timePattern("HH:mm:ss t"), "HH:mm");
+    assert.equal(Format.timePattern(""), "HH:mm");
+});
+
 test("converts the contract's epoch seconds", () => {
     const now = 1785000000000;
     assert.equal(Format.countdownFromEpoch(1785003600, now), "1h 0m");

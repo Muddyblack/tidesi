@@ -1,4 +1,5 @@
 import QtQuick
+import ".."
 import "../theme" as Appearance
 import "Theme.js" as Theme
 import "../js/Tone.js" as Tone
@@ -20,6 +21,9 @@ Rectangle {
     height: implicitHeight
     radius: 8
     opacity: enabled ? 1 : 0.45
+    Accessible.role: Accessible.Button
+    Accessible.name: control.tip
+    Accessible.onPressAction: control.clicked()
     color: danger ? Qt.rgba(0.97, 0.44, 0.44, area.containsMouse ? 0.3 : 0.16) : area.containsMouse ? Tone.c(Appearance.Palette, "#26ffffff") : Tone.c(Appearance.Palette, Theme.hover)
 
     StudioIcon {
@@ -34,5 +38,11 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: control.clicked()
+    }
+    TipBubble {
+        visible: area.containsMouse && control.tip !== ""
+        y: control.height + 4
+        x: control.width - width
+        text: control.tip
     }
 }

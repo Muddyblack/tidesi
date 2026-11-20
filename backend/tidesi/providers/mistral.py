@@ -13,7 +13,7 @@ import os
 import re
 import tempfile
 
-from .. import paths
+from .. import accounts, paths
 from ..http import as_json, fetch_json, resolve_key
 from ..messages import tr
 from . import mistral_sessions
@@ -21,8 +21,14 @@ from . import mistral_sessions
 _CACHE_VERSION = 1
 
 
+def _vibe_home():
+    """Vibe's folder: ``$VIBE_HOME`` — the folder itself, as Vibe and the
+    session reader take it — else ``.vibe`` in the home folder."""
+    return os.environ.get("VIBE_HOME") or os.path.join(os.environ.get("HOME") or os.path.expanduser("~"), ".vibe")
+
+
 def _vibe_key():
-    path = os.path.expanduser("~/.vibe/.env")
+    path = os.path.join(_vibe_home(), ".env")
     if not os.path.isfile(path):
         return ""
     try:
@@ -36,8 +42,7 @@ def _vibe_key():
 
 
 def _vibe_session_dir():
-    home = os.environ.get("VIBE_HOME") or os.environ.get("HOME") or os.path.expanduser("~")
-    return os.path.join(home, ".vibe", "logs", "session")
+    return os.path.join(_vibe_home(), "logs", "session")
 
 
 def _cache_key(session_dir):
@@ -184,7 +189,7 @@ def _vibe_stats():
 
 
 def _vibe_model():
-    path = os.path.expanduser("~/.vibe/config.toml")
+    path = os.path.join(_vibe_home(), "config.toml")
     if not os.path.isfile(path):
         return ""
     try:
@@ -199,12 +204,17 @@ def _vibe_model():
 
 
 def get_mistral_usage():
-    api_key = resolve_key(
-        "WIDGET_MISTRAL_API_KEY",
-        "MISTRAL_API_KEY",
-        os.path.expanduser("~/.config/mistral/api-key"),
-        os.path.expanduser("~/.mistral/api-key"),
-        os.path.expanduser("~/.config/mistral.key"),
+    # An extra account (another VIBE_HOME) uses only the key in its own .env.
+    api_key = (
+        ""
+        if accounts.extra_account()
+        else resolve_key(
+            "WIDGET_MISTRAL_API_KEY",
+            "MISTRAL_API_KEY",
+            os.path.expanduser("~/.config/mistral/api-key"),
+            os.path.expanduser("~/.mistral/api-key"),
+            os.path.expanduser("~/.config/mistral.key"),
+        )
     )
     if not api_key:
         api_key = _vibe_key()

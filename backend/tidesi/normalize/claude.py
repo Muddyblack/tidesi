@@ -14,6 +14,7 @@ from ..contract import (
     unavailable_window,
     window_value,
 )
+from ..identity import mark
 from ..messages import lines, tr
 from ..stats import claude_stats
 
@@ -132,6 +133,18 @@ def _remote(sessions):
 
 
 def normalize_claude(raw):
+    """The Claude row, and who it belongs to (``identity``) when the login says."""
+    r = _normalize_claude(raw)
+    who = (raw.get("inputs") or {}).get("oauthAccount")
+    who = who if isinstance(who, dict) else {}
+    if who.get("accountUuid"):
+        # A person can be in several organisations, each with its own limits:
+        # the pair is the quota, not the person alone.
+        mark(r, f"{who['accountUuid']}:{who.get('organizationUuid') or ''}", who.get("emailAddress") or who.get("displayName") or "")
+    return r
+
+
+def _normalize_claude(raw):
     now = raw["now"]
     inp = raw["inputs"]
     creds = inp.get("credentials") or {}
@@ -150,7 +163,8 @@ def normalize_claude(raw):
         "hasAdminKey": has_admin,
         "subscriptionType": oauth.get("subscriptionType") or "",
         "rateLimitTier": oauth.get("rateLimitTier") or "",
-        "organizationUuid": creds.get("organizationUuid") or "",
+        # .credentials.json carries no organisation; .claude.json's account does.
+        "organizationUuid": creds.get("organizationUuid") or (inp.get("oauthAccount") or {}).get("organizationUuid") or "",
         "effortLevel": (inp.get("settings") or {}).get("effortLevel") or "",
         "autoDream": (inp.get("settings") or {}).get("autoDreamEnabled") is True,
         "organizationUsage": org,

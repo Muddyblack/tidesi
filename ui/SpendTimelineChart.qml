@@ -53,14 +53,17 @@ ColumnLayout {
     visible: chart.points.length > 0 && (chart.hasCost || chart.hasTokens)
 
     // "2026-09-14" -> "Sep 14". Axis ticks name the range without the reader
-    // having to hover, so the chart says *when* on its own.
+    // having to hover, so the chart says *when* on its own. The day is a
+    // calendar date, so it is made at local midnight: read as UTC midnight it
+    // was shown as the day before anywhere west of Greenwich.
     function axisDate(date) {
         if (typeof date !== "string" || date.length < 10)
             return "";
-        var parsed = new Date(date + "T00:00:00Z");
+        var parts = date.substring(0, 10).split("-");
+        var parsed = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
         if (isNaN(parsed.getTime()))
             return "";
-        return parsed.toLocaleDateString(Qt.locale(), "MMM d");
+        return chart.shell && typeof chart.shell.formatDay === "function" ? chart.shell.formatDay(parsed) : parsed.toLocaleDateString(Qt.locale(), "MMM d");
     }
 
     // Up to four evenly spaced ticks across the series, always including the

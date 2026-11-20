@@ -29,6 +29,10 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
+#: ui/AccountRow.qml ui/ProviderAccounts.qml
+msgid "Signed in as %1"
+msgstr ""
+
 #: ui/ActivityHeatmap.qml
 msgid "Activity"
 msgstr ""
@@ -447,6 +451,14 @@ msgstr ""
 
 #: ui/PopupHeader.qml
 msgid "Pinned on panel"
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "Another login already reads that folder. Pick a folder of its own."
+msgstr ""
+
+#: ui/ProviderAccounts.qml
+msgid "same account as %1"
 msgstr ""
 
 #: ui/ProviderAccounts.qml
@@ -1952,6 +1964,18 @@ msgstr ""
 
 #: backend/tidesi/http.py
 msgid "%1 HTTP %2"
+msgstr ""
+
+#: backend/tidesi/identity.py
+msgid "Its last reading here. A window that has reset since shows 0%."
+msgstr ""
+
+#: backend/tidesi/identity.py
+msgid "Another login"
+msgstr ""
+
+#: backend/tidesi/identity.py
+msgid "Other logins seen here"
 msgstr ""
 
 #: backend/tidesi/normalize/antigravity.py backend/tidesi/normalize/cursor.py

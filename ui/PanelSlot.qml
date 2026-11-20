@@ -16,6 +16,8 @@ RowLayout {
     // compact representation, the panel reads severity from the icon's colour,
     // so the logo contributes its shape and the backend its colour.
     property string iconSource: ""
+    // An extra account's initial, on the logo's corner.
+    property string badge: ""
     // The normal-level text colour; a host on a light panel passes its theme's.
     property color textColor: "#f8fafc"
     property color surfaceColor: "#10141c"
@@ -98,6 +100,29 @@ RowLayout {
                 ctx.globalCompositeOperation = "source-in";
                 ctx.fillStyle = slot.readableIcon;
                 ctx.fillRect(0, 0, 16, 16);
+            }
+        }
+
+        // Which account, when the provider has more than one on the panel.
+        Rectangle {
+            visible: slot.badge !== ""
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.rightMargin: -3
+            anchors.bottomMargin: -3
+            width: 10
+            height: 10
+            radius: 5
+            color: slot.surfaceColor
+            border.width: 1
+            border.color: slot.readableIcon
+
+            Text {
+                anchors.centerIn: parent
+                text: slot.badge
+                font.pixelSize: 7
+                font.bold: true
+                color: slot.readableIcon
             }
         }
     }

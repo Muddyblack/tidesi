@@ -17,6 +17,11 @@ ColumnLayout {
     property var translate: function (obj, key) {
         return obj[key] || "";
     }
+    // A row's reset date; the popup writes it in the user's language. The
+    // default is the backend's own text.
+    property var resetFormat: function (window) {
+        return window.resetText || "";
+    }
     // The hover text of a row, from its window; the popup supplies it.
     property var tooltip: function (window) {
         return "";
@@ -46,11 +51,11 @@ ColumnLayout {
             objectName: "quota-" + modelData.key
             label: rows.translate(modelData, "label")
             value: modelData.pct || 0
-            resetText: modelData.resetText || ""
+            resetText: rows.resetFormat(modelData)
             countdownText: rows.countdown(modelData.resetAt || 0)
             detail: rows.translate(modelData, "detail")
             note: rows.translate(modelData, "note")
-            barColor: modelData.color || (rows.activeId === "antigravity" && (modelData.key === "external" || modelData.key === "rest" || (modelData.label && modelData.label.indexOf("Claude") !== -1)) ? "#34a853" : rows.accent)
+            barColor: modelData.color || (String(rows.activeId).split("@")[0] === "antigravity" && (modelData.key === "external" || modelData.key === "rest" || (modelData.label && modelData.label.indexOf("Claude") !== -1)) ? "#34a853" : rows.accent)
             showMeter: modelData.showMeter !== false
             tooltipText: rows.tooltip(modelData)
             etaText: rows.eta(modelData)

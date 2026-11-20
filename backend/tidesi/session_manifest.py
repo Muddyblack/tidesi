@@ -251,7 +251,7 @@ def build_manifests() -> list[SessionManifest]:
     readers = dict(groups)
     for account in accounts.session_accounts():
         collector = accounts.SESSION_SOURCES[account["base"]][0]
-        with accounts.home_for(account["base"], account["home"]):
+        with accounts.home_for(account["base"], account["home"], account=account):
             records = readers[collector]()
         manifests.append(_fingerprint(account["id"], records + [pricing_record]))
     return manifests

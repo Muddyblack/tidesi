@@ -37,6 +37,7 @@ Rectangle {
                 out.push({
                     slot: slots[i],
                     icon: group.icon || "",
+                    badge: group.badge || "",
                     stale: group.stale === true,
                     groupStart: g > 0 && i === 0
                 });
@@ -133,6 +134,7 @@ Rectangle {
                     costText: modelData.slot.text !== undefined && modelData.slot.text !== null ? modelData.slot.text : ""
                     stale: modelData.stale
                     iconSource: modelData.icon
+                    badge: modelData.badge
                     textColor: pill.textColor
                     surfaceColor: pill.framed ? pill.color : (pill.textColor.hslLightness < 0.5 ? "#f4f6fa" : "#10141c")
                 }

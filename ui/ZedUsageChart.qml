@@ -184,13 +184,13 @@ ColumnLayout {
                 visible: chart.chartData.available
                 Text {
                     Layout.fillWidth: true
-                    text: usage.periodStart ? Qt.formatDateTime(new Date(usage.periodStart * 1000), "MMM d") : ""
+                    text: usage.periodStart ? shell.formatDay(usage.periodStart * 1000) : ""
                     color: chart.textColor
                     opacity: 0.55
                     font.pixelSize: 9
                 }
                 Text {
-                    text: usage.periodEnd ? shell.i18n("Resets %1", Qt.formatDateTime(new Date(usage.periodEnd * 1000), "MMM d")) : ""
+                    text: usage.periodEnd ? shell.i18n("Resets %1", shell.formatDay(usage.periodEnd * 1000)) : ""
                     color: chart.textColor
                     opacity: 0.55
                     font.pixelSize: 9

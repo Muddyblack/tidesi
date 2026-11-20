@@ -21,6 +21,12 @@ if TOOLS not in sys.path:
 
 FIXTURES = Path(REPO) / "tests" / "fixtures"
 
+# The logins registry (tidesi.identity) of an in-process build goes to a
+# scratch file, never the real one under the user's data folder. The E2E
+# children get a scrubbed environment of their own (see _e2e.py).
+if not os.environ.get("TIDESI_ACCOUNTS_FILE"):
+    os.environ["TIDESI_ACCOUNTS_FILE"] = os.path.join(tempfile.mkdtemp(prefix="tidesi-accounts-"), "accounts-seen.json")
+
 
 @dataclass(frozen=True, slots=True)
 class _SeedSource:

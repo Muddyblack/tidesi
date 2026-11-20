@@ -9,14 +9,14 @@ import datetime
 import os
 import time
 
-from . import config
+from . import accounts, config
 from .contract import STATUS_FEEDS, STATUS_PAGES
 from .http import as_json, fetch_json, http_error_text
 from .messages import tr
 from .pricing import get_pricing
 from .providers import claude_transcripts
 from .providers.antigravity import get_antigravity_usage
-from .providers.claude_credentials import claude_config_dir, get_claude_credentials
+from .providers.claude_credentials import claude_config_dir, get_claude_account, get_claude_credentials
 from .providers.claude_remote import remote_sessions
 from .providers.cline import get_cline_sessions
 from .providers.coderabbit import get_coderabbit_usage
@@ -148,6 +148,9 @@ def collect_claude(now):
         "now": now,
         "inputs": {
             "credentials": creds or {},
+            # Who the login belongs to: the account line names it, and its
+            # history is kept apart from another login's in the same folder.
+            "oauthAccount": get_claude_account() if token else {},
             "usage": usage,
             "usageError": usage_error,
             "orgUsage": org,
@@ -269,7 +272,14 @@ def collect_kimi(now):
     return {
         "id": "kimi",
         "now": now,
-        "inputs": {"usage": get_moonshot_balance() or {}, "codePlan": get_kimi_code_usage() or {}, "status": provider_status("kimi")},
+        # The Moonshot balance is read with the key of the environment or the
+        # settings, the main login's: an extra Kimi Code account shows only its
+        # own plan.
+        "inputs": {
+            "usage": {} if accounts.extra_account() else (get_moonshot_balance() or {}),
+            "codePlan": get_kimi_code_usage() or {},
+            "status": provider_status("kimi"),
+        },
     }
 
 

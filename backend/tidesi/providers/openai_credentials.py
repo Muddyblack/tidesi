@@ -1,7 +1,7 @@
 import base64
 import os
 
-from .. import keychain, paths
+from .. import accounts, keychain, paths
 from ..http import as_json, clean_credential, resolve_key
 
 # Where Codex puts auth.json's contents when it is configured to use the OS
@@ -54,7 +54,14 @@ def _codex_auth():
 
 
 def get_openai_credentials():
-    api_key = resolve_key(
+    # An extra account (another CODEX_HOME) keeps only the key in its own
+    # auth.json: the environment's would put the main org's bill on it too.
+    api_key = "" if accounts.extra_account() else _main_api_key()
+    return _credentials(api_key)
+
+
+def _main_api_key():
+    return resolve_key(
         "WIDGET_OPENAI_API_KEY",
         "OPENAI_API_KEY",
         # config_home() first so $XDG_CONFIG_HOME is honoured, as it is
@@ -65,6 +72,8 @@ def get_openai_credentials():
         os.path.expanduser("~/.openai/api-key"),
     )
 
+
+def _credentials(api_key):
     access_token = email = plan_type = org_id = account_id = auth_mode = ""
 
     codex_auth = _codex_auth()

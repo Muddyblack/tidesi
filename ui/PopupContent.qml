@@ -49,6 +49,7 @@ ColumnLayout {
         id: accountRow
         shell: content.shell
         account: shell.activeProvider() ? (shell.activeProvider().account || ({})) : ({})
+        login: shell.activeProvider() ? (shell.activeProvider().login || null) : null
         status: {
             var p = shell.activeProvider();
             return p && p.details ? (p.details.status || ({})) : ({});
@@ -206,7 +207,7 @@ ColumnLayout {
         }
 
         UsageRows {
-            visible: shell.activeId !== "mistral"
+            visible: Accounts.baseId(shell.activeId) !== "mistral"
             Layout.fillWidth: true
             // The last known values, shown at start until live ones arrive.
             opacity: shell.replaying ? 0.55 : 1
@@ -217,6 +218,11 @@ ColumnLayout {
             eta: shell.etaToFull
             delta: shell.periodDelta
             translate: shell.tr
+            // The reset as the user's language writes a date, not the
+            // backend's English one.
+            resetFormat: function (w) {
+                return w.resetAt > 0 ? shell.formatDayTime(w.resetAt * 1000) : (w.resetText || "");
+            }
             // Hover: the row's name, used and remaining share, detail and reset time.
             tooltip: function (w) {
                 var parts = [shell.tr(w, "label")];
@@ -232,7 +238,7 @@ ColumnLayout {
                 if (detail !== "")
                     parts.push(detail);
                 if ((w.resetAt || 0) > 0)
-                    parts.push(shell.i18n("Resets: %1", Qt.formatDateTime(new Date(w.resetAt * 1000), "MMM d, hh:mm")));
+                    parts.push(shell.i18n("Resets: %1", shell.formatDayTime(w.resetAt * 1000)));
                 return parts.join("\n");
             }
         }
@@ -248,9 +254,11 @@ ColumnLayout {
 
         MistralUsage {
             Layout.fillWidth: true
-            visible: shell.activeId === "mistral" && shell.activeProvider() && !shell.activeProvider().error
+            // Accounts.baseId: an extra Vibe account (mistral@work) has the panel too.
+            readonly property bool isMistral: Accounts.baseId(shell.activeId) === "mistral"
+            visible: isMistral && shell.activeProvider() && !shell.activeProvider().error
             shell: content.shell
-            vibe: shell.activeId === "mistral" && shell.activeProvider() ? (shell.activeProvider().details.vibe || ({})) : ({})
+            vibe: isMistral && shell.activeProvider() ? (shell.activeProvider().details.vibe || ({})) : ({})
         }
 
         // Muse is the only provider whose plan bars cost

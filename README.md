@@ -73,6 +73,7 @@ for the full-size view, including the native menu bar or taskbar.
 - **Popup view** — Segmented bars showing exact fill level with reset times and live countdowns that show "resetting..." when a window flips
 - **Usage chart** — Smooth, glowing area chart of historical usage with availability-aware 5H / 24H / 7D choices and hover-scrub
 - **Burn-rate ETA** — Estimates time to 100% from your recent trend (e.g. "↗ ~3h to 100%") for each available window
+- **Several accounts, history per account** — Give a provider a second login folder ("Claude · Work") from Settings, or just log in as someone else in the same folder: the history follows the account, not the folder, and the tab lists the other logins seen there with their last reading and when their quota frees up
 - **Period comparison** — Shows how much more or less you have used than by the same point last period (e.g. "+12% vs last week"): weekly and monthly windows against the same day of the one before, 5-hour sessions as today against yesterday by the same time
 - **Cost aggregation** — Combined API spend across Claude, OpenAI, and OpenRouter in the footer
 - **Model breakdown** — Usage per model for providers that expose it

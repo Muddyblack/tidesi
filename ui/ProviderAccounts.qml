@@ -25,8 +25,25 @@ Column {
     property string draftName: ""
     property string draftHome: ""
     property string problem: ""
+    // Why an account's folder edit was not taken, by account key.
+    property var rowProblems: ({})
     // A just-added account to show the sign-in step for, whatever its status.
     property string justAdded: ""
+    readonly property string folderTakenText: card.shell.i18n("Another login already reads that folder. Pick a folder of its own.")
+
+    // "Signed in as …" for a row whose backend result names its login, plus a
+    // note when it is the same account another tab already reads.
+    function loginText(snapshot) {
+        var login = snapshot && snapshot.login ? snapshot.login : null;
+        if (!login || (login.label || "") === "")
+            return "";
+        var text = card.shell.i18n("Signed in as %1", login.label);
+        if ((login.sameAs || "") !== "") {
+            var other = card.shell.providerById(login.sameAs);
+            text += " · " + card.shell.i18n("same account as %1", other ? other.label : login.sameAs);
+        }
+        return text;
+    }
 
     visible: spec !== null
     width: parent ? parent.width : implicitWidth
@@ -36,7 +53,7 @@ Column {
     function addAccount() {
         var result = Accounts.add(card.shell.settings, card.providerId, card.draftName, card.draftHome);
         if (result.error) {
-            card.problem = result.error === "limit" ? card.shell.i18n("That is the most accounts one provider can have.") : card.shell.i18n("Give the account a name.");
+            card.problem = result.error === "limit" ? card.shell.i18n("That is the most accounts one provider can have.") : result.error === "folder" ? card.folderTakenText : card.shell.i18n("Give the account a name.");
             return;
         }
         card.problem = "";
@@ -53,6 +70,14 @@ Column {
     }
 
     function changeAccount(key, changes) {
+        var problems = Object.assign({}, card.rowProblems);
+        delete problems[key];
+        if (changes.home !== undefined && Accounts.folderTaken(card.shell.settings, card.providerId, changes.home, key)) {
+            problems[key] = card.folderTakenText;
+            card.rowProblems = problems;
+            return;
+        }
+        card.rowProblems = problems;
         card.shell.setSetting2("accounts", Accounts.update(card.shell.settings, card.providerId, key, changes).accounts);
         card.shell.refresh();
     }
@@ -62,8 +87,9 @@ Column {
         caption: card.shell.i18n("Sign in to more than one account. Each one gets its own tab next to this provider's.")
 
         StudioRow {
+            readonly property string signedIn: card.loginText(card.shell.providerById(card.providerId))
             label: card.shell.i18n("Main login")
-            desc: card.shell.i18n("The account this provider already uses. Nothing to set up.")
+            desc: signedIn !== "" ? signedIn : card.shell.i18n("The account this provider already uses. Nothing to set up.")
         }
 
         Repeater {
@@ -78,7 +104,12 @@ Column {
                 readonly property bool signedIn: snapshot !== null && snapshot.ok === true
 
                 label: modelData.label
-                desc: signedIn ? card.shell.i18n("Working") : snapshot === null ? card.shell.i18n("Waiting for data") : String(snapshot.error || "") !== "" ? String(snapshot.error) : card.shell.i18n("Not signed in yet")
+                desc: {
+                    if (!signedIn)
+                        return snapshot === null ? card.shell.i18n("Waiting for data") : String(snapshot.error || "") !== "" ? String(snapshot.error) : card.shell.i18n("Not signed in yet");
+                    var who = card.loginText(snapshot);
+                    return who !== "" ? who : card.shell.i18n("Working");
+                }
                 full: true
 
                 Column {
@@ -88,7 +119,7 @@ Column {
                     Row {
                         spacing: 8
                         StudioField {
-                            width: Math.round((parent.parent.width - 8 - 36) * 0.4)
+                            width: Math.floor((parent.parent.width - 16 - 30) * 0.4)
                             value: accountRow.modelData.label
                             placeholder: card.shell.i18n("Name")
                             onCommitted: v => card.changeAccount(accountRow.modelData.key, {
@@ -96,7 +127,7 @@ Column {
                                 })
                         }
                         StudioField {
-                            width: Math.round((parent.parent.width - 8 - 36) * 0.6)
+                            width: Math.floor((parent.parent.width - 16 - 30) * 0.6)
                             mono: true
                             value: accountRow.modelData.home
                             placeholder: card.shell.i18n("Folder")
@@ -112,11 +143,21 @@ Column {
                         }
                     }
 
+                    Text {
+                        readonly property string message: card.rowProblems[accountRow.modelData.key] || ""
+                        visible: message !== ""
+                        width: parent.width
+                        text: message
+                        wrapMode: Text.WordWrap
+                        color: Tone.ink(Appearance.Palette, Theme.tone("bad"))
+                        font.pixelSize: 10
+                    }
+
                     // The one step the widget cannot do for the user: signing in.
                     SignInStep {
                         visible: !accountRow.signedIn || card.justAdded === accountRow.modelData.id
                         width: parent.width
-                        command: Accounts.loginCommand(card.providerId, accountRow.modelData.home)
+                        command: Accounts.loginCommand(card.providerId, accountRow.modelData.home, Qt.platform.os)
                         shell: card.shell
                     }
                 }

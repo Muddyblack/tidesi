@@ -1205,7 +1205,7 @@ def _collect_account(account):
     """The rows of one extra account: its provider's collector, run with the
     provider's home variable pointed at the account's folder."""
     collector, row_provider = accounts.SESSION_SOURCES[account["base"]]
-    with accounts.home_for(account["base"], account["home"]):
+    with accounts.home_for(account["base"], account["home"], account=account):
         _ACCOUNT.current = {**account, "row_provider": row_provider}
         try:
             return globals()[SESSION_COLLECTORS[collector]](include_all=True)
@@ -1372,7 +1372,7 @@ def _account_targets(account):
     name = _TARGET_COLLECTORS.get(account["base"])
     if name is None:
         return []
-    with accounts.home_for(account["base"], account["home"]):
+    with accounts.home_for(account["base"], account["home"], account=account):
         found = globals()[name]()
     return [{**target, "provider": account["id"], "launchEnv": accounts.launch_env(account)} for target in found]
 

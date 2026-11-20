@@ -13,16 +13,17 @@ var SEPARATOR = "@";
 var MAX_PER_PROVIDER = 8;
 
 // Mirrors HOME_ENV in tidesi/accounts.py (a test keeps them equal): the
-// variable that points a provider's tool at a login folder, a default folder to
-// suggest, and the command that signs in there when there is a short one.
+// variable that points a provider's tool at a login folder, the main login's
+// folder, a default folder to suggest, and the command that signs in there when
+// there is a short one. Kiro and Antigravity are not here: their quota is read
+// from the IDE, never from a login folder, so a second account of either would
+// show the main one's numbers.
 var HOMES = {
-    claude: { env: "CLAUDE_CONFIG_DIR", dir: "~/.claude-work", login: "claude" },
-    openai: { env: "CODEX_HOME", dir: "~/.codex-work", login: "codex login" },
-    grok: { env: "GROK_HOME", dir: "~/.grok-work", login: "grok" },
-    kimi: { env: "KIMI_CODE_HOME", dir: "~/.kimi-code-work", login: "" },
-    mistral: { env: "VIBE_HOME", dir: "~/.vibe-work", login: "vibe" },
-    kiro: { env: "KIRO_HOME", dir: "~/.kiro-work", login: "" },
-    antigravity: { env: "ANTIGRAVITY_HOME", dir: "~/.gemini-work", login: "" }
+    claude: { env: "CLAUDE_CONFIG_DIR", main: "~/.claude", dir: "~/.claude-work", login: "claude" },
+    openai: { env: "CODEX_HOME", main: "~/.codex", dir: "~/.codex-work", login: "codex login" },
+    grok: { env: "GROK_HOME", main: "~/.grok", dir: "~/.grok-work", login: "grok" },
+    kimi: { env: "KIMI_CODE_HOME", main: "~/.kimi-code", dir: "~/.kimi-code-work", login: "" },
+    mistral: { env: "VIBE_HOME", main: "~/.vibe", dir: "~/.vibe-work", login: "vibe" }
 };
 
 // "claude" for both "claude" and "claude@work".
@@ -74,18 +75,50 @@ function defaultHome(providerId, name) {
 // is written as $HOME: a shell expands "~" only at the start of a word, so
 // VAR=~/dir would hand the tool a folder literally named "~" in fish and in any
 // quoted form, while $HOME is expanded everywhere.
-function loginCommand(providerId, home) {
+//
+// `os` is Qt.platform.os. Windows has no VAR=value prefix: PowerShell sets the
+// variable, runs the tool and clears it again, so the window it was typed in
+// does not go on signing that folder in.
+function loginCommand(providerId, home, os) {
     var spec = HOMES[providerId];
     if (!spec)
         return "";
+    var tool = spec.login || "<" + providerId + ">";
+    if (os === "windows") {
+        var win = String(home).replace(/^~(?=[\/\\]|$)/, "$HOME").replace(/\//g, "\\");
+        return "$env:" + spec.env + " = \"" + win + "\"; " + tool + "; Remove-Item Env:" + spec.env;
+    }
     var folder = String(home).replace(/^~(?=\/|$)/, "$HOME");
     if (/\s/.test(folder))
         folder = "\"" + folder + "\"";
-    return spec.env + "=" + folder + " " + (spec.login || "<" + providerId + ">");
+    return spec.env + "=" + folder + " " + tool;
+}
+
+// A folder as something to compare: "~", "$HOME" and "%USERPROFILE%" alike,
+// one kind of slash, no trailing one, and case folded (on macOS and Windows
+// the case of a folder name does not make it another folder).
+function folderKey(home) {
+    return String(home || "").trim().replace(/^(\$HOME|%USERPROFILE%|\$env:USERPROFILE)(?=[\/\\]|$)/i, "~")
+        .replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/(.)\/+$/, "$1").toLowerCase();
+}
+
+// Whether `home` is a folder the main login or another account of `providerId`
+// already reads (`exceptKey`: the account being edited). Read twice, its
+// sessions and spend would count twice.
+function folderTaken(settings, providerId, home, exceptKey) {
+    var spec = HOMES[providerId];
+    var key = folderKey(home);
+    if (!spec || key === "")
+        return false;
+    if (key === folderKey(spec.main))
+        return true;
+    return list(settings, providerId).some(function (account) {
+        return account.key !== exceptKey && folderKey(account.home) === key;
+    });
 }
 
 // `settings` with a new account added, or the reason it cannot be:
-//   { settings, id }  or  { error: "name" | "limit" | "unsupported" }
+//   { settings, id }  or  { error: "name" | "limit" | "folder" | "unsupported" }
 // The key comes from the name; a name that is already taken gets "-2", "-3"….
 // A blank folder becomes defaultHome().
 function add(settings, providerId, label, home) {
@@ -107,6 +140,8 @@ function add(settings, providerId, label, home) {
     for (var n = 2; taken.indexOf(key) !== -1; n++)
         key = base.slice(0, 32 - String(n).length - 1) + "-" + n;
     var folder = String(home || "").trim() || defaultHome(providerId, key);
+    if (folderTaken(settings, providerId, folder, ""))
+        return { error: "folder" };
     entries.push({ id: key, label: name, home: folder });
     next.accounts[providerId] = entries;
     return { settings: next, id: providerId + SEPARATOR + key };
@@ -129,8 +164,11 @@ function remove(settings, providerId, key) {
     return next;
 }
 
-// `settings` with one account's name or folder changed.
+// `settings` with one account's name or folder changed. A folder another login
+// already reads is not taken (see folderTaken; the page says why).
 function update(settings, providerId, key, changes) {
+    if (changes.home !== undefined && folderTaken(settings, providerId, changes.home, key))
+        changes = { label: changes.label };
     var next = JSON.parse(JSON.stringify(settings || {}));
     var entries = next.accounts && Array.isArray(next.accounts[providerId]) ? next.accounts[providerId] : [];
     entries.forEach(function (entry) {

@@ -12,6 +12,9 @@ RowLayout {
 
     property var shell
     property var account: ({})
+    // The login the row read ({key, label, sameAs}), when the provider names it.
+    property var login: null
+    readonly property string loginLabel: login && login.label ? String(login.label) : ""
     property var status: ({})
     property color accent: "#cc785c"
 
@@ -53,6 +56,7 @@ RowLayout {
     }
 
     Text {
+        id: accountName
         visible: row.hasAccount
         text: row.shell ? row.shell.tr(row.account, "name") : ""
         font.pixelSize: 10
@@ -60,6 +64,18 @@ RowLayout {
         color: Tone.c(Appearance.Palette, "#f8fafc")
         elide: Text.ElideRight
         Layout.fillWidth: true
+
+        // Which account this is, for a line that names a plan or a tier.
+        HoverHandler {
+            id: nameHover
+            enabled: row.loginLabel !== "" && row.shell !== null && row.shell !== undefined
+        }
+        TipBubble {
+            visible: nameHover.hovered
+            y: accountName.height + 5
+            x: 0
+            text: row.shell ? row.shell.i18n("Signed in as %1", row.loginLabel) : row.loginLabel
+        }
     }
 
     Item {

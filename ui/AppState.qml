@@ -83,6 +83,22 @@ Item {
     function i18n(text) {
         return I18n.i18n.apply(null, [root.catalog].concat(Array.prototype.slice.call(arguments)));
     }
+
+    // Dates and times as the chosen language writes them (the system's when
+    // none is chosen): month names, day/month order and 12- or 24-hour clock.
+    // `t` is a Date or epoch milliseconds.
+    readonly property var dateLocale: Qt.locale(root.language)
+    readonly property string dayFormat: Format.dayPattern(root.dateLocale.dateFormat(Locale.ShortFormat))
+    readonly property string timeFormat: Format.timePattern(root.dateLocale.timeFormat(Locale.ShortFormat))
+    function formatDay(t) {
+        return new Date(t).toLocaleString(root.dateLocale, root.dayFormat);
+    }
+    function formatTime(t) {
+        return new Date(t).toLocaleString(root.dateLocale, root.timeFormat);
+    }
+    function formatDayTime(t) {
+        return root.formatDay(t) + ", " + root.formatTime(t);
+    }
     function i18nc(context, text) {
         return I18n.i18nc.apply(null, [root.catalog].concat(Array.prototype.slice.call(arguments)));
     }
@@ -505,6 +521,13 @@ Item {
         return root.unpinnedPillProvider();
     }
 
+    // An extra account's initial ("W" for Claude · Work), drawn on its logo in
+    // the panel so two accounts of one provider side by side can be told apart.
+    function accountBadge(p) {
+        var label = p && p.profile ? String(p.profile.label || "") : "";
+        return label !== "" ? label.charAt(0).toUpperCase() : "";
+    }
+
     // One group per provider the panel shows, for PanelPill.groups.
     readonly property var panelGroups: {
         var groups = [];
@@ -516,6 +539,7 @@ Item {
             groups.push({
                 id: p.id,
                 icon: root.providerIcon(p) || root.iconSource,
+                badge: root.accountBadge(p),
                 slots: root.slotsFor(p).length > 0 ? root.slotsFor(p) : [root.noDataSlot()],
                 stale: root.errorText !== "" || !!p.stale || root.replaying,
                 hasError: (p.error || "") !== ""

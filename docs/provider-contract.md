@@ -477,15 +477,32 @@ the id `<provider>@<key>` and the label `<Provider> · <label>`. They carry the
 same fields as the provider they are based on plus
 `profile: { base, label, home }`, and are on exactly when the base provider is.
 Use `profile.base` to pick artwork and parsing, never the prefix of `id`.
-For providers with local session files (`claude`, `openai`, `grok`, `antigravity`, `mistral`) the session rows of an
+For providers with local session files (`claude`, `openai`, `grok`, `mistral`) the session rows of an
 extra account carry its id as their `provider` (`claude@work`) and `sessionName` ends in ` · <label>`. Its id is also
 a session source id for `--source`, listed in `sources` with the label `<Provider> · <label>`, and the key of its
 entry in `localSpend`, so the account is totalled on its own and in the overall sum.
 An extra account records its own usage history: every key of its `historyValues`, the `key` of each of its
 `chartWindows` and the `historyKey` of its quota rows end in `@<key>` (`s@work`), so its chart, burn-rate ETA and
 period comparison read that login alone. Series keys are opaque to the frontends; one that needs the provider's own
-name for a series takes the part before the `@`.
+name for a series takes the part before the `@` or `#`.
 The base provider's own row is unchanged and has no `profile`.
+An extra account reads only its own folder: keys from the environment or the settings file are the main login's, so
+an extra row never repeats the main login's organisation usage or balance. Each of its `slots[].tooltip` starts with a
+line naming the row (`Claude · Work`), so a tray or panel tooltip says which login a value is.
+
+### Logins
+
+A normalizer that can tell who is signed in says so as `identity: { id, label }` (Claude: `oauthAccount` in
+`.claude.json`; Codex: the ChatGPT `account_id`; Grok: user and team; Antigravity and Muse: the email). Only a real
+account id counts, never a token or key. The envelope never carries it: the backend (`tidesi.identity`) replaces it
+with the row's `login: { key, label, sameAs }`, where `key` is a short digest, `label` what to call the login and
+`sameAs` the id of another row reading the same login right now ("" otherwise). It also picks the row's history
+series by login rather than by folder: the first login seen in a tab keeps the tab's series (`s`, `s@work`); any other
+records under `<key>#<digest>` (`s#3f9a1c2b`) in `historyValues`, `chartWindows[].key` and `quotaWindows[].historyKey`;
+a login seen before gets its series back in any tab. A row that names no login records as the login last seen in its
+tab did. When other logins were seen in the tab, the row ends its `sections` with a `bars` section, "Other logins
+seen here": a group per login (`label` its name, `pct` its highest window, `resetAt` the soonest reset of a window
+still in use) with a row per window, at 0% once that window's reset has passed.
 
 ### Credentials
 

@@ -193,9 +193,12 @@ to the provider toggles):
 | `openai` (Codex) | `CODEX_HOME` |
 | `grok` | `GROK_HOME` |
 | `kimi` | `KIMI_CODE_HOME` |
-| `mistral` (Vibe) | `VIBE_HOME` |
-| `kiro` | `KIRO_HOME` |
-| `antigravity` | `ANTIGRAVITY_HOME` |
+| `mistral` (Vibe) | `VIBE_HOME` (the Vibe folder itself, like `~/.vibe`) |
+
+Kiro and Antigravity cannot have extra accounts: their quota is read from the IDE (its database, or the
+running app), never from a login folder, so a second one would only repeat the main login's numbers under
+another name. An entry for either, or for a folder the main login or another account already reads, is
+ignored, and the settings page refuses such a folder as it is typed.
 
 Each entry is a provider of its own with the id `<provider>@<id>`, such as `claude@work`, shown as
 "Claude · Work". It is on whenever the provider it belongs to is on, and
@@ -203,7 +206,14 @@ Each entry is a provider of its own with the id `<provider>@<id>`, such as `clau
 stored: tokens stay where the tool wrote them, and the widget never copies or refreshes them. A leading `~` in
 `home` is expanded before the tool is pointed at it, as a shell would. That matters on macOS, where Claude Code names
 its Keychain item after a digest of the folder it is given: sign in with `CLAUDE_CONFIG_DIR=$HOME/.claude-work`
-(the settings page shows exactly that), not with a literal `~`.
+(the settings page shows exactly that), not with a literal `~`. On Windows the page shows the PowerShell form,
+`$env:CLAUDE_CONFIG_DIR = "$HOME\.claude-work"; claude; Remove-Item Env:CLAUDE_CONFIG_DIR`.
+
+An extra account reads only what is in its folder. Keys from the environment or the settings file (a Claude admin
+key, an OpenAI or xAI API key, the Moonshot balance key, a Mistral key) belong to the main login: read again for
+the account they would show the same organisation bill in two rows and count it twice in the Spend total. An
+account can keep keys of its own in its folder: `admin-api-key` in a Claude folder, `OPENAI_API_KEY` in a Codex
+`auth.json`, `MISTRAL_API_KEY` in a Vibe `.env`.
 
 Providers that identify an account by an API key (OpenRouter, Mistral API, Z.AI…) are not covered:
 they have no login directory to repoint.
@@ -213,7 +223,35 @@ read from their own folder too, for the providers that keep session files there:
 Antigravity and Mistral. Each account is a source of its own in the Sessions filter ("Claude Code · Work"), its
 sessions are labelled with it, **Spend** has a row and a chart for it next to the provider's, and the totals include
 it. Resuming one of its sessions from the list signs in as that account: the terminal is started with the provider's
-folder variable set to the account's folder. Providers in the table without session files (Kimi, Kiro) show usage only.
+folder variable set to the account's folder. Kimi has no session files and shows usage only.
+
+### Switching accounts in one folder
+
+You do not need a second folder to switch accounts: log out and back in as someone else in `~/.claude`, and the
+history follows the account, not the folder. Where a provider says who is signed in, each login records into
+history series of its own, so the chart, the "~3h to 100%" ETA and the "+12% vs last week" comparison read that
+account alone instead of a sawtooth of two:
+
+| provider | the login is |
+| --- | --- |
+| Claude | `oauthAccount` in Claude Code's `.claude.json` (account and organisation) |
+| Codex (`openai`) | the ChatGPT account (`account_id`) of the Codex login |
+| Grok | the xAI user and team |
+| Antigravity, Muse | the signed-in email |
+
+The first login ever seen in a tab keeps the history that tab had, so nothing recorded before is lost; a login
+coming back gets its own history back, whichever tab it shows up in, and the same account signed in in two folders
+records into one series (Settings → the provider → Accounts says "same account as …"). A token or API key is never
+used to tell logins apart: it changes when it is renewed or rotated on the same account. Providers that cannot
+say who is signed in keep recording as before.
+
+The provider's tab lists the other logins seen in it under **Other logins seen here**, with each one's last reading
+and when its quota frees up: a window whose reset has passed since shows 0%. Settings → the provider → Accounts says
+who each login is ("Signed in as …"), and hovering the account line under the tabs says it too.
+
+The list is `accounts-seen.json`, next to the usage history (readable by you only). It stores a short digest of
+each account id, never the id or any token, the label the provider showed (an email) and the last reading. A
+login unseen for 180 days is forgotten, and at most 64 are kept per provider.
 
 ## Antigravity
 

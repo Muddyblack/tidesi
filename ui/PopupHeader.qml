@@ -101,8 +101,15 @@ ColumnLayout {
         }
 
         ColumnLayout {
+            // The room left beside the buttons, and no more: a long title (an
+            // account's name, a longer language) elides instead of pushing the
+            // save and settings buttons out of the header.
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 0
             Text {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
                 text: {
                     if (shell.settingsSaveError)
                         return shell.i18n("Settings not saved");
@@ -118,6 +125,8 @@ ColumnLayout {
                 color: shell.settingsSaveError ? shell.dangerColor : Tone.c(Appearance.Palette, "#f8fafc")
             }
             Text {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
                 visible: shell.showSettings || shell.activeIsFeature || !!shell.settingsSaveError
                 text: {
                     if (shell.settingsSaveError)
@@ -163,10 +172,6 @@ ColumnLayout {
                 opacity: shell.settingsSaveError ? 1 : 0.5
                 color: shell.settingsSaveError ? shell.dangerColor : Tone.c(Appearance.Palette, "#f8fafc")
             }
-        }
-
-        Item {
-            Layout.fillWidth: true
         }
 
         // Save a picture of the popup (PNG or SVG, into Downloads).
@@ -368,6 +373,10 @@ ColumnLayout {
                 required property int index
                 readonly property bool isActive: shell.activeId === modelData.id
                 readonly property bool labelFits: width > 62
+                // An extra account's tab ("Claude · Work") is named by its account
+                // alone: the logo already says Claude, and the shared start of
+                // the two names is what an elided tab would keep.
+                readonly property string shortLabel: modelData.profile && (modelData.profile.label || "") !== "" ? modelData.profile.label : (modelData.label || "")
                 readonly property bool canPin: !modelData.feature && typeof shell.togglePin === "function"
                 readonly property bool pinned: canPin && typeof shell.isPinned === "function" && shell.isPinned(modelData.id)
 
@@ -467,7 +476,7 @@ ColumnLayout {
                             visible: tabCell.labelFits
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignVCenter
-                            text: tabCell.modelData.label
+                            text: tabCell.shortLabel
                             elide: Text.ElideRight
                             horizontalAlignment: Text.AlignHCenter
                             font.pixelSize: 12
@@ -517,9 +526,9 @@ ColumnLayout {
                     }
                 }
 
-                // The name of an icon-only tab.
+                // The name of an icon-only tab, or the full name of an account's.
                 TipBubble {
-                    visible: !tabCell.labelFits && tabMouse.containsMouse
+                    visible: (!tabCell.labelFits || tabCell.shortLabel !== (tabCell.modelData.label || "")) && tabMouse.containsMouse
                     y: tabCell.height + 4
                     x: (tabCell.width - width) / 2
                     text: (tabCell.modelData.label || "") + (tabCell.pinned ? "  ·  " + shell.i18n("Pinned on panel") : "")

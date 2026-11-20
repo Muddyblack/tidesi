@@ -10,7 +10,7 @@ const load = (name, exports) => {
     const source = fs.readFileSync(path.join(__dirname, "..", "ui", "js", name), "utf8").replace(/^\.pragma library/m, "");
     return vm.runInNewContext(`${source}; ({ ${exports} })`);
 };
-const Accounts = load("Accounts.js", "HOMES, baseId, isAccount, supports, list, slug, defaultHome, loginCommand, add, remove, update");
+const Accounts = load("Accounts.js", "HOMES, baseId, isAccount, supports, list, slug, defaultHome, loginCommand, folderKey, folderTaken, add, remove, update");
 const Registry = load("ProviderRegistry.js", "enabled");
 const Order = load("ProviderOrder.js", "sort");
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -85,8 +85,38 @@ test("the sign-in command points the tool at the folder", () => {
     assert.equal(Accounts.loginCommand("claude", "/srv/claude"), "CLAUDE_CONFIG_DIR=/srv/claude claude");
     assert.equal(Accounts.loginCommand("openai", "/srv/my codex"), 'CODEX_HOME="/srv/my codex" codex login');
     assert.equal(Accounts.loginCommand("openai", "~/my codex"), 'CODEX_HOME="$HOME/my codex" codex login');
-    assert.equal(Accounts.loginCommand("kiro", "/k"), "KIRO_HOME=/k <kiro>");
+    assert.equal(Accounts.loginCommand("kimi", "/k"), "KIMI_CODE_HOME=/k <kimi>");
     assert.equal(Accounts.loginCommand("zed", "/k"), "");
+});
+
+test("on Windows the sign-in command is PowerShell, and clears the variable after", () => {
+    assert.equal(
+        Accounts.loginCommand("claude", "~/.claude-work", "windows"),
+        '$env:CLAUDE_CONFIG_DIR = "$HOME\\.claude-work"; claude; Remove-Item Env:CLAUDE_CONFIG_DIR'
+    );
+    assert.equal(
+        Accounts.loginCommand("openai", "D:/logins/my codex", "windows"),
+        '$env:CODEX_HOME = "D:\\logins\\my codex"; codex login; Remove-Item Env:CODEX_HOME'
+    );
+});
+
+test("a folder the main login or another account reads is refused", () => {
+    let settings = Accounts.add({}, "claude", "Work", "").settings;
+    // The main login's folder, however it is written.
+    assert.deepEqual(plain(Accounts.add(settings, "claude", "Again", "$HOME/.claude/")), { error: "folder" });
+    // Another account's.
+    assert.deepEqual(plain(Accounts.add(settings, "claude", "Again", "~/.Claude-Work")), { error: "folder" });
+    assert.equal(Accounts.folderTaken(settings, "claude", "~/.claude-work", "work"), false);
+    // An edit to a taken folder keeps the folder it had, and still renames.
+    settings = Accounts.add(settings, "claude", "Home", "~/.claude-home").settings;
+    settings = Accounts.update(settings, "claude", "home", { label: "House", home: "~/.claude-work" });
+    assert.deepEqual(plain(Accounts.list(settings, "claude"))[1], { key: "home", id: "claude@home", label: "House", home: "~/.claude-home" });
+    assert.equal(Accounts.folderKey("%USERPROFILE%\\.Codex\\"), "~/.codex");
+});
+
+test("kiro and antigravity have no extra accounts: their quota is not read from a folder", () => {
+    assert.equal(Accounts.supports("kiro"), false);
+    assert.equal(Accounts.supports("antigravity"), false);
 });
 
 test("an account tab is on exactly when its provider is", () => {

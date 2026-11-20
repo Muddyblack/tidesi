@@ -15,7 +15,7 @@ import hashlib
 import os
 import time
 
-from .. import keychain, paths
+from .. import accounts, keychain, paths
 from ..http import as_json, resolve_key
 
 # The generic-password item Claude Code writes on macOS, in the login keychain
@@ -27,6 +27,44 @@ def claude_config_dir():
     """``$CLAUDE_CONFIG_DIR`` when set, else ``~/.claude`` — the directory
     Claude Code keeps its login, settings and projects under."""
     return os.path.expanduser(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude")
+
+
+def claude_global_config_path():
+    """Claude Code's own settings file, which names the signed-in account
+    (``oauthAccount``): ``.claude.json`` in ``$CLAUDE_CONFIG_DIR`` when that is
+    set, else in the home folder — not inside ``~/.claude``."""
+    custom = os.environ.get("CLAUDE_CONFIG_DIR")
+    return os.path.join(os.path.expanduser(custom) if custom else os.path.expanduser("~"), ".claude.json")
+
+
+# The fields of ``oauthAccount`` worth reading; the file holds a great deal
+# more (projects, tips, history) that has no business in an envelope.
+_ACCOUNT_FIELDS = ("accountUuid", "emailAddress", "organizationUuid", "organizationName", "displayName")
+
+
+def get_claude_account():
+    """Who the login in this config directory belongs to, from ``.claude.json``:
+    ``{accountUuid, emailAddress, organizationUuid, organizationName,
+    displayName}`` (the ones present), or {} when it does not say.
+
+    Read, never written. Claude Code updates the file whenever it signs in,
+    so it changes with the login in ``.credentials.json``."""
+    candidates = [claude_global_config_path()]
+    if not os.environ.get("CLAUDE_CONFIG_DIR"):
+        # Some installs keep it inside the config directory instead.
+        candidates.append(os.path.join(claude_config_dir(), ".claude.json"))
+    for path in candidates:
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                parsed = as_json(f.read())
+        except OSError:
+            continue
+        account = parsed.get("oauthAccount") if isinstance(parsed, dict) else None
+        if isinstance(account, dict):
+            return {k: str(account[k]) for k in _ACCOUNT_FIELDS if isinstance(account.get(k), str) and account[k]}
+    return {}
 
 
 def keychain_service():
@@ -112,7 +150,25 @@ def _pick(candidates):
 def get_claude_credentials():
     oauth_creds = _pick([_keychain_credentials(), _file_credentials()])
 
-    admin_key = resolve_key(
+    if accounts.extra_account():
+        # The environment's and the settings' key belong to the main login: read
+        # again here, the same organisation bill would show (and be totalled)
+        # twice. An extra account has the key in its own folder or none.
+        admin_key = resolve_key((), (), os.path.join(claude_config_dir(), "admin-api-key"))
+    else:
+        admin_key = _main_admin_key()
+
+    if oauth_creds:
+        if admin_key:
+            return {**oauth_creds, "claudeAdminApiKey": admin_key}
+        return oauth_creds
+    if admin_key:
+        return {"claudeAdminApiKey": admin_key}
+    return {}
+
+
+def _main_admin_key():
+    return resolve_key(
         "WIDGET_CLAUDE_ADMIN_KEY",
         "CLAUDE_ADMIN_API_KEY",
         # paths.config_home() first so $XDG_CONFIG_HOME is honoured, as it is
@@ -122,11 +178,3 @@ def get_claude_credentials():
         os.path.expanduser("~/.config/claude-admin-api-key"),
         os.path.join(claude_config_dir(), "admin-api-key"),
     )
-
-    if oauth_creds:
-        if admin_key:
-            return {**oauth_creds, "claudeAdminApiKey": admin_key}
-        return oauth_creds
-    if admin_key:
-        return {"claudeAdminApiKey": admin_key}
-    return {}

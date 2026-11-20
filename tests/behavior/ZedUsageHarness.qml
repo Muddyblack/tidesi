@@ -25,6 +25,10 @@ Window {
                 text = text.replace("%" + i, arguments[i]);
             return text;
         }
+        // AppState writes dates in the user's language; the harness in English.
+        function formatDay(t) {
+            return new Date(t).toLocaleString(Qt.locale("en_US"), "MMM d");
+        }
     }
     Widgets.ZedUsageChart {
         id: chart

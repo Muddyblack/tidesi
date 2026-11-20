@@ -28,6 +28,10 @@ msgstr "Actualisation"
 msgid "Settings"
 msgstr "Paramètres"
 
+#: ui/AccountRow.qml ui/ProviderAccounts.qml
+msgid "Signed in as %1"
+msgstr "Connecté en tant que %1"
+
 #: ui/ActivityHeatmap.qml
 msgid "Activity"
 msgstr "Activité"
@@ -467,6 +471,16 @@ msgstr "Enregistrer en SVG"
 #: ui/PopupHeader.qml
 msgid "Pinned on panel"
 msgstr "Épinglé sur le panneau"
+
+#: ui/ProviderAccounts.qml
+msgid "Another login already reads that folder. Pick a folder of its own."
+msgstr ""
+"Une autre connexion lit déjà ce dossier. Choisissez-en un qui lui soit "
+"propre."
+
+#: ui/ProviderAccounts.qml
+msgid "same account as %1"
+msgstr "même compte que %1"
 
 #: ui/ProviderAccounts.qml
 msgid "That is the most accounts one provider can have."
@@ -2098,6 +2112,18 @@ msgstr "%1 : erreur réseau"
 #: backend/tidesi/http.py
 msgid "%1 HTTP %2"
 msgstr "%1 HTTP %2"
+
+#: backend/tidesi/identity.py
+msgid "Its last reading here. A window that has reset since shows 0%."
+msgstr "Sa dernière lecture ici. Une fenêtre réinitialisée depuis affiche 0 %."
+
+#: backend/tidesi/identity.py
+msgid "Another login"
+msgstr "Une autre connexion"
+
+#: backend/tidesi/identity.py
+msgid "Other logins seen here"
+msgstr "Autres connexions vues ici"
 
 #: backend/tidesi/normalize/antigravity.py backend/tidesi/normalize/cursor.py
 #: backend/tidesi/normalize/muse.py backend/tidesi/normalize/ollama.py

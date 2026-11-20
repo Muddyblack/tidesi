@@ -49,9 +49,21 @@ Rectangle {
             control.committed(t);
     }
 
-    onValueChanged: if (!input.activeFocus)
-        input.text = value
-    Component.onCompleted: input.text = value
+    // A field nobody is typing in shows the start of its text, the part that
+    // tells two names or folders apart, not wherever the cursor was left.
+    function showStart() {
+        if (!input.activeFocus)
+            input.cursorPosition = 0;
+    }
+
+    onValueChanged: if (!input.activeFocus) {
+        input.text = value;
+        showStart();
+    }
+    Component.onCompleted: {
+        input.text = value;
+        showStart();
+    }
 
     MouseArea {
         id: area
@@ -77,8 +89,11 @@ Rectangle {
         onTextEdited: if (control.live)
             control.commit()
         onAccepted: control.commit()
-        onActiveFocusChanged: if (!activeFocus && !control.readOnly)
-            control.commit()
+        onActiveFocusChanged: if (!activeFocus) {
+            if (!control.readOnly)
+                control.commit();
+            control.showStart();
+        }
         Keys.onEscapePressed: {
             text = control.value;
             focus = false;

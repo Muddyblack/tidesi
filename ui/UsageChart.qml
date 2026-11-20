@@ -48,11 +48,12 @@ Rectangle {
         return windows.length > 0 ? windows[0] : null;
     }
 
-    // An extra account records under its own series ("ag@work"): the part of
-    // the window's key from the "@" on, "" for the provider's main account.
+    // An extra account ("ag@work") and a login told apart from another one in
+    // the same folder ("ag#3f9a1c2b") record under series of their own: the part
+    // of the window's key from the "@" or "#" on, "" for the folder's first login.
     readonly property string seriesSuffix: {
         var key = currentWindow && currentWindow.key ? String(currentWindow.key) : "";
-        var at = key.indexOf("@");
+        var at = key.search(/[@#]/);
         return at < 0 ? "" : key.substring(at);
     }
     readonly property bool isAntigravity: activeId.split("@")[0] === "antigravity" || (currentWindow && currentWindow.key && currentWindow.key.indexOf("ag") === 0)
@@ -195,7 +196,7 @@ Rectangle {
         if (isTokens)
             return OpenCodeUsage.compactTokens(chartMaxRaw * fraction);
         if (isCost) {
-            var symbol = currency === "CNY" ? "¥" : (currency === "USD" || historyKey.split("@")[0] === "mv" ? "$" : "");
+            var symbol = currency === "CNY" ? "¥" : (currency === "USD" || historyKey.split(/[@#]/)[0] === "mv" ? "$" : "");
             return chartMaxRaw > 0 ? symbol + (chartMaxRaw * fraction).toFixed(2) + (symbol === "" && currency !== "" ? " " + currency : "") : "";
         }
         return Math.round(fraction * 100) + "%";
@@ -209,10 +210,10 @@ Rectangle {
         var maxDate = new Date(maxT);
         if (windowSize <= 24 * 3600000) {
             if (minDate.toDateString() === maxDate.toDateString())
-                return Qt.formatDateTime(minDate, "hh:mm") + " - " + Qt.formatDateTime(maxDate, "hh:mm") + " (" + Qt.formatDateTime(maxDate, "MMM d") + ")";
-            return Qt.formatDateTime(minDate, "MMM d, hh:mm") + " - " + Qt.formatDateTime(maxDate, "MMM d, hh:mm");
+                return chart.shell.formatTime(minDate) + " - " + chart.shell.formatTime(maxDate) + " (" + chart.shell.formatDay(maxDate) + ")";
+            return chart.shell.formatDayTime(minDate) + " - " + chart.shell.formatDayTime(maxDate);
         }
-        return Qt.formatDateTime(minDate, "MMM d") + " - " + Qt.formatDateTime(maxDate, "MMM d");
+        return chart.shell.formatDay(minDate) + " - " + chart.shell.formatDay(maxDate);
     }
 
     // Usage slope in %/hour over the trailing lookback, for the pulse effect —
@@ -906,7 +907,7 @@ Rectangle {
                                 var value = (pt.raw !== undefined ? pt.raw : 0).toFixed(4);
                                 if (chart.currency === "CNY")
                                     return "¥" + value;
-                                if (chart.currency === "USD" || chart.historyKey.split("@")[0] === "mv")
+                                if (chart.currency === "USD" || chart.historyKey.split(/[@#]/)[0] === "mv")
                                     return "$" + value;
                                 return value + (chart.currency !== "" ? " " + chart.currency : "");
                             }
@@ -923,8 +924,8 @@ Rectangle {
                                 return "";
                             var point = pts[chartCanvas.scrubIndex];
                             if (chart.isTokens)
-                                return "  ·  " + Qt.formatDate(new Date(point.t), "MMM d") + (point.endDate ? " – " + Qt.formatDate(new Date(OpenCodeUsage.dayTimestamp(point.endDate)), "MMM d") : "");
-                            return "  ·  " + Qt.formatDateTime(new Date(point.t), "MMM d, hh:mm");
+                                return "  ·  " + chart.shell.formatDay(point.t) + (point.endDate ? " – " + chart.shell.formatDay(OpenCodeUsage.dayTimestamp(point.endDate)) : "");
+                            return "  ·  " + chart.shell.formatDayTime(point.t);
                         }
                         font.pixelSize: 11
                         color: Tone.c(Appearance.Palette, "#f8fafc")
@@ -989,7 +990,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: chartCanvas.scrubTimestamp > 0 ? "  ·  " + Qt.formatDateTime(new Date(chartCanvas.scrubTimestamp), "MMM d, hh:mm") : ""
+                        text: chartCanvas.scrubTimestamp > 0 ? "  ·  " + chart.shell.formatDayTime(chartCanvas.scrubTimestamp) : ""
                         font.pixelSize: 11
                         color: Tone.c(Appearance.Palette, "#f8fafc")
                         opacity: 0.75
@@ -1016,10 +1017,10 @@ Rectangle {
         function formatLabel(timestamp) {
             var d = new Date(timestamp);
             if (chart.isTokens)
-                return Qt.formatDate(d, "MMM d");
+                return chart.shell.formatDay(d);
             if (hourlyWindow)
-                return Qt.formatTime(d, "hh:mm");
-            return Qt.formatDate(d, "MMM d") + "\n" + Qt.formatTime(d, "hh:mm");
+                return chart.shell.formatTime(d);
+            return chart.shell.formatDay(d) + "\n" + chart.shell.formatTime(d);
         }
 
         function endpointCrowded(endpointFrac) {
@@ -1082,7 +1083,7 @@ Rectangle {
                     return (modelData - minT) / chart.windowSize;
                 }
                 visible: frac > 0 && frac < 1
-                text: chart.chartWindow.indexOf("weekly") >= 0 ? Qt.formatDate(new Date(modelData), "MMM d") : Qt.formatTime(new Date(modelData), "hh:mm")
+                text: chart.chartWindow.indexOf("weekly") >= 0 ? chart.shell.formatDay(modelData) : chart.shell.formatTime(modelData)
                 font.pixelSize: 9
                 color: chart.accent
                 opacity: 0.85

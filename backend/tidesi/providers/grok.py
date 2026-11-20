@@ -14,6 +14,7 @@ import urllib.parse
 from collections import deque
 from dataclasses import dataclass
 
+from .. import accounts
 from ..contract import epoch_of
 from ..http import as_json, fetch_json, resolve_key
 from ..messages import tr
@@ -164,6 +165,10 @@ def reset_discovery_cache():
 
 
 def _resolve_api_key():
+    # An extra account (another GROK_HOME) is its own folder's login only; the
+    # environment's xAI key belongs to the main one.
+    if accounts.extra_account():
+        return ""
     return resolve_key(
         ("WIDGET_XAI_API_KEY", "WIDGET_GROK_API_KEY"),
         ("XAI_API_KEY", "GROK_API_KEY"),

@@ -8,7 +8,7 @@ tidesi.cli. See docs/provider-contract.md for the shape produced here.
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from . import accounts, config
+from . import accounts, config, identity
 from .collect import collect
 from .contract import SCHEMA_VERSION, provider_error, status_summary
 from .normalize import normalize
@@ -108,12 +108,28 @@ def crashed(id_, now, exc):
 
 
 def _fetch(id_, now, **options):
-    """collect + normalize one provider id, which may name an extra account."""
-    account = accounts.find(config.load_settings(), id_) if accounts.is_account_id(id_) else None
+    """collect + normalize one provider id, which may name an extra account.
+
+    The row's history series follow the login it read (tidesi.identity), not
+    the folder: a different account signed in where another one was before
+    records into series of its own."""
+    cfg = config.load_settings()
+    account = accounts.find(cfg, id_) if accounts.is_account_id(id_) else None
     base = account["base"] if account else id_
-    with accounts.home_for(base, account["home"] if account else None):
+    # The main login waits only for an extra account of its own provider.
+    exclusive = account is not None or base in accounts.configured(cfg)
+    with accounts.home_for(base, account["home"] if account else None, account=account, exclusive=exclusive):
         provider = normalize(collect(base, now, **options))
-    return accounts.relabel(provider, account) if account else provider
+    tab = account["id"] if account else id_
+    suffix, login, others = identity.resolve(provider, base, tab, accounts.series_suffix(account), now)
+    provider = accounts.relabel(provider, account, suffix) if account else accounts.series(provider, suffix)
+    if login:
+        provider["login"] = login
+    if others:
+        section = identity.others_section(others, now)
+        if section:
+            provider["sections"] = [*(provider.get("sections") or []), section]
+    return provider
 
 
 def provider_update(provider):
