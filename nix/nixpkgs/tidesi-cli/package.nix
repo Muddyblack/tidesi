@@ -41,10 +41,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     substituteInPlace "$dest/backend/sh/python-interp.sh" \
       --replace-fail 'PY_DEFAULT="python3"' \
                      'PY_DEFAULT="${lib.getExe python}"'
-    substituteInPlace "$dest/backend/tidesi/providers/antigravity_remote.py" \
-      --replace-fail 'SECRET_TOOL = "secret-tool"' \
-                     'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}"'
-    substituteInPlace "$dest/backend/tidesi/providers/zed.py" \
+    substituteInPlace "$dest/backend/tidesi/paths.py" \
       --replace-fail 'SECRET_TOOL = "secret-tool"' \
                      'SECRET_TOOL = "${lib.getExe' libsecret "secret-tool"}"'
 

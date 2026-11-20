@@ -24,7 +24,6 @@ from ..http import as_json, clean_credential, fetch_json, http_error_text
 
 _DEFAULT_SERVER = "https://zed.dev"
 _API = "https://cloud.zed.dev/client/users/me"
-SECRET_TOOL = "secret-tool"  # Pinned to libsecret's path by the Nix package.
 _ACCOUNT_RE = re.compile(r'"acct"<blob>="([^"]*)"')
 
 
@@ -59,7 +58,7 @@ def _api_url(server):
 
 def _secret_service_login(server):
     """(user_id, access_token) from Zed's Linux Secret Service entry."""
-    executable = shutil.which(SECRET_TOOL)
+    executable = shutil.which(paths.SECRET_TOOL)
     if not executable:
         return "", ""
     try:
