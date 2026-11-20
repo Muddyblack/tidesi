@@ -451,6 +451,7 @@ from PySide6.QtCore import (  # noqa: E402
     Property,
     QLocale,
     QObject,
+    QPoint,
     QRect,
     QRectF,
     Qt,
@@ -1273,6 +1274,17 @@ class TrayApp:
             backend.popupToggleRequested.connect(self.toggle_from_pill)
             self._on_pill_visible()
 
+        # A desktop with no tray (GNOME without an AppIndicator extension) shows
+        # none of the icons: the floating pill stands in, or the app would be
+        # out of reach once its first popup closes. The tray can also come up
+        # after the app at login, so it is looked for again for a while.
+        self._tray_checks = 0
+        self._tray_timer = QTimer(app)
+        self._tray_timer.timeout.connect(self._check_tray)
+        if self.status is None:
+            self._check_tray()
+            self._tray_timer.start(5000)
+
         self.window.activeChanged.connect(self._on_active_changed)
         # The popup grows and shrinks with its content; keep it on the taskbar.
         self.window.heightChanged.connect(self._reposition)
@@ -1282,6 +1294,15 @@ class TrayApp:
         self.window.xChanged.connect(self._on_panel_moved)
         self.window.yChanged.connect(self._on_panel_moved)
         self._show_entries(tray_entries({}))
+
+    def _check_tray(self):
+        missing = not QSystemTrayIcon.isSystemTrayAvailable()
+        if bool(self.window.property("forcePill")) != missing:
+            self.window.setProperty("forcePill", missing)
+        self._tray_checks += 1
+        # Two minutes covers a tray that starts after the app at login.
+        if self._tray_checks >= 24:
+            self._tray_timer.stop()
 
     # ── Icons ──
     def _add_icon(self, picture):
@@ -1473,8 +1494,18 @@ class TrayApp:
         self._place()
         self.window.show()
         self._apply_vibrancy()
+        self._join_all_spaces()
         self.window.raise_()
         self.window.requestActivate()
+
+    def _join_all_spaces(self):
+        """macOS: the popup opens on the current Space, over a full-screen app too."""
+        if vibrancy is None:
+            return
+        try:
+            vibrancy.join_all_spaces(self.window)
+        except Exception as exc:  # PyObjC raises its own error types
+            print(f"Tidesi: could not show the popup on every Space: {exc}", file=sys.stderr)
 
     def _apply_vibrancy(self):
         """The system blur behind the popup, once its window exists,
@@ -1524,7 +1555,9 @@ class TrayApp:
             self.toggle()
 
     def _reposition(self):
-        if self.window.isVisible():
+        # A resize from inside _place (the screen's height set in Main.qml) is
+        # already being placed for.
+        if self.window.isVisible() and not self._syncing:
             self._place()
 
     def _on_panel_moved(self):
@@ -1560,6 +1593,10 @@ class TrayApp:
         screen = QGuiApplication.screenAt(icon.center()) if icon.isValid() else None
         screen = screen or QGuiApplication.primaryScreen()
         area, full = screen.availableGeometry(), screen.geometry()
+        # The popup grows with its content up to this screen's free height
+        # (Main.qml). Qt's Screen.desktopAvailableHeight is all screens
+        # together: next to a taller monitor, the popup outgrew a laptop's.
+        self.window.setProperty("screenAvailableHeight", area.height())
         w, h, gap = self.window.width(), self.window.height(), 8
 
         def clamp(value, low, high):
@@ -1632,6 +1669,9 @@ class CosmicHost:
             return  # Wayland: the compositor decides
         self._syncing = True
         try:
+            # Grow up to the free height of the screen it opens on (Main.qml).
+            where = QGuiApplication.screenAt(QPoint(*self._moved)) if self._moved else None
+            self.window.setProperty("screenAvailableHeight", (where or QGuiApplication.primaryScreen()).availableGeometry().height())
             w, h = self.window.width(), self.window.height()
             if self._moved and any(sc.geometry().intersects(QRect(self._moved[0], self._moved[1], w, h)) for sc in QGuiApplication.screens()):
                 self.window.setPosition(*self._moved)

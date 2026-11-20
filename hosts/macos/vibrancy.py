@@ -24,6 +24,8 @@ from AppKit import (
     NSVisualEffectStateActive,
     NSVisualEffectView,
     NSWindowBelow,
+    NSWindowCollectionBehaviorCanJoinAllSpaces,
+    NSWindowCollectionBehaviorFullScreenAuxiliary,
 )
 
 # Matches ui/PopupBackground.qml's radius, so the blur and the drawn edge agree.
@@ -66,3 +68,20 @@ def set_light(window, light):
     ns_window = view.window()
     if ns_window is not None:
         ns_window.setAppearance_(NSAppearance.appearanceNamed_(NSAppearanceNameAqua if light else NSAppearanceNameDarkAqua))
+
+
+def join_all_spaces(window):
+    """Let `window` (a QWindow that has been shown once) open on whichever Space
+    is current, a full-screen app's included, as a menu bar item's popover does.
+
+    Without this the popup belongs to the desktop it was first shown on:
+    clicking the menu bar item over a full-screen app shows nothing there, or
+    switches away from the app to show it. True when the behaviour was set."""
+    view = objc.objc_object(c_void_p=int(window.winId()))
+    ns_window = view.window()
+    if ns_window is None:
+        return False
+    wanted = NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary
+    if ns_window.collectionBehavior() & wanted != wanted:
+        ns_window.setCollectionBehavior_(ns_window.collectionBehavior() | wanted)
+    return True

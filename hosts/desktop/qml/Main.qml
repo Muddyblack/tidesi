@@ -15,8 +15,17 @@ Window {
     width: app.popupWidth
     // --screenshot sets this so every capture is the same size.
     property int fixedHeight: 0
+    // The free height of the screen the popup opens on, set by app.py as it
+    // places it. Screen.desktopAvailableHeight is every screen together, which
+    // let the popup outgrow a laptop's screen beside a taller monitor.
+    property int screenAvailableHeight: 0
+    readonly property int maxHeight: screenAvailableHeight > 0 ? screenAvailableHeight - 60 : (Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight - 60 : 720)
     // As tall as the content, up to the screen's free height.
-    height: fixedHeight > 0 ? fixedHeight : Math.min(Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight - 60 : 720, popupHeader.implicitHeight + 12 + popupContent.height + 28)
+    height: fixedHeight > 0 ? fixedHeight : Math.min(maxHeight, popupHeader.implicitHeight + 12 + popupContent.height + 28)
+    // Set by app.py when the desktop has no tray to put icons in (GNOME
+    // without an AppIndicator extension): the floating pill is then the only
+    // way back to the popup, so it shows whatever the setting says.
+    property bool forcePill: false
     visible: false
     color: "transparent"
     flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
@@ -81,7 +90,7 @@ Window {
         // Qt shows a transient child only while its parent is shown — the popup
         // is hidden most of the time. Without a parent it stands on its own.
         transientParent: null
-        visible: app.settings.floatingPill === true
+        visible: app.settings.floatingPill === true || root.forcePill
         width: pill.implicitWidth + 8
         height: pill.implicitHeight + 8
         color: "transparent"
