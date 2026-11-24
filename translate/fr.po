@@ -2350,8 +2350,8 @@ msgstr "Cline : aucune session pour l'instant — lancez cline une fois"
 msgid "last 30 days"
 msgstr "30 derniers jours"
 
-#: backend/tidesi/normalize/cline.py backend/tidesi/normalize/kilo.py
-#: backend/tidesi/normalize/local_activity.py
+#: backend/tidesi/normalize/cline.py backend/tidesi/normalize/commandcode.py
+#: backend/tidesi/normalize/kilo.py backend/tidesi/normalize/local_activity.py
 #: backend/tidesi/normalize/windsurf.py backend/tidesi/normalize/zed.py
 msgid "%1: %2"
 msgstr "%1 : %2"
@@ -2391,6 +2391,52 @@ msgid ""
 msgstr ""
 "Lu en exécutant le rapport d’utilisation du CLI CodeRabbit. CodeRabbit "
 "publie un nombre de revues, pas un quota."
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Command Code: no API key or CLI login found"
+msgstr "Command Code : aucune clé API ni connexion CLI trouvée"
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Command Code: %1"
+msgstr "Command Code : %1"
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "5-hour"
+msgstr "5 heures"
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Weekly"
+msgstr "Hebdomadaire"
+
+#: backend/tidesi/normalize/commandcode.py
+#: backend/tidesi/normalize/jetbrains.py backend/tidesi/normalize/kiro.py
+msgid "Monthly credits"
+msgstr "Crédits mensuels"
+
+#: backend/tidesi/normalize/commandcode.py backend/tidesi/normalize/kilo.py
+#: backend/tidesi/normalize/windsurf.py backend/tidesi/normalize/zed.py
+msgid "%1 / %2"
+msgstr "%1 / %2"
+
+#: backend/tidesi/normalize/commandcode.py backend/tidesi/normalize/kilo.py
+msgid "Credit balance"
+msgstr "Solde de crédits"
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Monthly credits left"
+msgstr "Crédits mensuels restants"
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Extra credits"
+msgstr "Crédits supplémentaires"
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Read with your Command Code CLI login."
+msgstr "Lu avec votre connexion CLI Command Code."
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Read with your Command Code API key."
+msgstr "Lu avec votre clé API Command Code."
 
 #: backend/tidesi/normalize/copilot.py
 msgid "Copilot: no token configured"
@@ -2544,10 +2590,6 @@ msgid "%1 / %2 credits"
 msgstr "%1 / %2 crédits"
 
 #: backend/tidesi/normalize/jetbrains.py backend/tidesi/normalize/kiro.py
-msgid "Monthly credits"
-msgstr "Crédits mensuels"
-
-#: backend/tidesi/normalize/jetbrains.py backend/tidesi/normalize/kiro.py
 msgid "Credits: %1"
 msgstr "Crédits : %1"
 
@@ -2591,11 +2633,6 @@ msgstr "Kilo : %1"
 msgid "Credits"
 msgstr "Crédits"
 
-#: backend/tidesi/normalize/kilo.py backend/tidesi/normalize/windsurf.py
-#: backend/tidesi/normalize/zed.py
-msgid "%1 / %2"
-msgstr "%1 / %2"
-
 #: backend/tidesi/normalize/kilo.py
 msgid "%1 (incl. %2 bonus)"
 msgstr "%1 (dont %2 de bonus)"
@@ -2603,10 +2640,6 @@ msgstr "%1 (dont %2 de bonus)"
 #: backend/tidesi/normalize/kilo.py
 msgid "Kilo Pass"
 msgstr "Kilo Pass"
-
-#: backend/tidesi/normalize/kilo.py
-msgid "Credit balance"
-msgstr "Solde de crédits"
 
 #: backend/tidesi/normalize/kilo.py
 msgid "Read with your Kilo CLI login."
@@ -3207,6 +3240,18 @@ msgstr ""
 #: backend/tidesi/providers/antigravity.py
 msgid "Antigravity is not running. Please open your IDE."
 msgstr "Antigravity n'est pas lancé. Ouvrez votre IDE."
+
+#: backend/tidesi/providers/commandcode.py
+msgid "A key from settings or $COMMAND_CODE_API_KEY"
+msgstr "Une clé des paramètres ou de $COMMAND_CODE_API_KEY"
+
+#: backend/tidesi/providers/commandcode.py
+msgid "Command Code CLI"
+msgstr "CLI Command Code"
+
+#: backend/tidesi/providers/commandcode.py
+msgid "The login `cmd login` stored"
+msgstr "La connexion enregistrée par `cmd login`"
 
 #: backend/tidesi/providers/copilot.py
 msgid "Access token"

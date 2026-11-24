@@ -2195,8 +2195,8 @@ msgstr ""
 msgid "last 30 days"
 msgstr ""
 
-#: backend/tidesi/normalize/cline.py backend/tidesi/normalize/kilo.py
-#: backend/tidesi/normalize/local_activity.py
+#: backend/tidesi/normalize/cline.py backend/tidesi/normalize/commandcode.py
+#: backend/tidesi/normalize/kilo.py backend/tidesi/normalize/local_activity.py
 #: backend/tidesi/normalize/windsurf.py backend/tidesi/normalize/zed.py
 msgid "%1: %2"
 msgstr ""
@@ -2233,6 +2233,52 @@ msgstr ""
 msgid ""
 "Read by running the CodeRabbit CLI's own usage report. CodeRabbit publishes "
 "a count, not a quota."
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Command Code: no API key or CLI login found"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Command Code: %1"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "5-hour"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Weekly"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+#: backend/tidesi/normalize/jetbrains.py backend/tidesi/normalize/kiro.py
+msgid "Monthly credits"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py backend/tidesi/normalize/kilo.py
+#: backend/tidesi/normalize/windsurf.py backend/tidesi/normalize/zed.py
+msgid "%1 / %2"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py backend/tidesi/normalize/kilo.py
+msgid "Credit balance"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Monthly credits left"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Extra credits"
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Read with your Command Code CLI login."
+msgstr ""
+
+#: backend/tidesi/normalize/commandcode.py
+msgid "Read with your Command Code API key."
 msgstr ""
 
 #: backend/tidesi/normalize/copilot.py
@@ -2385,10 +2431,6 @@ msgid "%1 / %2 credits"
 msgstr ""
 
 #: backend/tidesi/normalize/jetbrains.py backend/tidesi/normalize/kiro.py
-msgid "Monthly credits"
-msgstr ""
-
-#: backend/tidesi/normalize/jetbrains.py backend/tidesi/normalize/kiro.py
 msgid "Credits: %1"
 msgstr ""
 
@@ -2428,21 +2470,12 @@ msgstr ""
 msgid "Credits"
 msgstr ""
 
-#: backend/tidesi/normalize/kilo.py backend/tidesi/normalize/windsurf.py
-#: backend/tidesi/normalize/zed.py
-msgid "%1 / %2"
-msgstr ""
-
 #: backend/tidesi/normalize/kilo.py
 msgid "%1 (incl. %2 bonus)"
 msgstr ""
 
 #: backend/tidesi/normalize/kilo.py
 msgid "Kilo Pass"
-msgstr ""
-
-#: backend/tidesi/normalize/kilo.py
-msgid "Credit balance"
 msgstr ""
 
 #: backend/tidesi/normalize/kilo.py
@@ -3018,6 +3051,18 @@ msgstr ""
 
 #: backend/tidesi/providers/antigravity.py
 msgid "Antigravity is not running. Please open your IDE."
+msgstr ""
+
+#: backend/tidesi/providers/commandcode.py
+msgid "A key from settings or $COMMAND_CODE_API_KEY"
+msgstr ""
+
+#: backend/tidesi/providers/commandcode.py
+msgid "Command Code CLI"
+msgstr ""
+
+#: backend/tidesi/providers/commandcode.py
+msgid "The login `cmd login` stored"
 msgstr ""
 
 #: backend/tidesi/providers/copilot.py

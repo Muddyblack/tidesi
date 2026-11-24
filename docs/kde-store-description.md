@@ -33,6 +33,7 @@ Switch between tabs in the popup for each service:
 [*] [b]Windsurf[/b] — Daily and weekly quota from the editor's local cache; no key or network
 [*] [b]Pi / OMP[/b] — Local token activity and model breakdowns from the agents' session files
 [*] [b]Kilo[/b] — Prepaid credit balance and Kilo Pass usage via an API key or the kilo CLI login
+[*] [b]Command Code[/b] — 5-hour and weekly usage windows, monthly credits and plan via the cmd CLI login or an API key
 [*] [b]CodeRabbit[/b] — Review count and reset date from the CodeRabbit CLI
 [*] [b]Zed[/b] — Local Agent thread tokens on Linux, macOS and Windows; separate plan/edit-prediction quota via macOS Keychain, Linux Secret Service or Windows Credential Manager (live-verified on Linux only); thread cost is unavailable without per-request model attribution
 [*] [b]MiMo Code[/b] — Local token usage, model breakdowns, session history and recorded or estimated costs

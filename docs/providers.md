@@ -19,7 +19,7 @@ what the tab says it uses is what it uses. The choice is stored as
 `sources: {"<provider>": "<source id>"}` in the shared settings file (or
 `$WIDGET_SOURCE_<PROVIDER>`). Today Cursor (`cli`, `ide`), Kiro (`cli`, `ide`),
 Antigravity (`aiu`, `server`, `agy`), Copilot (`key`, `editor`, `cli`), Kilo
-(`key`, `cli`) and Ollama Cloud (`key`, `opencode`) have a choice; the others
+(`key`, `cli`), Command Code (`key`, `cli`) and Ollama Cloud (`key`, `opencode`) have a choice; the others
 are read one way.
 
 **Network → Proxy** (Settings → Advanced) sends the backend's requests through an
@@ -93,8 +93,8 @@ pricing the full history against that model would be misleading.
 
 ## Defaults and setup per provider
 
-There are 25 provider IDs in the backend. New shared settings are zero based.
-The one-shot initializer can enable only the 16 providers in the backend's
+There are 26 provider IDs in the backend. New shared settings are zero based.
+The one-shot initializer can enable only the 17 providers in the backend's
 `AUTO_DETECT_PROVIDERS` allowlist when local evidence exists. The other 9 are
 manual-only and need an explicit choice, key, or endpoint. Detection does not
 prove authentication or usability. Each service has its own setup requirement:
@@ -124,6 +124,7 @@ The local provider only reads health, model, slot, and metrics endpoints. It nev
 | Windsurf | The Windsurf editor, signed in and opened at least once. Nothing to configure |
 | Pi / OMP | Pi or OMP, run at least once. Nothing to configure |
 | Kilo | The `kilo` CLI login (`kilo auth login`), or a Kilo API key from widget settings or `$KILO_API_KEY` |
+| Command Code | The `cmd` CLI login (`cmd login`), or a Command Code API key from widget settings or `$COMMAND_CODE_API_KEY` |
 | CodeRabbit | The `coderabbit` CLI, signed in |
 | Zed quota | The Zed editor signed in; reads macOS Keychain, Linux Secret Service or Windows Credential Manager credentials. Live-verified on Linux only; macOS and Windows are untested against a live account |
 
@@ -591,6 +592,26 @@ stores in `~/.local/share/kilo/auth.json`; a refused key falls back to the CLI
 login. An empty prepaid balance is shown as exhausted. The request shape follows
 Kilo's own web API and has not been verified against a live account.
 
+## Command Code
+
+The widget makes the three GET requests the CLI's own `/usage` screen makes, on
+`https://api.commandcode.ai/alpha`: `/billing/credits` (remaining credits and the
+rolling 5-hour and weekly windows, `windowLimits`), `/billing/subscriptions`
+(plan and billing period) and `/usage/summary?since=<period start>` (what the
+period has cost). Everything is in USD of model usage. The monthly row is
+period spend against spend plus remaining monthly credits; a window that has
+not been opened yet has no reset time. Pay-as-you-go accounts have no windows
+and show their credit balance instead. If only the credits request succeeds,
+the windows are still shown without the plan and the monthly row.
+
+The credential is the widget setting / `$COMMAND_CODE_API_KEY`, then the
+`apiKey` that `cmd login` stores in `~/.commandcode/auth.json`
+(`%USERPROFILE%\.commandcode\auth.json` on Windows); a refused key falls back
+to the CLI login. These endpoints are not in Command Code's public docs: they
+were read from command-code 1.84.0 and verified against a live account on
+Linux on 2026-11-19. Organisation (Teams) usage is not read — the requests carry
+no `orgId` — and local sessions are not listed in the Sessions tab.
+
 ## CodeRabbit
 
 The widget runs `coderabbit usage` (20-second timeout) and parses its labelled
@@ -640,4 +661,7 @@ Artwork: `jetbrains.svg` and `zed.svg` come from the
 [simple-icons](https://github.com/simple-icons/simple-icons) set (CC0), fetched
 on 2026-10-10 — the marks themselves remain their owners' trademarks. The
 `windsurf`, `pi`, `kilo` and `coderabbit` icons are simple monograms drawn for
-this widget, not official artwork.
+this widget, not official artwork. `commandcode.svg` is the white mark from the
+official VS Code extension shipped in the `command-code` npm package (1.84.0,
+`icons/icon-dark.svg`), fetched on 2026-11-19, with the outer frame dropped; it
+remains its owner's trademark.

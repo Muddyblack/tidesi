@@ -42,6 +42,7 @@ _CRASH_LABELS = {
     "kilo": ("Kilo", "#f4e04d"),
     "coderabbit": ("CodeRabbit", "#ff7a3d"),
     "zed": ("Zed", "#e6e6e6"),
+    "commandcode": ("Command Code", "#e6e6e6"),
 }
 
 

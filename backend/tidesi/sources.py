@@ -57,7 +57,7 @@ def _registry():
     """Provider id -> Spec, imported lazily: providers pull in a lot, and the
     paths that never describe sources (--normalize of one fixture, an
     unconfigured provider) should not pay for them."""
-    from .providers import antigravity, copilot, cursor, kilo, kiro, ollama
+    from .providers import antigravity, commandcode, copilot, cursor, kilo, kiro, ollama
 
     return {
         "cursor": Spec(cursor.SOURCES),
@@ -65,6 +65,7 @@ def _registry():
         "antigravity": Spec(antigravity.SOURCES),
         "copilot": Spec(copilot.SOURCES),
         "kilo": Spec(kilo.SOURCES),
+        "commandcode": Spec(commandcode.SOURCES),
         "ollama": Spec(ollama.SOURCES),
     }
 
