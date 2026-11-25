@@ -21,7 +21,6 @@ from ..http import as_json, fetch_json
 INSTANCE_URL = "https://jetski-webchannel.googleapis.com/v1internal:listInstances"
 REMOTE_URL = "https://antigravity.google.com/"
 REFRESH_COOLDOWN = 600  # seconds between agy-driven token refreshes
-SECRET_TOOL = "secret-tool"  # Pinned to libsecret's path by the Nix package.
 
 
 def _stored_credentials():
@@ -34,8 +33,8 @@ def _stored_credentials():
             return stored
     if paths.IS_MACOS:
         command = ["security", "find-generic-password", "-s", "gemini", "-a", "antigravity", "-w"]
-    elif not paths.IS_WINDOWS and shutil.which(SECRET_TOOL):
-        command = [SECRET_TOOL, "lookup", "service", "gemini", "username", "antigravity"]
+    elif not paths.IS_WINDOWS and shutil.which(paths.SECRET_TOOL):
+        command = [paths.SECRET_TOOL, "lookup", "service", "gemini", "username", "antigravity"]
     if command:
         try:
             result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=2, **paths.no_window())
